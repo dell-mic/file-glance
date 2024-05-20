@@ -9,21 +9,21 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@material-tailwind/react": "^2.1.8",
-    "csv": "^6.3.8",
+    "@material-tailwind/react": "^2.1.9",
+    "csv": "^6.3.9",
     "lodash": "^4.17.21",
-    "next": "14.2.2",
+    "next": "14.2.3",
     "react": "^18",
     "react-dom": "^18",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.1",
+    "@types/lodash": "^4.17.4",
     "@types/node": "^20",
-    "@types/react": "^18.3.1",
+    "@types/react": "^18.3.2",
     "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "14.2.2",
+    "eslint-config-next": "14.2.3",
     "postcss": "^8",
     "tailwindcss": "^3.4.3",
     "typescript": "^5"
