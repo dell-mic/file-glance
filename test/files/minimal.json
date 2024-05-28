@@ -1,0 +1,16 @@
+[
+  {
+    "city": "Moers",
+    "person": {
+      "name": "test",
+      "email": "test@test1"
+    }
+  },
+  {
+    "city": "Krefeld",
+    "person": {
+      "name": "test2",
+      "email": "test@test2"
+    }
+  }
+]

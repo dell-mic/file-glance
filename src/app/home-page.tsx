@@ -2,18 +2,10 @@
 
 import React from "react";
 
-import {
-  Accordion,
-  AccordionHeader,
-  AccordionBody,
-} from "./material-tailwind/components";
-import type { AccordionProps } from "@material-tailwind/react";
-import type { AccordionHeaderProps } from "@material-tailwind/react";
-import type { AccordionBodyProps } from "@material-tailwind/react";
-
 import { maxBy, orderBy, sortBy } from "lodash";
 import * as XLSX from "xlsx";
 import { parse } from "csv-parse/browser/esm/sync";
+import Accordion from "./components/Accordion";
 
 export default function Home() {
   const [dragging, setDragging] = React.useState(false);
@@ -51,6 +43,21 @@ export default function Home() {
       console.log(data, "data");
 
       setRows(data);
+    } else if (file.name.toLowerCase().endsWith(".json")) {
+      var enc = new TextDecoder("utf-8"); // TODO: How to detect file encoding better?
+
+      const parsedContent: any = await file
+        .arrayBuffer()
+        .then((v) => JSON.parse(enc.decode(v)));
+
+      const arrayData = findArray(parsedContent);
+
+      if (arrayData) {
+        data = jsonToTable(arrayData);
+        setRows(data);
+      } else {
+        console.error('No array in JSON found')
+      }
     } else {
       // Somehow-Separated text
       var enc = new TextDecoder("utf-8"); // TODO: How to detect file encoding better?
@@ -67,7 +74,7 @@ export default function Home() {
     const columnValueCounts = countValues(data);
     console.log(columnValueCounts);
     setcColumnValueCounts(columnValueCounts);
-  }
+  };
 
   const handleDrop = async (e: DragEvent) => {
     e.preventDefault();
@@ -81,8 +88,7 @@ export default function Home() {
 
     const firstFile = files[0];
 
-    parseFile(firstFile)
-
+    parseFile(firstFile);
   };
 
   const handleDragEnter = (e: DragEvent) => {
@@ -129,11 +135,9 @@ export default function Home() {
 
   const InitialUI = () => {
     return (
-      <div className="w-2/6 max-w-2xl mx-auto my-24">
+      <div className="w-4/6 max-w-2xl mx-auto my-24">
         <div className="flex items-center justify-center w-full">
-          <label
-            className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
-          >
+          <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
               <svg
                 className="w-10 h-10 mb-3 text-gray-400"
@@ -150,8 +154,8 @@ export default function Home() {
                 ></path>
               </svg>
               <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-semibold">Click to upload</span> or drag and
-                drop
+                <span className="font-semibold">Click to choose file</span> or drag
+                and drop
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 CSV, TSV, XLSX, JSON, LOG
@@ -166,55 +170,73 @@ export default function Home() {
 
   const DataTable = (props: { rows: Array<Array<any>> }) => {
     return (
-      <table className="table-fixed w-full text-left h-fit ml-1">
-        <thead>
-          <tr className="border border-slate-300">
-            {rows[0].map((v: string, vi: number) => {
-              return (
-                <th key={vi} className="p-0.5">
-                  {v}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {props.rows.slice(1).map((r, i) => {
-            return (
-              <tr
-                key={i}
-                className="border border-slate-300 even:bg-gray-200 odd:bg-white"
-              >
-                {r.map((v, vi) => {
+      <div className="h-full w-full border-separate overflow-clip border border-gray-300 rounded-md shadow-sm ml-1 flex flex-col">
+        <div
+          className="overflow-y-auto bg-gray-200"
+          style={{ scrollbarGutter: "stable" }}
+        >
+          <table className="table-fixed w-full text-left">
+            <thead className="sticky top-0">
+              <tr className="">
+                {rows[0].map((v: string, vi: number) => {
                   return (
-                    <td
-                      key={vi}
-                      title={v}
-                      className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
-                    >
-                      {v ? v : <span className="text-gray-500 font-mono">empty</span>}
-                    </td>
+                    <th key={vi} className="p-0.5 font-normal">
+                      {v}
+                    </th>
                   );
                 })}
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+          </table>
+        </div>
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{ scrollbarGutter: "stable" }}
+        >
+          <table className="table-fixed w-full text-left">
+            <tbody>
+              {props.rows.slice(1).map((r, i) => {
+                return (
+                  <tr key={i} className="even:bg-gray-100 odd:bg-white">
+                    {r.map((v, vi) => {
+                      return (
+                        <td
+                          key={vi}
+                          title={v}
+                          className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
+                        >
+                          {v ? (
+                            v
+                          ) : (
+                            <span className="text-gray-500 font-mono">
+                              empty
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     );
   };
 
   return (
-    <main ref={drop} className="flex min-h-screen flex-col p-2">
-      <div>
-        <span className="text-xl">{currentFile?.name || ""} </span>
+    <main ref={drop} className="h-screen p-2">
+      <div className="mb-2">
+        <span className="text-2xl">{currentFile?.name || ""} </span>
         <span className="text-gray-500 text-sm">
-          {currentFile ? formatBytes(currentFile.size) : ""}{", "}
+          {currentFile ? formatBytes(currentFile.size) : ""}
+          {", "}
           {rows?.length ? `${rows.length - 1} rows` : ""}
         </span>
       </div>
       {rows?.length ? (
-        <div className="flex flex-row">
+        <div className="flex flex-row h-[calc(100vh-28px)] overflow-clip">
           <ValuesInspector columnInfos={columnValueCounts}></ValuesInspector>
           <DataTable rows={rows}></DataTable>
         </div>
@@ -238,7 +260,7 @@ function ValuesInspector(props: { columnInfos: ColumnInfos[] }) {
     arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
 
   return (
-    <div className="w-96">
+    <div className="w-96 flex flex-col gap-2">
       {props.columnInfos.map((column) => {
         const columnValues = orderBy(
           column.columnValues,
@@ -247,23 +269,22 @@ function ValuesInspector(props: { columnInfos: ColumnInfos[] }) {
         );
         return (
           <Accordion
+            header={column.columnName}
+            subHeader={`${columnValues.length}`}
             open={openAccordions.includes(column.columnIndex)}
+            onClick={() => {
+              setOpenAccordions(
+                addOrRemove(openAccordions, column.columnIndex)
+              );
+            }}
             key={`${column.columnIndex}_${column.columnName}`}
           >
-            <AccordionHeader
-              className="py-1 text-sm"
-              onClick={() => {
-                setOpenAccordions(
-                  addOrRemove(openAccordions, column.columnIndex)
-                );
-              }}
-            >{`${column.columnName} (${columnValues.length})`}</AccordionHeader>
-            <AccordionBody className="py-1">
+            <div className="py-1">
               {columnValues.map((colValue) => {
                 return (
                   <div
                     key={`${column.columnIndex}_${colValue.valueName}`}
-                    className="text-xs"
+                    className="text-sm"
                   >
                     <a
                       href="#"
@@ -273,11 +294,11 @@ function ValuesInspector(props: { columnInfos: ColumnInfos[] }) {
                     >
                       {colValue.valueName || "empty"}
                     </a>
-                    {` ${colValue.valueCount}`}
+                    <span className="text-gray-500">{` ${colValue.valueCount}`}</span>
                   </div>
                 );
               })}
-            </AccordionBody>
+            </div>
           </Accordion>
         );
       })}
@@ -366,4 +387,58 @@ function countValues(input: string[][]): ColumnInfos[] {
   });
 
   return columnInfos;
+}
+
+function findArray(json: any) {
+  // Check if the JSON object itself is an array
+  if (Array.isArray(json)) {
+    return json;
+  }
+
+  // Iterate over the properties of the JSON object
+  for (let key in json) {
+    if (json.hasOwnProperty(key)) {
+      let value = json[key];
+      // Check if the property is an array and has a length greater than 0
+      if (Array.isArray(value) && value.length > 0) {
+        return value;
+      }
+    }
+  }
+
+  // If no array with length > 0 is found, return null
+  return null;
+}
+
+function jsonToTable(jsonArray: Array<any>) {
+  // Helper function to flatten a nested object
+  function flattenObject(obj: any, prefix = "") {
+    return Object.keys(obj).reduce((acc, k) => {
+      const pre = prefix.length ? prefix + "." : "";
+      if (
+        typeof obj[k] === "object" &&
+        obj[k] !== null &&
+        !Array.isArray(obj[k])
+      ) {
+        Object.assign(acc, flattenObject(obj[k], pre + k));
+      } else {
+        acc[pre + k] = obj[k];
+      }
+      return acc;
+    }, {});
+  }
+
+  // Flatten all objects in the JSON array
+  const flatArray = jsonArray.map((item) => flattenObject(item));
+
+  // Create the header row
+  const header = Array.from(
+    new Set(flatArray.flatMap((item) => Object.keys(item)))
+  );
+
+  // Create the data rows
+  const rows = flatArray.map((item) => header.map((h) => item[h] || ""));
+
+  // Combine the header and data rows
+  return [header, ...rows];
 }

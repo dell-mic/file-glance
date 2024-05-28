@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@material-tailwind/react": "^2.1.9",
     "csv": "^6.3.9",
     "lodash": "^4.17.21",
     "next": "14.2.3",

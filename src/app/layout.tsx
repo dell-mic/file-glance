@@ -31,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${roboto.className} ${roboto.variable} ${roboto_mono.variable}`}>
-        <ThemeClient>{children}</ThemeClient>
+        {children}
       </body>
     </html>
   );
