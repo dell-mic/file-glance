@@ -56,7 +56,7 @@ export default function Home() {
         data = jsonToTable(arrayData);
         setRows(data);
       } else {
-        console.error('No array in JSON found')
+        console.error("No array in JSON found");
       }
     } else {
       // Somehow-Separated text
@@ -85,10 +85,23 @@ export default function Home() {
     const files = e.dataTransfer ? [...e.dataTransfer.files] : [];
 
     console.log(files);
+    if (files.length) {
+      const firstFile = files[0];
+      parseFile(firstFile);
+    }
+  };
 
-    const firstFile = files[0];
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const files = Array.from(e.target.files || []);
+    console.log("files:", files);
 
-    parseFile(firstFile);
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (files.length) {
+      const firstFile = files[0];
+      parseFile(firstFile);
+    }
   };
 
   const handleDragEnter = (e: DragEvent) => {
@@ -154,14 +167,18 @@ export default function Home() {
                 ></path>
               </svg>
               <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-semibold">Click to choose file</span> or drag
-                and drop
+                <span className="font-semibold">Click to choose file</span> or
+                drag and drop
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 CSV, TSV, XLSX, JSON, LOG
               </p>
             </div>
-            <input id="dropzone-file" type="file" className="hidden" />
+            <input
+              type="file"
+              className="hidden"
+              onChange={handleFileSelected}
+            />
           </label>
         </div>
       </div>
@@ -199,19 +216,28 @@ export default function Home() {
                 return (
                   <tr key={i} className="even:bg-gray-100 odd:bg-white">
                     {r.map((v, vi) => {
+                      let valueCell;
+                      if (v) {
+                        valueCell = v;
+                      } else {
+                        if (v === "" || v === null || v === undefined) {
+                          valueCell = (
+                            <span className="text-gray-500 font-mono">
+                              empty
+                            </span>
+                          );
+                        } else {
+                          // Convert false,0 to string
+                          valueCell = "" + v;
+                        }
+                      }
                       return (
                         <td
                           key={vi}
                           title={v}
                           className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
                         >
-                          {v ? (
-                            v
-                          ) : (
-                            <span className="text-gray-500 font-mono">
-                              empty
-                            </span>
-                          )}
+                          {valueCell}
                         </td>
                       );
                     })}
