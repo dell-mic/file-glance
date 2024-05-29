@@ -4,13 +4,17 @@
     "person": {
       "name": "test",
       "email": "test@test1"
-    }
+    },
+    "active": true,
+    "count": 1
   },
   {
     "city": "Krefeld",
     "person": {
       "name": "test2",
       "email": "test@test2"
-    }
+    },
+    "active": false,
+    "count": 0
   }
 ]

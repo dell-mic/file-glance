@@ -186,6 +186,7 @@ export default function Home() {
   };
 
   const DataTable = (props: { rows: Array<Array<any>> }) => {
+    // console.log(rows)
     return (
       <div className="h-full w-full border-separate overflow-clip border border-gray-300 rounded-md shadow-sm ml-1 flex flex-col">
         <div
@@ -216,9 +217,11 @@ export default function Home() {
                 return (
                   <tr key={i} className="even:bg-gray-100 odd:bg-white">
                     {r.map((v, vi) => {
+                      // Convert false,0 to string
+                      const valueAsString = "" + v;
                       let valueCell;
                       if (v) {
-                        valueCell = v;
+                        valueCell = valueAsString;
                       } else {
                         if (v === "" || v === null || v === undefined) {
                           valueCell = (
@@ -227,14 +230,15 @@ export default function Home() {
                             </span>
                           );
                         } else {
-                          // Convert false,0 to string
-                          valueCell = "" + v;
+                          valueCell = valueAsString;
                         }
                       }
                       return (
                         <td
                           key={vi}
-                          title={v}
+                          title={
+                            valueAsString.length > 5 ? valueAsString : undefined
+                          }
                           className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
                         >
                           {valueCell}
@@ -463,7 +467,7 @@ function jsonToTable(jsonArray: Array<any>) {
   );
 
   // Create the data rows
-  const rows = flatArray.map((item) => header.map((h) => item[h] || ""));
+  const rows = flatArray.map((item) => header.map((h) => item[h] ?? ""));
 
   // Combine the header and data rows
   return [header, ...rows];
