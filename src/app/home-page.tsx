@@ -188,7 +188,7 @@ export default function Home() {
   const DataTable = (props: { rows: Array<Array<any>> }) => {
     // console.log(rows)
     return (
-      <div className="h-full w-full border-separate overflow-clip border border-gray-300 rounded-md shadow-sm ml-1 flex flex-col">
+      <div className="h-full w-fit overflow-x-auto border-separate border border-gray-300 rounded-md shadow-sm ml-1 flex flex-col">
         <div
           className="overflow-y-auto bg-gray-200"
           style={{ scrollbarGutter: "stable" }}
@@ -266,7 +266,7 @@ export default function Home() {
         </span>
       </div>
       {rows?.length ? (
-        <div className="flex flex-row h-[calc(100vh-28px)] overflow-clip">
+        <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
           <ValuesInspector columnInfos={columnValueCounts}></ValuesInspector>
           <DataTable rows={rows}></DataTable>
         </div>
@@ -290,7 +290,7 @@ function ValuesInspector(props: { columnInfos: ColumnInfos[] }) {
     arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
 
   return (
-    <div className="w-96 flex flex-col gap-2">
+    <div className="w-96 flex flex-col gap-2 mb-2 overflow-y-auto">
       {props.columnInfos.map((column) => {
         const columnValues = orderBy(
           column.columnValues,
