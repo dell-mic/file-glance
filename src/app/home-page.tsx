@@ -11,10 +11,14 @@ export default function Home() {
   const [dragging, setDragging] = React.useState(false);
   const [currentFile, setCurrentFile] = React.useState<File>();
 
-  const [rows, setRows] = React.useState<Array<any>>([]);
-  const [columnValueCounts, setcColumnValueCounts] = React.useState<
-    ColumnInfos[]
-  >([]);
+  const [openAccordions, setOpenAccordions] = React.useState<number[]>([]);
+
+  const [headerRow, setHeaderRow] = React.useState<Array<string>>([]);
+  const [allRows, setAllRows] = React.useState<Array<any>>([]);
+  const [filters, setFilters] = React.useState<Array<ColumnFilter>>([]);
+  // const [columnValueCounts, setcColumnValueCounts] = React.useState<
+  //   ColumnInfos[]
+  // >([]);
 
   const drag = React.useRef(null);
   const drop = React.useRef(null);
@@ -28,6 +32,7 @@ export default function Home() {
   const parseFile = async (file: File) => {
     setCurrentFile(file);
 
+    console.time("parseFile");
     let data: string[][];
     if (file.name.toLowerCase().endsWith(".xlsx")) {
       const fileAsArrayBuffer = await file.arrayBuffer();
@@ -40,9 +45,6 @@ export default function Home() {
         blankrows: true,
         defval: "",
       });
-      console.log(data, "data");
-
-      setRows(data);
     } else if (file.name.toLowerCase().endsWith(".json")) {
       var enc = new TextDecoder("utf-8"); // TODO: How to detect file encoding better?
 
@@ -54,8 +56,8 @@ export default function Home() {
 
       if (arrayData) {
         data = jsonToTable(arrayData);
-        setRows(data);
       } else {
+        data = [];
         console.error("No array in JSON found");
       }
     } else {
@@ -68,12 +70,17 @@ export default function Home() {
       const delimiter = detectDelimiter(contentAsText);
       data = parse(contentAsText, { delimiter });
       console.log(data);
-      setRows(data);
     }
 
-    const columnValueCounts = countValues(data);
-    console.log(columnValueCounts);
-    setcColumnValueCounts(columnValueCounts);
+    // TODO: Apply header row detection and synthetic generation if not present
+    const _headerRow = data.shift()!;
+
+    console.timeEnd("parseFile");
+
+    setHeaderRow(_headerRow);
+    setAllRows(data);
+
+    // setcColumnValueCounts(columnValueCounts);
   };
 
   const handleDrop = async (e: DragEvent) => {
@@ -185,10 +192,13 @@ export default function Home() {
     );
   };
 
-  const DataTable = (props: { rows: Array<Array<any>> }) => {
+  const DataTable = (props: {
+    headerRow: string[];
+    rows: Array<Array<any>>;
+  }) => {
     // console.log(rows)
     return (
-      <div className="h-full w-fit overflow-x-auto border-separate border border-gray-300 rounded-md shadow-sm ml-1 flex flex-col">
+      <div className="h-full w-fit overflow-x-auto border-separate border border-gray-300 rounded-md shadow-sm flex flex-col">
         <div
           className="overflow-y-auto bg-gray-200"
           style={{ scrollbarGutter: "stable" }}
@@ -196,7 +206,7 @@ export default function Home() {
           <table className="table-fixed w-full text-left">
             <thead className="sticky top-0">
               <tr className="">
-                {rows[0].map((v: string, vi: number) => {
+                {props.headerRow.map((v: string, vi: number) => {
                   return (
                     <th key={vi} className="p-0.5 font-normal">
                       {v}
@@ -213,7 +223,7 @@ export default function Home() {
         >
           <table className="table-fixed w-full text-left">
             <tbody>
-              {props.rows.slice(1).map((r, i) => {
+              {props.rows.map((r, i) => {
                 return (
                   <tr key={i} className="even:bg-gray-100 odd:bg-white">
                     {r.map((v, vi) => {
@@ -255,20 +265,171 @@ export default function Home() {
     );
   };
 
+  const ValuesInspector = (props: {
+    headerRow: string[];
+    rows: Array<Array<any>>;
+  }) => {
+    // TODO: Implemment 'Display all' logic
+    const maxValuesDisplayed = 5000;
+
+    // const [openAcc2, setOpenAcc2] = React.useState(true);
+    // const [openAcc3, setOpenAcc3] = React.useState(true);
+
+    // const handleOpenAcc1 = () => setOpenAcc1((cur) => !cur);
+    // const handleOpenAcc2 = () => setOpenAcc2((cur) => !cur);
+    // const handleOpenAcc3 = () => setOpenAcc3((cur) => !cur);
+
+    // const columnValueCounts = useMemo(
+    //   () => countValues(props.headerRow, props.rows),
+    //   [props.headerRow, props.rows]
+    // );
+    const columnValueCounts = countValues(props.headerRow, props.rows);
+
+    return (
+      <div className="w-96 flex flex-col gap-2 mb-2 pr-1 overflow-y-auto">
+        {columnValueCounts.map((column) => {
+          const columnValues = orderBy(
+            column.columnValues,
+            ["valueCount", "valueName"],
+            ["desc", "asc"]
+          );
+          return (
+            <Accordion
+              header={column.columnName}
+              subHeader={`${columnValues.length}`}
+              open={openAccordions.includes(column.columnIndex)}
+              onClick={() => {
+                setOpenAccordions(
+                  addOrRemove(openAccordions, column.columnIndex)
+                );
+              }}
+              key={`${column.columnIndex}_${column.columnName}`}
+            >
+              <div className="py-1">
+                {columnValues
+                  .slice(0, maxValuesDisplayed)
+                  .map((columnValue) => {
+                    const existingColFilter = filters.find(
+                      (_) => _.columnIndex === column.columnIndex
+                    );
+
+                    const isFilteredValue =
+                      existingColFilter &&
+                      existingColFilter.includedValues.some(
+                        (fValue) => fValue === columnValue.valueName
+                      );
+
+                    return (
+                      <div
+                        key={`${column.columnIndex}_${columnValue.valueName}`}
+                        className="text-sm"
+                      >
+                        <a
+                          href="#"
+                          className={`text-blue-500 ${
+                            columnValue.valueName ? "" : "font-mono"
+                          } ${isFilteredValue ? "font-bold" : ""}`}
+                          onClick={(e) => {
+                            // console.log(`metaKey pressed? ${e.metaKey}`);
+                            let newColFilter: ColumnFilter;
+                            const existingColFilter = filters.find(
+                              (_) => _.columnIndex === column.columnIndex
+                            );
+                            // Easy case: No filter for this column so far => Simply add with clicked value
+                            if (!existingColFilter) {
+                              newColFilter = {
+                                columnIndex: column.columnIndex,
+                                includedValues: [columnValue.valueName],
+                              };
+                            } else {
+                              if (e.metaKey) {
+                                // With meta key pressed allow selecting of several values
+                                newColFilter = {
+                                  columnIndex: column.columnIndex,
+                                  includedValues: addOrRemove(
+                                    existingColFilter.includedValues,
+                                    columnValue.valueName
+                                  ),
+                                };
+                              } else {
+                                // Deslect already selected / replace
+                                newColFilter = {
+                                  columnIndex: column.columnIndex,
+                                  includedValues:
+                                    existingColFilter.includedValues.includes(
+                                      columnValue.valueName
+                                    )
+                                      ? existingColFilter.includedValues.filter(
+                                          (iv) => iv !== columnValue.valueName
+                                        )
+                                      : [columnValue.valueName],
+                                };
+                              }
+                            }
+                            const updatedFilters = [
+                              ...filters.filter(
+                                (_) => _.columnIndex !== column.columnIndex
+                              ),
+                              newColFilter,
+                            ].filter((f) => f.includedValues.length);
+                            setFilters(updatedFilters);
+                            // console.log("updatedFilters", updatedFilters);
+                          }}
+                        >
+                          {columnValue.valueName || "empty"}
+                        </a>
+                        <span className="text-gray-500">{` ${columnValue.valueCount}`}</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </Accordion>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Apply filter and sorting
+  console.time("filterAndSorting");
+  const displayedData = filters.length
+    ? allRows.filter((row) => {
+        return filters.every((filter) =>
+          filter.includedValues.some(
+            (value) => value === row[filter.columnIndex]
+          )
+        );
+      })
+    : allRows;
+  console.timeEnd("filterAndSorting");
+
+  // console.log("displayedData", displayedData);
+
+  let fileInfos: string[] = []; // TODO
+
+  if (currentFile) {
+    fileInfos.push(formatBytes(currentFile.size));
+  }
+  if (allRows.length) {
+    fileInfos.push(`${allRows.length} rows`);
+  }
+  if (filters.length) {
+    fileInfos.push(`${displayedData.length} filtered`);
+  }
+
   return (
     <main ref={drop} className="h-screen p-2">
       <div className="mb-2">
         <span className="text-2xl">{currentFile?.name || ""} </span>
-        <span className="text-gray-500 text-sm">
-          {currentFile ? formatBytes(currentFile.size) : ""}
-          {", "}
-          {rows?.length ? `${rows.length - 1} rows` : ""}
-        </span>
+        <span className="text-gray-500 text-sm">{fileInfos.join(", ")}</span>
       </div>
-      {rows?.length ? (
+      {allRows?.length ? (
         <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
-          <ValuesInspector columnInfos={columnValueCounts}></ValuesInspector>
-          <DataTable rows={rows}></DataTable>
+          <ValuesInspector
+            headerRow={headerRow}
+            rows={allRows}
+          ></ValuesInspector>
+          <DataTable headerRow={headerRow} rows={displayedData}></DataTable>
         </div>
       ) : (
         <InitialUI></InitialUI>
@@ -277,64 +438,8 @@ export default function Home() {
   );
 }
 
-function ValuesInspector(props: { columnInfos: ColumnInfos[] }) {
-  const [openAccordions, setOpenAccordions] = React.useState<number[]>([]);
-  // const [openAcc2, setOpenAcc2] = React.useState(true);
-  // const [openAcc3, setOpenAcc3] = React.useState(true);
-
-  // const handleOpenAcc1 = () => setOpenAcc1((cur) => !cur);
-  // const handleOpenAcc2 = () => setOpenAcc2((cur) => !cur);
-  // const handleOpenAcc3 = () => setOpenAcc3((cur) => !cur);
-
-  const addOrRemove = (arr: any[], item: any) =>
-    arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
-
-  return (
-    <div className="w-96 flex flex-col gap-2 mb-2 overflow-y-auto">
-      {props.columnInfos.map((column) => {
-        const columnValues = orderBy(
-          column.columnValues,
-          ["valueCount", "valueName"],
-          ["desc", "asc"]
-        );
-        return (
-          <Accordion
-            header={column.columnName}
-            subHeader={`${columnValues.length}`}
-            open={openAccordions.includes(column.columnIndex)}
-            onClick={() => {
-              setOpenAccordions(
-                addOrRemove(openAccordions, column.columnIndex)
-              );
-            }}
-            key={`${column.columnIndex}_${column.columnName}`}
-          >
-            <div className="py-1">
-              {columnValues.map((colValue) => {
-                return (
-                  <div
-                    key={`${column.columnIndex}_${colValue.valueName}`}
-                    className="text-sm"
-                  >
-                    <a
-                      href="#"
-                      className={`text-blue-500 ${
-                        colValue.valueName ? "" : "font-mono"
-                      }`}
-                    >
-                      {colValue.valueName || "empty"}
-                    </a>
-                    <span className="text-gray-500">{` ${colValue.valueCount}`}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </Accordion>
-        );
-      })}
-    </div>
-  );
-}
+const addOrRemove = (arr: any[], item: any) =>
+  arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
 
 function formatBytes(bytes: number, dp = 1): string {
   const thresh = 1000;
@@ -385,20 +490,17 @@ interface ColumnValues {
   valueCount: number;
 }
 
-function countValues(input: string[][]): ColumnInfos[] {
-  const headers = input[0];
-
+function countValues(headers: string[], input: string[][]): ColumnInfos[] {
+  console.time("countValues");
   const countsPerColumn: CountMap[] = headers.map((v, i) => ({}));
 
   input.forEach((row, rowIndex) => {
-    if (rowIndex != 0) {
-      // console.log(row);
-      row.forEach((value, valueIndex) => {
-        // const currentColumn = headers[valueIndex];
-        countsPerColumn[valueIndex][value] =
-          (countsPerColumn[valueIndex][value] || 0) + 1;
-      });
-    }
+    // console.log(row);
+    row.forEach((value, valueIndex) => {
+      // const currentColumn = headers[valueIndex];
+      countsPerColumn[valueIndex][value] =
+        (countsPerColumn[valueIndex][value] || 0) + 1;
+    });
   });
 
   const columnInfos = countsPerColumn.map((v, i) => {
@@ -415,6 +517,8 @@ function countValues(input: string[][]): ColumnInfos[] {
       columnValues,
     };
   });
+
+  console.timeEnd("countValues");
 
   return columnInfos;
 }
@@ -443,7 +547,7 @@ function findArray(json: any) {
 function jsonToTable(jsonArray: Array<any>) {
   // Helper function to flatten a nested object
   function flattenObject(obj: any, prefix = "") {
-    return Object.keys(obj).reduce((acc, k) => {
+    return Object.keys(obj).reduce((acc: any, k) => {
       const pre = prefix.length ? prefix + "." : "";
       if (
         typeof obj[k] === "object" &&
@@ -471,4 +575,9 @@ function jsonToTable(jsonArray: Array<any>) {
 
   // Combine the header and data rows
   return [header, ...rows];
+}
+
+export interface ColumnFilter {
+  columnIndex: number;
+  includedValues: string[];
 }

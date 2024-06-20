@@ -9,22 +9,22 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "csv": "^6.3.9",
-    "lodash": "^4.17.21",
-    "next": "14.2.3",
-    "react": "^18",
-    "react-dom": "^18",
+    "csv": "6.3.9",
+    "lodash": "4.17.21",
+    "next": "14.2.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.4",
-    "@types/node": "^20",
-    "@types/react": "^18.3.2",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.3",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.3",
-    "typescript": "^5"
+    "@types/lodash": "4.17.5",
+    "@types/node": "20.14.2",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.4",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.4",
+    "typescript": "5.4.5"
   }
 }
