@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { maxBy, orderBy, sortBy } from "lodash";
+import { maxBy, orderBy, sum } from "lodash";
 import * as XLSX from "xlsx";
 import { parse } from "csv-parse/browser/esm/sync";
 import Accordion from "./components/Accordion";
@@ -195,80 +195,95 @@ export default function Home() {
   const DataTable = (props: {
     headerRow: string[];
     rows: Array<Array<any>>;
+    columnValueCounts: ColumnInfos[];
   }) => {
     // console.log(rows)
+
+    const columnWidths = columnValueCounts.map((cvc) =>
+      estimateColumnWidthRem(cvc.valuesMaxLength)
+    );
+    const isWideTable = columnValueCounts.length > 9; // I.e. we expect horizontal scrolling => Apply width estimations, otherwise just use 100% of space
+    const tableWidth = isWideTable ? `${sum(columnWidths)}rem` : "100%";
+    const sColumnWidths =
+      columnValueCounts.length > 9 ? columnWidths.map((cw) => `${cw}rem`) : "";
+
     return (
-      <div className="h-full w-fit overflow-x-auto border-separate border border-gray-300 rounded-md shadow-sm flex flex-col">
-        <div
-          className="overflow-y-auto bg-gray-200"
-          style={{ scrollbarGutter: "stable" }}
-        >
-          <table className="table-fixed w-full text-left">
-            <thead className="sticky top-0">
-              <tr className="">
-                {props.headerRow.map((v: string, vi: number) => {
+      <div className="h-full overflow-x-auto border-separate border border-gray-300 rounded-md shadow-sm flex flex-col">
+        <div style={{ scrollbarGutter: "stable", width: tableWidth }}>
+          <div className="bg-gray-200 w-full sticky top-0">
+            <table className="table-fixed w-full text-left">
+              <thead className="">
+                <tr className="">
+                  {props.headerRow.map((v: string, vi: number) => {
+                    return (
+                      <th
+                        key={vi}
+                        className="p-0.5 font-normal overflow-hidden overflow-ellipsis"
+                        style={{
+                          width: sColumnWidths[vi],
+                        }}
+                        title={v}
+                      >
+                        {v}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+            </table>
+          </div>
+          <div className="flex-1 overflow-y-auto w-full">
+            <table className="table-fixed w-full text-left">
+              <tbody className="">
+                {props.rows.map((r, i) => {
                   return (
-                    <th key={vi} className="p-0.5 font-normal">
-                      {v}
-                    </th>
+                    <tr key={i} className="even:bg-gray-100 odd:bg-white">
+                      {r.map((v, vi) => {
+                        // Convert false,0 to string
+                        const valueAsString = "" + v;
+                        let valueCell;
+                        if (v) {
+                          valueCell = valueAsString;
+                        } else {
+                          if (v === "" || v === null || v === undefined) {
+                            valueCell = (
+                              <span className="text-gray-500 font-mono">
+                                empty
+                              </span>
+                            );
+                          } else {
+                            valueCell = valueAsString;
+                          }
+                        }
+                        return (
+                          <td
+                            key={vi}
+                            title={
+                              valueAsString.length > 5
+                                ? valueAsString
+                                : undefined
+                            }
+                            className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
+                            style={{
+                              width: sColumnWidths[vi],
+                            }}
+                          >
+                            {valueCell}
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </tr>
-            </thead>
-          </table>
-        </div>
-        <div
-          className="flex-1 overflow-y-auto"
-          style={{ scrollbarGutter: "stable" }}
-        >
-          <table className="table-fixed w-full text-left">
-            <tbody>
-              {props.rows.map((r, i) => {
-                return (
-                  <tr key={i} className="even:bg-gray-100 odd:bg-white">
-                    {r.map((v, vi) => {
-                      // Convert false,0 to string
-                      const valueAsString = "" + v;
-                      let valueCell;
-                      if (v) {
-                        valueCell = valueAsString;
-                      } else {
-                        if (v === "" || v === null || v === undefined) {
-                          valueCell = (
-                            <span className="text-gray-500 font-mono">
-                              empty
-                            </span>
-                          );
-                        } else {
-                          valueCell = valueAsString;
-                        }
-                      }
-                      return (
-                        <td
-                          key={vi}
-                          title={
-                            valueAsString.length > 5 ? valueAsString : undefined
-                          }
-                          className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
-                        >
-                          {valueCell}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
   };
 
-  const ValuesInspector = (props: {
-    headerRow: string[];
-    rows: Array<Array<any>>;
-  }) => {
+  const ValuesInspector = (props: { columnValueCounts: ColumnInfos[] }) => {
     // TODO: Implemment 'Display all' logic
     const maxValuesDisplayed = 5000;
 
@@ -283,11 +298,10 @@ export default function Home() {
     //   () => countValues(props.headerRow, props.rows),
     //   [props.headerRow, props.rows]
     // );
-    const columnValueCounts = countValues(props.headerRow, props.rows);
 
     return (
-      <div className="w-96 flex flex-col gap-2 mb-2 pr-1 overflow-y-auto">
-        {columnValueCounts.map((column) => {
+      <div className="w-96 flex flex-shrink-0 flex-col gap-2 mb-2 pr-1 overflow-y-auto">
+        {props.columnValueCounts.map((column) => {
           const columnValues = orderBy(
             column.columnValues,
             ["valueCount", "valueName"],
@@ -417,6 +431,8 @@ export default function Home() {
     fileInfos.push(`${displayedData.length} filtered`);
   }
 
+  const columnValueCounts = countValues(headerRow, allRows);
+
   return (
     <main ref={drop} className="h-screen p-2">
       <div className="mb-2">
@@ -426,10 +442,13 @@ export default function Home() {
       {allRows?.length ? (
         <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
           <ValuesInspector
-            headerRow={headerRow}
-            rows={allRows}
+            columnValueCounts={columnValueCounts}
           ></ValuesInspector>
-          <DataTable headerRow={headerRow} rows={displayedData}></DataTable>
+          <DataTable
+            headerRow={headerRow}
+            rows={displayedData}
+            columnValueCounts={columnValueCounts}
+          ></DataTable>
         </div>
       ) : (
         <InitialUI></InitialUI>
@@ -483,6 +502,7 @@ interface ColumnInfos {
   columnName: string;
   columnIndex: number;
   columnValues: ColumnValues[];
+  valuesMaxLength: number;
 }
 
 interface ColumnValues {
@@ -510,11 +530,16 @@ function countValues(headers: string[], input: string[][]): ColumnInfos[] {
       valueName: e[0],
       valueCount: e[1],
     }));
+    const valuesMaxLength = Math.max(
+      0,
+      ...columnValues.map((value) => `${value.valueName}`.length)
+    );
 
     return {
       columnIndex,
       columnName,
       columnValues,
+      valuesMaxLength,
     };
   });
 
@@ -575,6 +600,16 @@ function jsonToTable(jsonArray: Array<any>) {
 
   // Combine the header and data rows
   return [header, ...rows];
+}
+
+function estimateColumnWidthRem(valueMaxLength: number): number {
+  if (valueMaxLength < 5) {
+    return 4;
+  } else if (valueMaxLength < 10) {
+    return 8;
+  } else {
+    return 12;
+  }
 }
 
 export interface ColumnFilter {
