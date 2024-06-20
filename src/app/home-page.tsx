@@ -312,7 +312,7 @@ export default function Home() {
               header={column.columnName}
               subHeader={`${columnValues.length}`}
               open={openAccordions.includes(column.columnIndex)}
-              onClick={() => {
+              onPointerDown={() => {
                 setOpenAccordions(
                   addOrRemove(openAccordions, column.columnIndex)
                 );
@@ -343,7 +343,7 @@ export default function Home() {
                           className={`text-blue-500 ${
                             columnValue.valueName ? "" : "font-mono"
                           } ${isFilteredValue ? "font-bold" : ""}`}
-                          onClick={(e) => {
+                          onPointerDown={(e) => {
                             // console.log(`metaKey pressed? ${e.metaKey}`);
                             let newColFilter: ColumnFilter;
                             const existingColFilter = filters.find(
@@ -431,6 +431,30 @@ export default function Home() {
     fileInfos.push(`${displayedData.length} filtered`);
   }
 
+  const clearFilterButton = filters.length ? (
+    <button
+      onPointerDown={() => {
+        setFilters([]);
+      }}
+      className="bg-transparent align-bottom text-sm text-gray-500 rounded-full p-1 hover:bg-gray-200 transition-colors duration-300"
+    >
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M6 18L18 6M6 6l12 12"
+        ></path>
+      </svg>
+    </button>
+  ) : null;
+
   const columnValueCounts = countValues(headerRow, allRows);
 
   return (
@@ -438,6 +462,7 @@ export default function Home() {
       <div className="mb-2">
         <span className="text-2xl">{currentFile?.name || ""} </span>
         <span className="text-gray-500 text-sm">{fileInfos.join(", ")}</span>
+        {clearFilterButton}
       </div>
       {allRows?.length ? (
         <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
