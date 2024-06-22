@@ -12,6 +12,7 @@ export default function Home() {
   const [currentFile, setCurrentFile] = React.useState<File>();
 
   const [openAccordions, setOpenAccordions] = React.useState<number[]>([]);
+  const [hiddenColumns, setHiddenColumns] = React.useState<number[]>([]);
 
   const [headerRow, setHeaderRow] = React.useState<Array<string>>([]);
   const [allRows, setAllRows] = React.useState<Array<any>>([]);
@@ -215,7 +216,7 @@ export default function Home() {
               <thead className="">
                 <tr className="">
                   {props.headerRow.map((v: string, vi: number) => {
-                    return (
+                    return hiddenColumns.includes(vi) ? null : (
                       <th
                         key={vi}
                         className="p-0.5 font-normal overflow-hidden overflow-ellipsis"
@@ -239,38 +240,42 @@ export default function Home() {
                   return (
                     <tr key={i} className="even:bg-gray-100 odd:bg-white">
                       {r.map((v, vi) => {
-                        // Convert false,0 to string
-                        const valueAsString = "" + v;
-                        let valueCell;
-                        if (v) {
-                          valueCell = valueAsString;
+                        if (hiddenColumns.includes(vi)) {
+                          return null;
                         } else {
-                          if (v === "" || v === null || v === undefined) {
-                            valueCell = (
-                              <span className="text-gray-500 font-mono">
-                                empty
-                              </span>
-                            );
-                          } else {
+                          // Convert false,0 to string
+                          const valueAsString = "" + v;
+                          let valueCell;
+                          if (v) {
                             valueCell = valueAsString;
-                          }
-                        }
-                        return (
-                          <td
-                            key={vi}
-                            title={
-                              valueAsString.length > 5
-                                ? valueAsString
-                                : undefined
+                          } else {
+                            if (v === "" || v === null || v === undefined) {
+                              valueCell = (
+                                <span className="text-gray-500 font-mono">
+                                  empty
+                                </span>
+                              );
+                            } else {
+                              valueCell = valueAsString;
                             }
-                            className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
-                            style={{
-                              width: sColumnWidths[vi],
-                            }}
-                          >
-                            {valueCell}
-                          </td>
-                        );
+                          }
+                          return (
+                            <td
+                              key={vi}
+                              title={
+                                valueAsString.length > 5
+                                  ? valueAsString
+                                  : undefined
+                              }
+                              className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
+                              style={{
+                                width: sColumnWidths[vi],
+                              }}
+                            >
+                              {valueCell}
+                            </td>
+                          );
+                        }
                       })}
                     </tr>
                   );
@@ -312,10 +317,18 @@ export default function Home() {
               header={column.columnName}
               subHeader={`${columnValues.length}`}
               open={openAccordions.includes(column.columnIndex)}
-              onPointerDown={() => {
-                setOpenAccordions(
-                  addOrRemove(openAccordions, column.columnIndex)
+              columnVisible={!hiddenColumns.includes(column.columnIndex)}
+              onToggleColumnVisibility={() => {
+                setHiddenColumns(
+                  addOrRemove(hiddenColumns, column.columnIndex)
                 );
+              }}
+              onPointerDown={(e: PointerEvent): void => {
+                if (!e.button) {
+                  setOpenAccordions(
+                    addOrRemove(openAccordions, column.columnIndex)
+                  );
+                }
               }}
               key={`${column.columnIndex}_${column.columnName}`}
             >
@@ -344,6 +357,10 @@ export default function Home() {
                             columnValue.valueName ? "" : "font-mono"
                           } ${isFilteredValue ? "font-bold" : ""}`}
                           onPointerDown={(e) => {
+                            // Do not react to secondary buttons (>0)
+                            if (e.button) {
+                              return;
+                            }
                             // console.log(`metaKey pressed? ${e.metaKey}`);
                             let newColFilter: ColumnFilter;
                             const existingColFilter = filters.find(
@@ -448,7 +465,7 @@ export default function Home() {
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
-          stroke-width="2"
+          strokeWidth="2"
           d="M6 18L18 6M6 6l12 12"
         ></path>
       </svg>
