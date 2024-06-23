@@ -8,6 +8,6 @@ const nextConfig = {
     // Probably wait until: https://github.com/creativetimofficial/material-tailwind/issues/593
     ignoreBuildErrors: true,
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig

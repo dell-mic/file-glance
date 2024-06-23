@@ -1,32 +1,32 @@
-import type { Metadata } from "next";
-import { Roboto, Roboto_Mono } from "next/font/google";
+import type { Metadata } from "next"
+import { Roboto, Roboto_Mono } from "next/font/google"
 
-import "./globals.css";
-import ThemeClient from "./theme";
+import "./globals.css"
+import ThemeClient from "./theme"
 
 const roboto_mono = Roboto_Mono({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-roboto-mono",
-});
+})
 
 const roboto = Roboto({
   weight: ["400", "700"],
   subsets: ["latin"],
   display: "swap",
   variable: "--font-roboto",
-});
+})
 
 export const metadata: Metadata = {
   title: "File Glance",
   description:
     "Fast preview and filtering for tabular-like data. Supports CSV, TSV, XLSX, JSON",
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="en">
@@ -36,5 +36,5 @@ export default function RootLayout({
         {children}
       </body>
     </html>
-  );
+  )
 }

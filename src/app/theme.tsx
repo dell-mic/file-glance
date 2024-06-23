@@ -1,10 +1,9 @@
-"use client";
-
+"use client"
 
 export default function ThemeClient({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
-  return {children};
+  return { children }
 }
