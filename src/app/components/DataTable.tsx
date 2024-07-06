@@ -1,4 +1,10 @@
 import { sum } from "lodash"
+import React, { createContext, forwardRef, CSSProperties } from "react"
+import { FixedSizeList } from "react-window"
+import AutoSizer from "react-virtualized-auto-sizer"
+
+import "./DataTable.css"
+
 import { ColumnInfos } from "./ValueInspector"
 
 export const DataTable = (props: {
@@ -8,93 +14,150 @@ export const DataTable = (props: {
   hiddenColumns: number[]
 }) => {
   // console.log(rows)
+  const rows = [props.headerRow, ...props.rows]
+  const hiddenColumns = props.hiddenColumns
 
   const columnWidths = props.columnValueCounts.map((cvc) =>
     estimateColumnWidthRem(cvc.valuesMaxLength),
   )
-  const isWideTable = props.columnValueCounts.length > 9 // I.e. we expect horizontal scrolling => Apply width estimations, otherwise just use 100% of space
-  const tableWidth = isWideTable ? `${sum(columnWidths)}rem` : "100%"
-  const sColumnWidths =
-    props.columnValueCounts.length > 9
-      ? columnWidths.map((cw) => `${cw}rem`)
-      : ""
+  const tableWidth = `${sum(columnWidths)}rem`
+  const sColumnWidths = columnWidths.map((cw) => `${cw}rem`)
+
+  // Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
+  // See also: https://github.com/bvaughn/react-window?tab=readme-ov-file
+  const StickyListContext = createContext([])
+  StickyListContext.displayName = "StickyListContext"
+
+  // @ts-ignore
+  const ItemWrapper = ({ data, index, style }) => {
+    const { ItemRenderer, stickyIndices } = data
+    if (stickyIndices && stickyIndices.includes(index)) {
+      return null
+    }
+    return <ItemRenderer index={index} style={style} />
+  }
+
+  // @ts-ignore
+  const Row = ({ index, style }) => {
+    // console.log("row index:", index)
+    // console.log("row:", rows[index])
+    return (
+      <div
+        style={style}
+        className="flex flex-row even:bg-gray-100 odd:bg-white"
+      >
+        {rows[index].map((v, vi) => {
+          if (hiddenColumns.includes(vi)) {
+            return null
+          } else {
+            // Convert false,0 to string
+            const valueAsString = "" + v
+            let valueCell
+            if (v) {
+              valueCell = valueAsString
+            } else {
+              if (v === "" || v === null || v === undefined) {
+                valueCell = (
+                  <span className="text-gray-500 font-mono">empty</span>
+                )
+              } else {
+                valueCell = valueAsString
+              }
+            }
+            return (
+              <span
+                key={vi}
+                title={valueAsString.length > 5 ? valueAsString : undefined}
+                className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
+                style={{
+                  width: sColumnWidths[vi],
+                }}
+              >
+                {valueCell}
+              </span>
+            )
+          }
+        })}
+      </div>
+    )
+  }
+
+  // @ts-ignore
+  const StickyRow = ({ index, style }) => (
+    <div className="sticky flex flex-row" style={style}>
+      {props.headerRow.map((v: string, vi: number) => {
+        return props.hiddenColumns.includes(vi) ? null : (
+          <span
+            key={vi}
+            className="p-0.5 text-xs font-medium overflow-hidden whitespace-nowrap overflow-ellipsis bg-gray-200"
+            style={{
+              width: sColumnWidths[vi],
+            }}
+            title={v}
+          >
+            {v}
+          </span>
+        )
+      })}
+    </div>
+  )
+
+  // @ts-ignore
+  const StickyList = ({ children, stickyIndices, ...rest }) => (
+    <StickyListContext.Provider
+      // @ts-ignore
+      value={{ ItemRenderer: children, stickyIndices }}
+    >
+      {/* @ts-ignore */}
+      <FixedSizeList
+        itemData={{ ItemRenderer: children, stickyIndices }}
+        {...rest}
+      >
+        {ItemWrapper}
+      </FixedSizeList>
+    </StickyListContext.Provider>
+  )
+
+  // @ts-ignore
+  const innerElementType = forwardRef(({ children, ...rest }, ref) => (
+    <StickyListContext.Consumer>
+      {/* @ts-ignore */}
+      {({ stickyIndices }) => (
+        // @ts-ignore
+        <div ref={ref} {...rest}>
+          {stickyIndices.map((index: number) => (
+            <StickyRow
+              index={index}
+              key={index}
+              style={{ top: index * 20, left: 0, width: "100%", height: 20 }}
+            />
+          ))}
+
+          {children}
+        </div>
+      )}
+    </StickyListContext.Consumer>
+  ))
+  innerElementType.displayName = "ListInner"
 
   return (
-    <div className="h-full overflow-x-auto border-separate border border-gray-300 rounded-md shadow-sm flex flex-col">
-      <div style={{ scrollbarGutter: "stable", width: tableWidth }}>
-        <div className="bg-gray-200 w-full sticky top-0">
-          <table className="table-fixed w-full text-left">
-            <thead className="">
-              <tr className="">
-                {props.headerRow.map((v: string, vi: number) => {
-                  return props.hiddenColumns.includes(vi) ? null : (
-                    <th
-                      key={vi}
-                      className="p-0.5 font-normal overflow-hidden overflow-ellipsis"
-                      style={{
-                        width: sColumnWidths[vi],
-                      }}
-                      title={v}
-                    >
-                      {v}
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-          </table>
-        </div>
-        <div className="flex-1 overflow-y-auto w-full">
-          <table className="table-fixed w-full text-left">
-            <tbody className="">
-              {props.rows.map((r, i) => {
-                return (
-                  <tr key={i} className="even:bg-gray-100 odd:bg-white">
-                    {r.map((v, vi) => {
-                      if (props.hiddenColumns.includes(vi)) {
-                        return null
-                      } else {
-                        // Convert false,0 to string
-                        const valueAsString = "" + v
-                        let valueCell
-                        if (v) {
-                          valueCell = valueAsString
-                        } else {
-                          if (v === "" || v === null || v === undefined) {
-                            valueCell = (
-                              <span className="text-gray-500 font-mono">
-                                empty
-                              </span>
-                            )
-                          } else {
-                            valueCell = valueAsString
-                          }
-                        }
-                        return (
-                          <td
-                            key={vi}
-                            title={
-                              valueAsString.length > 5
-                                ? valueAsString
-                                : undefined
-                            }
-                            className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
-                            style={{
-                              width: sColumnWidths[vi],
-                            }}
-                          >
-                            {valueCell}
-                          </td>
-                        )
-                      }
-                    })}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div className="h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-sm">
+      {/* TODO: Last line not rendered! */}
+      <AutoSizer disableWidth>
+        {({ height }) => (
+          <StickyList
+            className=""
+            innerElementType={innerElementType}
+            stickyIndices={[0]}
+            height={height}
+            itemCount={rows.length}
+            itemSize={20}
+            width={tableWidth}
+          >
+            {Row}
+          </StickyList>
+        )}
+      </AutoSizer>
     </div>
   )
 }

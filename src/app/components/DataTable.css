@@ -1,0 +1,10 @@
+.sticky {
+  position: sticky;
+  z-index: 2;
+}
+
+.row,
+.sticky {
+  display: flex;
+  align-items: center;
+}

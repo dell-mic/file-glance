@@ -71,7 +71,7 @@ export default function Home() {
         .then((v) => enc.decode(v))
       const delimiter = detectDelimiter(contentAsText)
       data = parse(contentAsText, { delimiter })
-      console.log(data)
+      // console.log(data)
     }
 
     // TODO: Apply header row detection and synthetic generation if not present
@@ -168,19 +168,17 @@ export default function Home() {
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                ></path>
+                <path d="M4 2h12l6 6v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"></path>
+                <line x1="4" y1="10" x2="20" y2="10"></line>
+                <line x1="8" y1="14" x2="16" y2="14"></line>
+                <line x1="8" y1="18" x2="16" y2="18"></line>
               </svg>
               <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-semibold">Click to choose file</span> or
-                drag and drop
+                <span className="font-semibold">Choose file</span> or{" "}
+                <span className="font-semibold">drag and drop</span>
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                CSV, TSV, XLSX, JSON, LOG
+                CSV, TSV, XLSX, JSON, TXT
               </p>
             </div>
             <input
