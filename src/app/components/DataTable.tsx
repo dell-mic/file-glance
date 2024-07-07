@@ -18,10 +18,12 @@ export const DataTable = (props: {
   const hiddenColumns = props.hiddenColumns
 
   const columnWidths = props.columnValueCounts.map((cvc) =>
-    estimateColumnWidthRem(cvc.valuesMaxLength),
+    !hiddenColumns.includes(cvc.columnIndex)
+      ? estimateColumnWidthPx(cvc.valuesMaxLength)
+      : 0,
   )
-  const tableWidth = `${sum(columnWidths)}rem`
-  const sColumnWidths = columnWidths.map((cw) => `${cw}rem`)
+  const tableWidth = `${sum(columnWidths)}px`
+  const sColumnWidths = columnWidths.map((cw) => `${cw}px`)
 
   // Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
   // See also: https://github.com/bvaughn/react-window?tab=readme-ov-file
@@ -72,6 +74,10 @@ export const DataTable = (props: {
                 style={{
                   width: sColumnWidths[vi],
                 }}
+                onClick={() => {
+                  // TODO: Should show info
+                  navigator.clipboard.writeText(valueAsString)
+                }}
               >
                 {valueCell}
               </span>
@@ -94,6 +100,10 @@ export const DataTable = (props: {
               width: sColumnWidths[vi],
             }}
             title={v}
+            onClick={() => {
+              // TODO: Should show info
+              navigator.clipboard.writeText(v)
+            }}
           >
             {v}
           </span>
@@ -162,12 +172,12 @@ export const DataTable = (props: {
   )
 }
 
-function estimateColumnWidthRem(valueMaxLength: number): number {
-  if (valueMaxLength < 5) {
-    return 4
-  } else if (valueMaxLength < 10) {
-    return 8
+function estimateColumnWidthPx(valueMaxLength: number): number {
+  if (valueMaxLength <= 4) {
+    return 64
+  } else if (valueMaxLength <= 10) {
+    return 128
   } else {
-    return 12
+    return 192
   }
 }
