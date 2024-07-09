@@ -6,7 +6,10 @@ export const FileChooser = (props: {
     <div className="w-4/6 max-w-2xl mx-auto my-24 ">
       <div
         className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-transform"
-        style={{ transform: props.isDragging ? "scale(1.2)" : undefined }}
+        style={{
+          transitionDuration: "300ms",
+          transform: props.isDragging ? "scale(1.2)" : undefined,
+        }}
       >
         <div className="flex flex-col items-center justify-center pt-5 pb-6">
           <svg

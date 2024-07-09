@@ -97,6 +97,7 @@ export interface ColumnInfos {
   columnIndex: number
   columnValues: ColumnValues[]
   valuesMaxLength: number
+  isEmptyColumn: boolean
 }
 
 export interface ColumnValues {

@@ -18,6 +18,9 @@ export default function Home() {
 
   const [openAccordions, setOpenAccordions] = React.useState<number[]>([])
   const [hiddenColumns, setHiddenColumns] = React.useState<number[]>([])
+  const [columnValueCounts, setColumnValueCounts] = React.useState<
+    ColumnInfos[]
+  >([])
 
   const [headerRow, setHeaderRow] = React.useState<Array<string>>([])
   const [allRows, setAllRows] = React.useState<Array<any>>([])
@@ -26,7 +29,6 @@ export default function Home() {
   //   ColumnInfos[]
   // >([]);
 
-  const drag = React.useRef(null)
   const drop = React.useRef(null)
 
   const handleDragOver = (e: DragEvent) => {
@@ -35,10 +37,9 @@ export default function Home() {
   }
 
   const parseFile = async (file: File) => {
-    setCurrentFile(file)
-
     console.time("parseFile")
     let data: string[][]
+    let _headerRow: string[] = []
     let isHeaderSet = false
     if (file.name.toLowerCase().endsWith(".xlsx")) {
       const fileAsArrayBuffer = await file.arrayBuffer()
@@ -63,10 +64,12 @@ export default function Home() {
       if (arrayData) {
         const jsonAsTable = jsonToTable(arrayData)
         data = jsonAsTable.data
-        setHeaderRow(jsonAsTable.headerRow)
+        _headerRow = jsonAsTable.headerRow
         isHeaderSet = true
       } else {
         data = []
+        _headerRow = []
+        // TODO: Better error handling
         console.error("No array in JSON found")
       }
     } else {
@@ -85,45 +88,57 @@ export default function Home() {
 
     if (!isHeaderSet) {
       // TODO: Apply header row detection and synthetic generation if not present
-      const _headerRow = data.shift()!
-      setHeaderRow(_headerRow)
+      _headerRow = data.shift()!
     }
-
-    setAllRows(data)
-
+    setData(file, _headerRow, data)
     console.timeEnd("parseFile")
-
-    // setcColumnValueCounts(columnValueCounts);
   }
 
   const onGenerateSampleData = () => {
-    setCurrentFile(
+    setData(
       new File([], "Generated-Sample.csv", {
         lastModified: new Date().getTime(),
       }),
+      [
+        "ID",
+        "Name",
+        "Age",
+        "Email",
+        "Phone Number",
+        "Country",
+        "City",
+        "Job Title",
+        "Salary",
+        "Happiness Score",
+        "Favorite Emoji",
+        "Date Joined",
+        "Last Purchase Amount",
+        "Favorite Color",
+        "Has Pet",
+        "Pet Type",
+        "Number of Siblings",
+        "Favorite Cuisine",
+        "Notes",
+      ],
+      jsonToTable(generateSampleData(100)).data,
     )
-    setHeaderRow([
-      "ID",
-      "Name",
-      "Age",
-      "Email",
-      "Phone Number",
-      "Country",
-      "City",
-      "Job Title",
-      "Salary",
-      "Happiness Score",
-      "Favorite Emoji",
-      "Date Joined",
-      "Last Purchase Amount",
-      "Favorite Color",
-      "Has Pet",
-      "Pet Type",
-      "Number of Siblings",
-      "Favorite Cuisine",
-      "Notes",
-    ])
-    setAllRows(jsonToTable(generateSampleData(100)).data)
+  }
+
+  const setData = (file: File, headerRow: string[], data: string[][]) => {
+    setCurrentFile(file)
+    setHeaderRow(headerRow)
+    setAllRows(data)
+
+    const _columnValueCounts = countValues(headerRow, data)
+
+    setColumnValueCounts(_columnValueCounts)
+
+    // Hide empty columns initially
+    setHiddenColumns(
+      _columnValueCounts
+        .filter((cvc) => cvc.isEmptyColumn)
+        .map((cvc) => cvc.columnIndex),
+    )
   }
 
   const handleDrop = async (e: DragEvent) => {
@@ -158,20 +173,14 @@ export default function Home() {
     e.preventDefault()
     e.stopPropagation()
     // console.log("handleDragEnter", e);
-
-    if (e.target !== drag.current) {
-      setDragging(true)
-    }
+    setDragging(true)
   }
 
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     // console.log("handleDragLeave", e);
-
-    if (e.target === drag.current) {
-      setDragging(false)
-    }
+    setDragging(false)
   }
 
   React.useEffect(() => {
@@ -195,6 +204,8 @@ export default function Home() {
       drop.current.removeEventListener("dragleave", handleDragLeave)
     }
   }, [])
+
+  console.log("dragging", dragging)
 
   // Apply filter and sorting
   console.time("filterAndSorting")
@@ -247,11 +258,9 @@ export default function Home() {
     </button>
   ) : null
 
-  const columnValueCounts = countValues(headerRow, allRows)
-
   return (
-    <main className="h-screen p-2">
-      <div ref={drop}>
+    <main ref={drop} className="h-screen p-2">
+      <div>
         {allRows?.length ? (
           <React.Fragment>
             <div className="mb-2">
@@ -332,8 +341,7 @@ export default function Home() {
           <div className="flex flex-col items-center">
             <FileChooser
               handleFileSelected={handleFileSelected}
-              // TODO: Animate dragging feedback
-              isDragging={false}
+              isDragging={dragging}
             ></FileChooser>
             <button
               onClick={onGenerateSampleData}
@@ -414,15 +422,20 @@ function countValues(headers: string[], input: string[][]): ColumnInfos[] {
       ...columnValues.map((value) => `${value.valueName}`.length),
     )
 
+    const isEmptyColumn = valuesMaxLength === 0
+
     return {
       columnIndex,
       columnName,
       columnValues,
       valuesMaxLength,
+      isEmptyColumn,
     }
   })
 
   console.timeEnd("countValues")
+
+  // console.log("columnInfos", columnInfos)
 
   return columnInfos
 }
