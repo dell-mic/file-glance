@@ -11,6 +11,7 @@ import { parse } from "csv-parse/browser/esm/sync"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
+import { valueAsString } from "@/utils"
 
 export default function Home() {
   const [dragging, setDragging] = React.useState(false)
@@ -23,8 +24,9 @@ export default function Home() {
   >([])
 
   const [headerRow, setHeaderRow] = React.useState<Array<string>>([])
-  const [allRows, setAllRows] = React.useState<Array<any>>([])
+  const [allRows, setAllRows] = React.useState<any[][]>([])
   const [filters, setFilters] = React.useState<Array<ColumnFilter>>([])
+  const [search, setSearch] = React.useState<string>("")
   // const [columnValueCounts, setcColumnValueCounts] = React.useState<
   //   ColumnInfos[]
   // >([]);
@@ -209,20 +211,29 @@ export default function Home() {
 
   // Apply filter and sorting
   console.time("filterAndSorting")
-  const displayedData = filters.length
+  let displayedData = filters.length
     ? allRows.filter((row) => {
         return filters.every((filter) =>
           filter.includedValues.some(
-            (value) => value === row[filter.columnIndex],
+            (filterValue) =>
+              filterValue === valueAsString(row[filter.columnIndex]),
           ),
         )
       })
     : allRows
+
+  // console.log("search", search)
+  displayedData = search.length
+    ? displayedData.filter((row) => {
+        return row.some((value) => valueAsString(value).includes(search))
+      })
+    : displayedData
   console.timeEnd("filterAndSorting")
 
   // console.log("displayedData", displayedData);
 
   let fileInfos: string[] = [] // TODO
+  const isFiltered = filters.length || search.length
 
   if (currentFile) {
     fileInfos.push(formatBytes(currentFile.size))
@@ -230,14 +241,15 @@ export default function Home() {
   if (allRows.length) {
     fileInfos.push(`${allRows.length} rows`)
   }
-  if (filters.length) {
+  if (isFiltered) {
     fileInfos.push(`${displayedData.length} filtered`)
   }
 
-  const clearFilterButton = filters.length ? (
+  const clearFilterButton = isFiltered ? (
     <button
       onPointerDown={() => {
         setFilters([])
+        setSearch("")
       }}
       className="bg-transparent align-bottom text-sm text-gray-500 rounded-full p-1 hover:bg-gray-200 transition-colors duration-300"
     >
@@ -263,12 +275,25 @@ export default function Home() {
       <div>
         {allRows?.length ? (
           <React.Fragment>
-            <div className="mb-2">
-              <span className="text-2xl">{currentFile?.name || ""} </span>
-              <span className="text-gray-500 text-sm">
-                {fileInfos.join(", ")}
-              </span>
-              {clearFilterButton}
+            <div className="mb-2 flex flex-row items-center justify-between">
+              <div>
+                <span className="text-2xl">{currentFile?.name || ""} </span>
+                <span className="text-gray-500 text-sm">
+                  {fileInfos.join(", ")}
+                </span>
+                {clearFilterButton}
+              </div>
+              <div>
+                <input
+                  type="search"
+                  className="bg-gray-50 border border-gray-300 text-gray-600 text-sm rounded-lg p-2"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                  }}
+                  placeholder="Search"
+                ></input>
+              </div>
             </div>
             <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
               <ValuesInspector
@@ -669,9 +694,8 @@ function generateSampleData(numRows: number): any[] {
     const dateJoined = `${getRandomInt(2017, 2021)}-${getRandomInt(1, 12).toString().padStart(2, "0")}-${getRandomInt(1, 28).toString().padStart(2, "0")}`
     const lastPurchaseAmount = getRandomInt(0, 1000).toFixed(2)
     const favoriteColor = getRandomElement(colors)
-    const hasPet = getRandomElement(["Yes", "No"])
-    const petType =
-      hasPet === "Yes" ? getRandomElement(["Dog", "Cat", "Fish"]) : ""
+    const hasPet = getRandomElement([true, false])
+    const petType = "" // Simluate empty column
     const numberOfSiblings = getRandomInt(0, 4)
     const favoriteCuisine = getRandomElement(cuisines)
     const notes = getRandomElement([

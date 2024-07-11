@@ -6,6 +6,7 @@ import AutoSizer from "react-virtualized-auto-sizer"
 import "./DataTable.css"
 
 import { ColumnInfos } from "./ValueInspector"
+import { valueAsString } from "@/utils"
 
 export const DataTable = (props: {
   headerRow: string[]
@@ -52,31 +53,24 @@ export const DataTable = (props: {
           if (hiddenColumns.includes(vi)) {
             return null
           } else {
-            // Convert false,0 to string
-            const valueAsString = "" + v
+            const _valueAsString = valueAsString(v)
             let valueCell
-            if (v) {
-              valueCell = valueAsString
+            if (_valueAsString) {
+              valueCell = _valueAsString
             } else {
-              if (v === "" || v === null || v === undefined) {
-                valueCell = (
-                  <span className="text-gray-500 font-mono">empty</span>
-                )
-              } else {
-                valueCell = valueAsString
-              }
+              valueCell = <span className="text-gray-500 font-mono">empty</span>
             }
             return (
               <span
                 key={vi}
-                title={valueAsString.length > 5 ? valueAsString : undefined}
+                title={_valueAsString.length > 5 ? _valueAsString : undefined}
                 className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
                 style={{
                   width: sColumnWidths[vi],
                 }}
                 onClick={() => {
                   // TODO: Should show info
-                  navigator.clipboard.writeText(valueAsString)
+                  navigator.clipboard.writeText(_valueAsString)
                 }}
               >
                 {valueCell}
