@@ -3,7 +3,6 @@
 import React from "react"
 
 import { maxBy, sum } from "lodash"
-import * as jschardet from "jschardet"
 // import { Buffer } from "buffer"
 
 import * as XLSX from "xlsx"
@@ -11,7 +10,12 @@ import { parse } from "csv-parse/browser/esm/sync"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
-import { valueAsString } from "@/utils"
+import {
+  generateSampleData,
+  jsonToTable,
+  readFileToString,
+  valueAsString,
+} from "@/utils"
 
 export default function Home() {
   const [dragging, setDragging] = React.useState(false)
@@ -55,11 +59,9 @@ export default function Home() {
         defval: "",
       })
     } else if (file.name.toLowerCase().endsWith(".json")) {
-      var enc = new TextDecoder("utf-8") // TODO: How to detect file encoding better?
+      const contentAsText: string = await readFileToString(file)
 
-      const parsedContent: any = await file
-        .arrayBuffer()
-        .then((v) => JSON.parse(enc.decode(v)))
+      const parsedContent: any = JSON.parse(contentAsText)
 
       const arrayData = findArray(parsedContent)
 
@@ -76,13 +78,7 @@ export default function Home() {
       }
     } else {
       // Somehow-Separated text
-      const contentAsText: string = await file.arrayBuffer().then((v) => {
-        // @ts-ignore: ts does not know about Buffer coming from next.js polyfill
-        const fileEncoding = jschardet.detect(Buffer.from(new Uint8Array(v)))
-        console.log("file encoding", fileEncoding)
-        var enc = new TextDecoder(fileEncoding?.encoding || "utf-8")
-        return enc.decode(v)
-      })
+      const contentAsText: string = await readFileToString(file)
       const delimiter = detectDelimiter(contentAsText)
       data = parse(contentAsText, { delimiter })
       // console.log(data)
@@ -97,8 +93,13 @@ export default function Home() {
   }
 
   const onGenerateSampleData = () => {
+    const rowsAmount = 100
+    const simulatedFileBytes = Array.from(
+      { length: rowsAmount * 50 },
+      () => "1",
+    )
     setData(
-      new File([], "Generated-Sample.csv", {
+      new File(simulatedFileBytes, "Generated-Sample.csv", {
         lastModified: new Date().getTime(),
       }),
       [
@@ -222,10 +223,23 @@ export default function Home() {
       })
     : allRows
 
-  // console.log("search", search)
+  // When ':' is used search
+  const searchSplits = search.split(":")
+  const searchColumn = columnValueCounts.find(
+    (ci) => ci.columnName === searchSplits[0],
+  )
+  const isColumnSearch = searchSplits.length > 1 && !!searchColumn
+  const searchValue = isColumnSearch ? searchSplits.slice(1).join(":") : search
+
   displayedData = search.length
     ? displayedData.filter((row) => {
-        return row.some((value) => valueAsString(value).includes(search))
+        if (isColumnSearch) {
+          return valueAsString(row[searchColumn.columnIndex]).includes(
+            searchValue,
+          )
+        } else {
+          return row.some((value) => valueAsString(value).includes(searchValue))
+        }
       })
     : displayedData
   console.timeEnd("filterAndSorting")
@@ -286,7 +300,7 @@ export default function Home() {
               <div>
                 <input
                   type="search"
-                  className="bg-gray-50 border border-gray-300 text-gray-600 text-sm rounded-lg p-2"
+                  className="min-w-52 bg-gray-50 border border-gray-300 text-gray-600 text-sm rounded-lg p-2"
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value)
@@ -414,9 +428,9 @@ function detectDelimiter(input: string): string {
       counts[c] = (counts[c] || 0) + 1
     }
   }
-  console.log(counts)
+  // console.log(counts)
   const maxEntry = maxBy(Object.entries(counts), (_) => _[1])!
-  console.log(maxEntry)
+  console.log("detected delimiter: ", maxEntry)
   return maxEntry[0]
 }
 
@@ -465,272 +479,31 @@ function countValues(headers: string[], input: string[][]): ColumnInfos[] {
   return columnInfos
 }
 
-function findArray(json: any) {
-  // Check if the JSON object itself is an array
+/**
+ * Helper function to pick array property from json (if not root is already array)
+ * Heuristic: Take the top level property with the most entries
+ * @param json
+ * @returns
+ */
+function findArray(json: any): any[] | null {
   if (Array.isArray(json)) {
     return json
   }
 
-  // Iterate over the properties of the JSON object
+  let arrayProp = null
   for (let key in json) {
     if (json.hasOwnProperty(key)) {
       let value = json[key]
-      // Check if the property is an array and has a length greater than 0
-      if (Array.isArray(value) && value.length > 0) {
-        return value
+      const existingCandidateLength = arrayProp ? json[arrayProp]?.length : 0
+      if (Array.isArray(value) && value.length > existingCandidateLength) {
+        arrayProp = key
       }
     }
   }
 
-  // If no array with length > 0 is found, return null
-  return null
-}
+  console.log("arry property used: ", arrayProp)
 
-function jsonToTable(jsonArray: Array<any>): {
-  data: any[][]
-  headerRow: string[]
-} {
-  // Helper function to flatten a nested object
-  function flattenObject(obj: any, prefix = "") {
-    return Object.keys(obj).reduce((acc: any, k) => {
-      const pre = prefix.length ? prefix + "." : ""
-      if (
-        typeof obj[k] === "object" &&
-        obj[k] !== null &&
-        !Array.isArray(obj[k])
-      ) {
-        Object.assign(acc, flattenObject(obj[k], pre + k))
-      } else {
-        acc[pre + k] = obj[k]
-      }
-      return acc
-    }, {})
-  }
-
-  // Flatten all objects in the JSON array
-  const flatArray = jsonArray.map((item) => flattenObject(item))
-
-  // Create the header row
-  const header = Array.from(
-    new Set(flatArray.flatMap((item) => Object.keys(item))),
-  )
-
-  // Create the data rows
-  const rows = flatArray.map((item) => header.map((h) => item[h] ?? ""))
-
-  // Combine the header and data rows
-  return { data: rows, headerRow: header }
-}
-
-function getRandomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min
-}
-
-function getRandomElement(arr: any[]) {
-  return arr[Math.floor(Math.random() * arr.length)]
-}
-
-function generateSampleData(numRows: number): any[] {
-  const firstNames = [
-    "John",
-    "Jane",
-    "Emily",
-    "Michael",
-    "Alice",
-    "Robert",
-    "David",
-    "Laura",
-    "James",
-    "Mary",
-    "Chris",
-    "Emma",
-    "Matthew",
-    "Olivia",
-    "Daniel",
-    "Sophia",
-    "Andrew",
-    "Sophia",
-    "Logan",
-    "Amelia",
-    "Lucas",
-    "Isabella",
-    "James",
-    "Evelyn",
-    "Benjamin",
-    "Ava",
-    "Oliver",
-    "Charlotte",
-    "Alexander",
-    "Amelia",
-    "Jack",
-    "Charlotte",
-  ]
-  const lastNames = [
-    "Doe",
-    "Smith",
-    "Rogers",
-    "Johnson",
-    "Williams",
-    "Brown",
-    "Davis",
-    "Wilson",
-    "Anderson",
-    "Martinez",
-    "Lee",
-    "Harris",
-    "Clark",
-    "Lewis",
-    "Walker",
-    "Young",
-    "King",
-    "Mitchell",
-    "Phillips",
-    "Campbell",
-    "Mitchell",
-    "Carter",
-    "Parker",
-    "Morris",
-    "Roberts",
-    "Scott",
-    "Edwards",
-    "Green",
-    "Moore",
-    "White",
-    "Lee",
-    "Harris",
-  ]
-  const countries = ["USA", "UK", "Canada", "Australia"]
-  const cities = [
-    "New York",
-    "London",
-    "Toronto",
-    "Sydney",
-    "Chicago",
-    "Los Angeles",
-    "San Francisco",
-    "Manchester",
-    "Vancouver",
-    "Melbourne",
-    "Miami",
-    "Calgary",
-    "Edinburgh",
-    "Boston",
-    "Ottawa",
-    "Adelaide",
-    "Seattle",
-    "Liverpool",
-    "Hamilton",
-    "Brisbane",
-    "Denver",
-    "Quebec",
-    "Leeds",
-    "Canberra",
-    "Houston",
-  ]
-  const jobTitles = [
-    "Software Engineer",
-    "Marketing Manager",
-    "Data Analyst",
-    "Project Manager",
-    "Designer",
-    "Teacher",
-    "Engineer",
-    "Accountant",
-    "Manager",
-    "Doctor",
-    "Chef",
-    "Writer",
-    "Architect",
-    "Artist",
-    "Scientist",
-    "Consultant",
-    "Photographer",
-    "Lawyer",
-  ]
-  const emojis = [
-    "😊",
-    "🎉",
-    "❤️",
-    "😎",
-    "🔥",
-    "⚙️",
-    "🧬",
-    "💻",
-    "📊",
-    "📋",
-    "🔋",
-    "🏗️",
-    "✍️",
-    "📸",
-    "🍽️",
-    "🔧",
-    "📰",
-  ]
-  const colors = ["Blue", "Red", "Green", "Yellow", "Purple", "Orange", "Pink"]
-  const cuisines = [
-    "Italian",
-    "Indian",
-    "Chinese",
-    "Mexican",
-    "French",
-    "Japanese",
-    "Spanish",
-  ]
-
-  const data = []
-  for (let i = 1; i <= numRows; i++) {
-    const id = i
-    const name =
-      getRandomElement(firstNames) + " " + getRandomElement(lastNames)
-    const age = getRandomInt(20, 50)
-    const email = name.split(" ").join("").toLowerCase() + "@example.com"
-    const phoneNumber = "555-" + getRandomInt(1000, 9999)
-    const country = getRandomElement(countries)
-    const city = getRandomElement(cities)
-    const jobTitle = getRandomElement(jobTitles)
-    const salary = getRandomInt(50000, 150000)
-    const happinessScore = getRandomInt(1, 5)
-    const favoriteEmoji = getRandomElement(emojis)
-    const dateJoined = `${getRandomInt(2017, 2021)}-${getRandomInt(1, 12).toString().padStart(2, "0")}-${getRandomInt(1, 28).toString().padStart(2, "0")}`
-    const lastPurchaseAmount = getRandomInt(0, 1000).toFixed(2)
-    const favoriteColor = getRandomElement(colors)
-    const hasPet = getRandomElement([true, false])
-    const petType = "" // Simluate empty column
-    const numberOfSiblings = getRandomInt(0, 4)
-    const favoriteCuisine = getRandomElement(cuisines)
-    const notes = getRandomElement([
-      "",
-      "",
-      "Loves spicy food",
-      "Works remotely",
-      "Enjoys painting",
-      "Frequent traveler",
-      "Close to retirement",
-    ])
-
-    data.push({
-      id,
-      name,
-      age,
-      email,
-      phoneNumber,
-      country,
-      city,
-      jobTitle,
-      salary,
-      happinessScore,
-      favoriteEmoji,
-      dateJoined,
-      lastPurchaseAmount,
-      favoriteColor,
-      hasPet,
-      petType,
-      numberOfSiblings,
-      favoriteCuisine,
-      notes,
-    })
-  }
-  return data
+  return arrayProp ? json[arrayProp] : null
 }
 
 export interface ColumnFilter {
