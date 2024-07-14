@@ -2,8 +2,7 @@
 
 import React from "react"
 
-import { maxBy, sum } from "lodash"
-// import { Buffer } from "buffer"
+import { maxBy } from "lodash"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
