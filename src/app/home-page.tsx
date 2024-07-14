@@ -92,12 +92,12 @@ export default function Home() {
   }
 
   const onGenerateSampleData = () => {
-    const rowsAmount = 100
+    const rowsAmount = 1337
     const simulatedFileBytes = Array.from(
       { length: rowsAmount * 50 },
       () => "1",
     )
-    const sampleData = generateSampleData(100)
+    const sampleData = generateSampleData(rowsAmount)
     setData(
       new File(simulatedFileBytes, "Generated-Sample.csv", {
         lastModified: new Date().getTime(),
