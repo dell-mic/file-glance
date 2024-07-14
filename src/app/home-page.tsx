@@ -201,7 +201,7 @@ export default function Home() {
     }
   }, [])
 
-  console.log("dragging", dragging)
+  // console.log("dragging", dragging)
 
   const onFilterToggle = (
     columnIndex: number,
