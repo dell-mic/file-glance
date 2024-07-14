@@ -1,5 +1,5 @@
 import { sum } from "lodash"
-import React, { createContext, forwardRef, CSSProperties } from "react"
+import React, { createContext, forwardRef } from "react"
 import { FixedSizeList } from "react-window"
 import AutoSizer from "react-virtualized-auto-sizer"
 

@@ -17,7 +17,7 @@ const roboto = Roboto({
 })
 
 export const metadata: Metadata = {
-  title: "FileGlance",
+  title: "FileGlance - Viewer for tabular data",
   description:
     "Fast, privacy-friendly viewer for tabular data. Supports CSV, TSV, XLSX, JSON",
 }
