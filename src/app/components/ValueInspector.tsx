@@ -16,7 +16,7 @@ export const ValuesInspector = (props: {
   onToggleColumnVisibility: (index: number) => void
 }) => {
   // TODO: Implemment 'Display all' logic
-  const maxValuesDisplayed = 5000
+  const maxValuesDisplayed = 500
 
   return (
     <div className="w-96 flex flex-shrink-0 flex-col gap-2 mb-2 pr-1 overflow-y-auto">

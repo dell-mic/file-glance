@@ -43,6 +43,7 @@ export default function Home() {
 
   const parseFile = async (file: File) => {
     console.time("parseFile")
+    setData(file, [], [])
     let data: string[][]
     let _headerRow: string[] = []
     let isHeaderSet = false
@@ -292,6 +293,14 @@ export default function Home() {
     fileInfos.push(`${displayedData.length} filtered`)
   }
 
+  let parsingState: "initial" | "parsing" | "finished" = "initial"
+
+  if (currentFile && !allRows.length) {
+    parsingState = "parsing"
+  } else if (currentFile && allRows.length) {
+    parsingState = "finished"
+  }
+
   const clearFilterButton = isFiltered ? (
     <button
       onPointerDown={() => {
@@ -319,77 +328,94 @@ export default function Home() {
 
   return (
     <main ref={drop} className="h-screen p-2">
-      <div>
-        {allRows?.length ? (
-          <React.Fragment>
-            <div className="mb-2 flex flex-row items-center justify-between">
+      {(() => {
+        switch (parsingState) {
+          case "initial":
+            return (
               <div>
-                <span className="text-2xl">{currentFile?.name || ""} </span>
-                <span className="text-gray-500 text-sm">
-                  {fileInfos.join(", ")}
-                </span>
-                {clearFilterButton}
-              </div>
-              <div>
-                <input
-                  type="search"
-                  className="min-w-52 bg-gray-50 border border-gray-300 text-gray-600 text-sm rounded-lg p-2"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value)
-                  }}
-                  placeholder="Search"
-                ></input>
-              </div>
-            </div>
-            <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
-              <ValuesInspector
-                columnValueCounts={columnValueCounts}
-                filters={filters}
-                onFilterToggle={onFilterToggle}
-                openAccordions={openAccordions}
-                onToggleAccordion={(columnIndex: number) => {
-                  setOpenAccordions(addOrRemove(openAccordions, columnIndex))
-                }}
-                hiddenColumns={hiddenColumns}
-                onToggleColumnVisibility={(columnIndex: number) => {
-                  setHiddenColumns(addOrRemove(hiddenColumns, columnIndex))
-                }}
-              ></ValuesInspector>
-              <DataTable
-                key={currentFile?.name}
-                headerRow={headerRow}
-                rows={displayedData}
-                columnValueCounts={columnValueCounts}
-                hiddenColumns={hiddenColumns}
-              ></DataTable>
-            </div>
-          </React.Fragment>
-        ) : (
-          <div>
-            <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
-            <div className="text-2xl text-gray-500 m-4">
-              Fast, privacy-friendly viewer for tabular data
-            </div>
-            <div className="flex flex-col items-center">
-              <FileChooser
-                handleFileSelected={handleFileSelected}
-                isDragging={dragging}
-              ></FileChooser>
-              <span className="text-xl text-gray-500">
-                Just want to play around?
-              </span>
+                <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
+                <div className="text-2xl text-gray-500 m-4">
+                  Simple, privacy-friendly viewer for tabular data
+                </div>
+                <div className="flex flex-col items-center">
+                  <FileChooser
+                    handleFileSelected={handleFileSelected}
+                    isDragging={dragging}
+                  ></FileChooser>
+                  <span className="text-xl text-gray-500">
+                    Just want to play around?
+                  </span>
 
-              <button
-                onClick={onGenerateSampleData}
-                className="text-xl hover:bg-gray-100 text-gray-600 font-semibold py-2 px-4 rounded"
-              >
-                Load sample data
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+                  <button
+                    onClick={onGenerateSampleData}
+                    className="text-xl hover:bg-gray-100 text-gray-600 font-semibold py-2 px-4 rounded"
+                  >
+                    Load sample data
+                  </button>
+                </div>
+              </div>
+            )
+          case "parsing":
+            return (
+              <div className="flex h-screen">
+                <div className="m-auto text-2xl text-gray-500">
+                  <span>parsing</span>
+                  <span> {currentFile?.name || ""} </span>
+                  <span>...</span>
+                </div>
+              </div>
+            )
+          case "finished":
+            return (
+              <React.Fragment>
+                <div className="mb-2 flex flex-row items-center justify-between">
+                  <div>
+                    <span className="text-2xl">{currentFile?.name || ""} </span>
+                    <span className="text-gray-500 text-sm">
+                      {fileInfos.join(", ")}
+                    </span>
+                    {clearFilterButton}
+                  </div>
+                  <div>
+                    <input
+                      type="search"
+                      className="min-w-52 bg-gray-50 border border-gray-300 text-gray-600 text-sm rounded-lg p-2"
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value)
+                      }}
+                      placeholder="Search"
+                    ></input>
+                  </div>
+                </div>
+                <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
+                  <ValuesInspector
+                    columnValueCounts={columnValueCounts}
+                    filters={filters}
+                    onFilterToggle={onFilterToggle}
+                    openAccordions={openAccordions}
+                    onToggleAccordion={(columnIndex: number) => {
+                      setOpenAccordions(
+                        addOrRemove(openAccordions, columnIndex),
+                      )
+                    }}
+                    hiddenColumns={hiddenColumns}
+                    onToggleColumnVisibility={(columnIndex: number) => {
+                      setHiddenColumns(addOrRemove(hiddenColumns, columnIndex))
+                    }}
+                  ></ValuesInspector>
+                  <DataTable
+                    key={currentFile?.name}
+                    headerRow={headerRow}
+                    rows={displayedData}
+                    columnValueCounts={columnValueCounts}
+                    hiddenColumns={hiddenColumns}
+                  ></DataTable>
+                </div>
+              </React.Fragment>
+            )
+        }
+      })()}
     </main>
   )
 }
@@ -420,9 +446,10 @@ function formatBytes(bytes: number, dp = 1): string {
 }
 
 function detectDelimiter(input: string): string {
+  console.time("detectDelimiter")
   const supportedDelimiters = [",", ";", "|", "\t"]
   const counts: Record<string, number> = {}
-  for (const c of input) {
+  for (const c of input.substring(0, 10_000)) {
     if (supportedDelimiters.includes(c)) {
       counts[c] = (counts[c] || 0) + 1
     }
@@ -430,6 +457,8 @@ function detectDelimiter(input: string): string {
   // console.log(counts)
   const maxEntry = maxBy(Object.entries(counts), (_) => _[1])!
   console.log("detected delimiter: ", maxEntry)
+  console.timeEnd("detectDelimiter")
+
   return maxEntry[0]
 }
 
