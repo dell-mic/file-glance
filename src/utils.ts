@@ -50,7 +50,31 @@ function getRandomElement(arr: any[]) {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
-export function generateSampleData(numRows: number): any[] {
+export function generateSampleData(numRows: number): {
+  data: any[]
+  headerRow: string[]
+} {
+  const headerRow = [
+    "ID",
+    "Name",
+    "Age",
+    "Email",
+    "Phone Number",
+    "Country",
+    "City",
+    "Job Title",
+    "Salary",
+    "Happiness Score",
+    "Favorite Emoji",
+    "Date Joined",
+    "Last Purchase Amount",
+    "Favorite Color",
+    "Has Pet",
+    "Pet Type",
+    "Number of Siblings",
+    "Favorite Cuisine",
+    "Notes",
+  ]
   const firstNames = [
     "John",
     "Jane",
@@ -253,7 +277,7 @@ export function generateSampleData(numRows: number): any[] {
       note: note ? notePrefix + note : note,
     })
   }
-  return data
+  return { data, headerRow }
 }
 
 export async function readFileToString(file: File): Promise<string> {

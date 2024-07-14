@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Roboto, Roboto_Mono } from "next/font/google"
 
 import "./globals.css"
-import ThemeClient from "./theme"
 
 const roboto_mono = Roboto_Mono({
   subsets: ["latin"],
@@ -18,9 +17,9 @@ const roboto = Roboto({
 })
 
 export const metadata: Metadata = {
-  title: "File Glance",
+  title: "FileGlance",
   description:
-    "Fast preview and filtering for tabular-like data. Supports CSV, TSV, XLSX, JSON",
+    "Fast, privacy-friendly viewer for tabular data. Supports CSV, TSV, XLSX, JSON",
 }
 
 export default function RootLayout({

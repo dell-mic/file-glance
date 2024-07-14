@@ -97,32 +97,13 @@ export default function Home() {
       { length: rowsAmount * 50 },
       () => "1",
     )
+    const sampleData = generateSampleData(100)
     setData(
       new File(simulatedFileBytes, "Generated-Sample.csv", {
         lastModified: new Date().getTime(),
       }),
-      [
-        "ID",
-        "Name",
-        "Age",
-        "Email",
-        "Phone Number",
-        "Country",
-        "City",
-        "Job Title",
-        "Salary",
-        "Happiness Score",
-        "Favorite Emoji",
-        "Date Joined",
-        "Last Purchase Amount",
-        "Favorite Color",
-        "Has Pet",
-        "Pet Type",
-        "Number of Siblings",
-        "Favorite Cuisine",
-        "Notes",
-      ],
-      jsonToTable(generateSampleData(100)).data,
+      sampleData.headerRow,
+      jsonToTable(sampleData.data).data,
     )
   }
 
@@ -178,10 +159,15 @@ export default function Home() {
     setDragging(true)
   }
 
-  const handleDragLeave = (e: DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // console.log("handleDragLeave", e);
+  // const handleDragLeave = (e: DragEvent) => {
+  //   e.preventDefault()
+  //   e.stopPropagation()
+  //   // console.log("handleDragLeave", e);
+  //   // setDragging(false)
+  // }
+
+  const handleWindowMouseOut = (e: MouseEvent) => {
+    // As we bascially allow dropping in the whole window only set to false when leaving the window
     setDragging(false)
   }
 
@@ -193,7 +179,7 @@ export default function Home() {
     // @ts-ignore
     drop.current.addEventListener("dragenter", handleDragEnter)
     // @ts-ignore
-    drop.current.addEventListener("dragleave", handleDragLeave)
+    // drop.current.addEventListener("dragleave", handleDragLeave)
 
     return () => {
       // @ts-ignore
@@ -203,11 +189,59 @@ export default function Home() {
       // @ts-ignore
       drop.current.removeEventListener("dragenter", handleDragEnter)
       // @ts-ignore
-      drop.current.removeEventListener("dragleave", handleDragLeave)
+      // drop.current.removeEventListener("dragleave", handleDragLeave)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    window.addEventListener("mouseout", handleWindowMouseOut)
+
+    return () => {
+      window.removeEventListener("mouseout", handleWindowMouseOut)
     }
   }, [])
 
   console.log("dragging", dragging)
+
+  const onFilterToggle = (
+    columnIndex: number,
+    valueName: string,
+    isAdding: boolean,
+  ) => {
+    let newColFilter: ColumnFilter
+    const existingColFilter = filters.find((_) => _.columnIndex === columnIndex)
+    // Easy case: No filter for this column so far => Simply add with clicked value
+    if (!existingColFilter) {
+      newColFilter = {
+        columnIndex: columnIndex,
+        includedValues: [valueName],
+      }
+    } else {
+      if (isAdding) {
+        // With meta key pressed allow selecting of several values
+        newColFilter = {
+          columnIndex: columnIndex,
+          includedValues: addOrRemove(
+            existingColFilter.includedValues,
+            valueName,
+          ),
+        }
+      } else {
+        // Deslect already selected / replace
+        newColFilter = {
+          columnIndex: columnIndex,
+          includedValues: existingColFilter.includedValues.includes(valueName)
+            ? existingColFilter.includedValues.filter((iv) => iv !== valueName)
+            : [valueName],
+        }
+      }
+    }
+    const updatedFilters = [
+      ...filters.filter((_) => _.columnIndex !== columnIndex),
+      newColFilter,
+    ].filter((f) => f.includedValues.length)
+    setFilters(updatedFilters)
+  }
 
   // Apply filter and sorting
   console.time("filterAndSorting")
@@ -312,51 +346,7 @@ export default function Home() {
               <ValuesInspector
                 columnValueCounts={columnValueCounts}
                 filters={filters}
-                onFilterToggle={(
-                  columnIndex: number,
-                  valueName: string,
-                  isAdding: boolean,
-                ) => {
-                  let newColFilter: ColumnFilter
-                  const existingColFilter = filters.find(
-                    (_) => _.columnIndex === columnIndex,
-                  )
-                  // Easy case: No filter for this column so far => Simply add with clicked value
-                  if (!existingColFilter) {
-                    newColFilter = {
-                      columnIndex: columnIndex,
-                      includedValues: [valueName],
-                    }
-                  } else {
-                    if (isAdding) {
-                      // With meta key pressed allow selecting of several values
-                      newColFilter = {
-                        columnIndex: columnIndex,
-                        includedValues: addOrRemove(
-                          existingColFilter.includedValues,
-                          valueName,
-                        ),
-                      }
-                    } else {
-                      // Deslect already selected / replace
-                      newColFilter = {
-                        columnIndex: columnIndex,
-                        includedValues:
-                          existingColFilter.includedValues.includes(valueName)
-                            ? existingColFilter.includedValues.filter(
-                                (iv) => iv !== valueName,
-                              )
-                            : [valueName],
-                      }
-                    }
-                  }
-                  const updatedFilters = [
-                    ...filters.filter((_) => _.columnIndex !== columnIndex),
-                    newColFilter,
-                  ].filter((f) => f.includedValues.length)
-                  setFilters(updatedFilters)
-                  // console.log("updatedFilters", updatedFilters);
-                }}
+                onFilterToggle={onFilterToggle}
                 openAccordions={openAccordions}
                 onToggleAccordion={(columnIndex: number) => {
                   setOpenAccordions(addOrRemove(openAccordions, columnIndex))
@@ -376,17 +366,27 @@ export default function Home() {
             </div>
           </React.Fragment>
         ) : (
-          <div className="flex flex-col items-center">
-            <FileChooser
-              handleFileSelected={handleFileSelected}
-              isDragging={dragging}
-            ></FileChooser>
-            <button
-              onClick={onGenerateSampleData}
-              className=" hover:bg-gray-100 text-gray-600 font-semibold py-2 px-4 rounded"
-            >
-              Load sample data
-            </button>
+          <div>
+            <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
+            <div className="text-2xl text-gray-500 m-4">
+              Fast, privacy-friendly viewer for tabular data
+            </div>
+            <div className="flex flex-col items-center">
+              <FileChooser
+                handleFileSelected={handleFileSelected}
+                isDragging={dragging}
+              ></FileChooser>
+              <span className="text-xl text-gray-500">
+                Just want to play around?
+              </span>
+
+              <button
+                onClick={onGenerateSampleData}
+                className="text-xl hover:bg-gray-100 text-gray-600 font-semibold py-2 px-4 rounded"
+              >
+                Load sample data
+              </button>
+            </div>
           </div>
         )}
       </div>
