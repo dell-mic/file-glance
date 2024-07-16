@@ -42,13 +42,11 @@ export const DataTable = (props: {
 
   // @ts-ignore
   const Row = ({ index, style }) => {
+    const rowClasses = "flex flex-row" + (index % 2 === 0 ? " bg-gray-100" : "")
     // console.log("row index:", index)
     // console.log("row:", rows[index])
     return (
-      <div
-        style={style}
-        className="flex flex-row even:bg-gray-100 odd:bg-white"
-      >
+      <div style={style} className={rowClasses}>
         {rows[index].map((v, vi) => {
           if (hiddenColumns.includes(vi)) {
             return null
@@ -156,6 +154,7 @@ export const DataTable = (props: {
             height={height}
             itemCount={rows.length}
             itemSize={20}
+            overscanCount={50}
             width={tableWidth}
           >
             {Row}
