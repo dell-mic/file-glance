@@ -109,6 +109,7 @@ export default function Home() {
   }
 
   const setData = (file: File, headerRow: string[], data: string[][]) => {
+    document.title = file.name
     setCurrentFile(file)
     setHeaderRow(headerRow)
     setAllRows(data)
