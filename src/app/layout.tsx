@@ -31,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="canonical" href="https://www.fileglance.info" />
         <Script id="matomo" strategy="afterInteractive">
           {process.env.NODE_ENV === "production"
             ? `
