@@ -38,7 +38,7 @@ const Accordion: React.FC<AccordionProps> = ({
           <span className="text-gray-500 text-sm">{subHeader}</span>
         </div>
         <button
-          onPointerDown={(e) => {
+          onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
             if (!e.button) {
               // console.log(e)
               e.stopPropagation()
