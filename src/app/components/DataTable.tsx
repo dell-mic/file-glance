@@ -13,7 +13,11 @@ export const DataTable = (props: {
   headerRow: string[]
   rows: Array<Array<any>>
   columnValueCounts: ColumnInfos[]
-  hiddenColumns: number[]
+  hiddenColumns: number[],
+  onSortingChange: (
+    columnIndex: number,
+    sortOrder: string
+  ) => void
 }) => {
   // console.log(rows)
   const rows = [props.headerRow, ...props.rows]
@@ -27,8 +31,11 @@ export const DataTable = (props: {
   const tableWidth = `${sum(columnWidths)}px`
   const sColumnWidths = columnWidths.map((cw) => `${cw}px`)
 
-  const [popoverAnchorElement, setPopoverAnchorElement] = React.useState<HTMLElement | null>(null)
-  const [popoverColumnIndex, setPopoverColumnIndex] = React.useState<number | null>(null)
+  const [popoverAnchorElement, setPopoverAnchorElement] =
+    React.useState<HTMLElement | null>(null)
+  const [popoverColumnIndex, setPopoverColumnIndex] = React.useState<
+    number | null
+  >(null)
   // const [popoverCoordinates, setPopoverCoordinates] = React.useState<any>({
   //   top: 0,
   //   left: 0,
@@ -109,7 +116,9 @@ export const DataTable = (props: {
           return props.hiddenColumns.includes(vi) ? null : (
             <div
               key={vi}
-              ref={(el) => {cellRef.current[vi] = el}}
+              ref={(el) => {
+                cellRef.current[vi] = el
+              }}
               className="group flex flex-row justify-between p-0.5 bg-gray-200"
               style={{
                 width: sColumnWidths[vi],
@@ -204,7 +213,18 @@ export const DataTable = (props: {
           horizontal: "left",
         }}
       >
-        <div className="p-2">The content of the Popover.</div>
+        <div className="flex flex-col py-2 px-1">
+          <button
+            onPointerDown={() => console.log("sort asc", popoverColumnIndex)}
+          >
+            Sort ascending
+          </button>
+          <button
+            onPointerDown={() => console.log("sort desc", popoverColumnIndex)}
+          >
+            Sort descending
+          </button>
+        </div>
       </Popover>
       {/* TODO: Last line hidden in case of horizontal scrolling */}
       <AutoSizer disableWidth>
