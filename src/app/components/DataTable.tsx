@@ -7,6 +7,7 @@ import "./DataTable.css"
 
 import { ColumnInfos } from "./ValueInspector"
 import { valueAsString } from "@/utils"
+import useWindowDimensions from "../hooks/useWindowDimensions"
 
 export const DataTable = (props: {
   headerRow: string[]
@@ -14,6 +15,8 @@ export const DataTable = (props: {
   columnValueCounts: ColumnInfos[]
   hiddenColumns: number[]
 }) => {
+  const { width: windowWidth } = useWindowDimensions()
+
   // console.log(rows)
   const rows = [props.headerRow, ...props.rows]
   const hiddenColumns = props.hiddenColumns
@@ -23,8 +26,26 @@ export const DataTable = (props: {
       ? estimateColumnWidthPx(cvc.valuesMaxLength)
       : 0,
   )
-  const tableWidth = `${sum(columnWidths)}px`
-  const sColumnWidths = columnWidths.map((cw) => `${cw}px`)
+  const columnWidthSum = sum(columnWidths)
+
+  const leftColumnWidthPx = 380 + 24 // TODO: Hardcoded width for value inspector + padding/scrollbar etc; would better be dynamic
+
+  const remainingWidth = windowWidth - leftColumnWidthPx - columnWidthSum
+
+  const growthFactor = (remainingWidth * 1.0) / columnWidthSum + 1
+  const MinGrowthFactor = 1
+  const MaxGrowthFactor = 2
+  const growFactorEffective = Math.min(
+    Math.max(growthFactor, MinGrowthFactor),
+    MaxGrowthFactor,
+  )
+  // console.log("growthFactor", growthFactor)
+  // console.log("growFactorEffective", growFactorEffective)
+
+  const tableWidth = `${columnWidthSum * growFactorEffective}px`
+  const sColumnWidths = columnWidths.map(
+    (cw) => `${cw * growFactorEffective}px`,
+  )
 
   // Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
   // See also: https://github.com/bvaughn/react-window?tab=readme-ov-file
