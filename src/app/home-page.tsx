@@ -411,6 +411,7 @@ export default function Home() {
                     rows={displayedData}
                     columnValueCounts={columnValueCounts}
                     hiddenColumns={hiddenColumns}
+                    onSortingChange={e => console.log(e)}
                   ></DataTable>
                 </div>
               </React.Fragment>

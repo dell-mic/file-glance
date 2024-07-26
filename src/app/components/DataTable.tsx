@@ -8,6 +8,7 @@ import "./DataTable.css"
 import { ColumnInfos } from "./ValueInspector"
 import { valueAsString } from "@/utils"
 import { Popover } from "./Popover"
+import useWindowDimensions from "../hooks/useWindowDimensions"
 
 export const DataTable = (props: {
   headerRow: string[]
@@ -19,6 +20,8 @@ export const DataTable = (props: {
     sortOrder: string
   ) => void
 }) => {
+  const { width: windowWidth } = useWindowDimensions()
+
   // console.log(rows)
   const rows = [props.headerRow, ...props.rows]
   const hiddenColumns = props.hiddenColumns
@@ -28,8 +31,26 @@ export const DataTable = (props: {
       ? estimateColumnWidthPx(cvc.valuesMaxLength)
       : 0,
   )
-  const tableWidth = `${sum(columnWidths)}px`
-  const sColumnWidths = columnWidths.map((cw) => `${cw}px`)
+  const columnWidthSum = sum(columnWidths)
+
+  const leftColumnWidthPx = 380 + 24 // TODO: Hardcoded width for value inspector + padding/scrollbar etc; would better be dynamic
+
+  const remainingWidth = windowWidth - leftColumnWidthPx - columnWidthSum
+
+  const growthFactor = (remainingWidth * 1.0) / columnWidthSum + 1
+  const MinGrowthFactor = 1
+  const MaxGrowthFactor = 2
+  const growFactorEffective = Math.min(
+    Math.max(growthFactor, MinGrowthFactor),
+    MaxGrowthFactor,
+  )
+  // console.log("growthFactor", growthFactor)
+  // console.log("growFactorEffective", growFactorEffective)
+
+  const tableWidth = `${columnWidthSum * growFactorEffective}px`
+  const sColumnWidths = columnWidths.map(
+    (cw) => `${cw * growFactorEffective}px`,
+  )
 
   const [popoverAnchorElement, setPopoverAnchorElement] =
     React.useState<HTMLElement | null>(null)
