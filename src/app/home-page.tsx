@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { maxBy } from "lodash"
+import { maxBy, orderBy } from "lodash"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
@@ -15,6 +15,11 @@ import {
   readFileToString,
   valueAsString,
 } from "@/utils"
+
+export interface SortSetting {
+  columnIndex: number
+  sortOrder: "asc" | "desc"
+}
 
 export default function Home() {
   const [dragging, setDragging] = React.useState(false)
@@ -30,6 +35,7 @@ export default function Home() {
   const [allRows, setAllRows] = React.useState<any[][]>([])
   const [filters, setFilters] = React.useState<Array<ColumnFilter>>([])
   const [search, setSearch] = React.useState<string>("")
+  const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
   // const [columnValueCounts, setcColumnValueCounts] = React.useState<
   //   ColumnInfos[]
   // >([]);
@@ -277,6 +283,14 @@ export default function Home() {
         }
       })
     : displayedData
+
+  if (sortSetting) {
+    displayedData = orderBy(
+      displayedData,
+      (e) => e[sortSetting?.columnIndex],
+      sortSetting.sortOrder,
+    )
+  }
   console.timeEnd("filterAndSorting")
 
   // console.log("displayedData", displayedData);
@@ -411,6 +425,14 @@ export default function Home() {
                     rows={displayedData}
                     columnValueCounts={columnValueCounts}
                     hiddenColumns={hiddenColumns}
+                    sortSetting={sortSetting}
+                    onSortingChange={(e) => {
+                      if (e.sortOrder !== "unsorted") {
+                        setSortSetting(e as SortSetting)
+                      } else {
+                        setSortSetting(null)
+                      }
+                    }}
                   ></DataTable>
                 </div>
               </React.Fragment>
