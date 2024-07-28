@@ -33,9 +33,9 @@ const Accordion: React.FC<AccordionProps> = ({
           }
         }}
       >
-        <div className="flex items-center gap-2">
+        <div className="">
           <span>{header}</span>
-          <span className="text-gray-500 text-sm">{subHeader}</span>
+          <span className="text-gray-500 text-sm ml-1">{subHeader}</span>
         </div>
         <button
           onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {

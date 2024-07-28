@@ -45,10 +45,15 @@ export const Popover = ({
     }
   }, [open, onClose])
 
-  if (!open || !anchorEl) return null;
- 
-  var anchorRectangle = anchorEl.getBoundingClientRect();
+  if (!open || !anchorEl) return null
 
+  const anchorRectangle = anchorEl.getBoundingClientRect()
+
+  // TODO: This should not be needed if anchorEl would be nulled correctly?
+  const isAnchorElVisible = Object.values(anchorRectangle.toJSON()).every(
+    Boolean,
+  )
+  if (!isAnchorElVisible) return null
 
   const popoverStyles = {
     top:

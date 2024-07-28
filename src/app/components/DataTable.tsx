@@ -1,7 +1,20 @@
-import { sum } from "lodash"
+import { sum, uniq } from "lodash"
 import React, { createContext, forwardRef } from "react"
 import { FixedSizeList } from "react-window"
 import AutoSizer from "react-virtualized-auto-sizer"
+
+import {
+  ClipboardDocumentCheckIcon,
+  ClipboardDocumentListIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+} from "@heroicons/react/20/solid"
+
+import {
+  ArrowUpIcon as ArrowUpIconMicro,
+  ArrowDownIcon as ArrowDownIconMicro,
+} from "@heroicons/react/16/solid"
+import { BookmarkSlashIcon } from "@heroicons/react/24/outline"
 
 import "./DataTable.css"
 
@@ -9,16 +22,20 @@ import { ColumnInfos } from "./ValueInspector"
 import { valueAsString } from "@/utils"
 import { Popover } from "./Popover"
 import useWindowDimensions from "../hooks/useWindowDimensions"
+import { SortSetting } from "../home-page"
+
+export interface SortEvent {
+  columnIndex: number
+  sortOrder: "asc" | "desc" | "unsorted"
+}
 
 export const DataTable = (props: {
   headerRow: string[]
   rows: Array<Array<any>>
   columnValueCounts: ColumnInfos[]
-  hiddenColumns: number[],
-  onSortingChange: (
-    columnIndex: number,
-    sortOrder: string
-  ) => void
+  hiddenColumns: number[]
+  sortSetting: SortSetting | null
+  onSortingChange: (e: SortEvent) => void
 }) => {
   const { width: windowWidth } = useWindowDimensions()
 
@@ -63,6 +80,7 @@ export const DataTable = (props: {
   // })
 
   const handlePopoverClose = () => {
+    console.log("handlePopoverClose")
     setPopoverAnchorElement(null)
   }
 
@@ -131,6 +149,20 @@ export const DataTable = (props: {
       cellRef.current = cellRef.current.slice(0, props.headerRow.length)
     }, [])
 
+    const SortIndicator = ({
+      sortOrder,
+    }: {
+      sortOrder: "asc" | "desc" | null
+    }) => {
+      if (sortOrder === "asc") {
+        return <ArrowUpIconMicro className="size-3 ml-0.5 text-gray-700" />
+      } else if (sortOrder === "desc") {
+        return <ArrowDownIconMicro className="size-3 ml-0.5 text-gray-700" />
+      } else {
+        return null
+      }
+    }
+
     return (
       <div className="sticky flex flex-row" style={style}>
         {props.headerRow.map((v: string, vi: number) => {
@@ -147,13 +179,32 @@ export const DataTable = (props: {
               title={v}
             >
               <span
-                className=" text-xs font-medium overflow-hidden whitespace-nowrap overflow-ellipsis"
-                onClick={() => {
-                  // TODO: Should show info
-                  navigator.clipboard.writeText(v)
+                className="flex flex-row flex-grow cursor-pointer select-none items-center text-xs font-medium overflow-hidden whitespace-nowrap overflow-ellipsis"
+                onPointerDown={() => {
+                  let newSortOrder: SortEvent["sortOrder"] = "asc"
+                  if (props.sortSetting?.columnIndex === vi) {
+                    if (props.sortSetting?.sortOrder === "desc") {
+                      newSortOrder = "unsorted"
+                    } else if (props.sortSetting?.sortOrder === "asc") {
+                      newSortOrder = "desc"
+                    }
+                  }
+
+                  props.onSortingChange({
+                    columnIndex: vi,
+                    sortOrder: newSortOrder,
+                  })
+                  setPopoverAnchorElement(null)
                 }}
               >
                 {v}
+                <SortIndicator
+                  sortOrder={
+                    props.sortSetting?.columnIndex === vi
+                      ? props.sortSetting.sortOrder
+                      : null
+                  }
+                />
               </span>
 
               <button
@@ -222,6 +273,85 @@ export const DataTable = (props: {
 
   // console.log("Datatable - anchorEl", anchorEl)
 
+  const popoverColumnsIsSorted =
+    props.sortSetting && props.sortSetting.columnIndex === popoverColumnIndex
+  const sortOrder = props.sortSetting?.sortOrder
+
+  const popoverEntries = [
+    [
+      {
+        text:
+          popoverColumnsIsSorted && sortOrder === "asc"
+            ? "Undo sort"
+            : "Sort ascending",
+        icon:
+          popoverColumnsIsSorted && sortOrder === "asc" ? (
+            <BookmarkSlashIcon />
+          ) : (
+            <ArrowUpIcon />
+          ),
+
+        onSelect: () => {
+          props.onSortingChange({
+            columnIndex: popoverColumnIndex!,
+            sortOrder:
+              popoverColumnsIsSorted && sortOrder === "asc"
+                ? "unsorted"
+                : "asc",
+          })
+        },
+      },
+      {
+        text:
+          popoverColumnsIsSorted && sortOrder === "desc"
+            ? "Undo sort"
+            : "Sort descending",
+        icon:
+          popoverColumnsIsSorted && sortOrder === "desc" ? (
+            <BookmarkSlashIcon />
+          ) : (
+            <ArrowDownIcon />
+          ),
+        onSelect: () => {
+          props.onSortingChange({
+            columnIndex: popoverColumnIndex!,
+            sortOrder:
+              popoverColumnsIsSorted && sortOrder === "desc"
+                ? "unsorted"
+                : "desc",
+          })
+        },
+      },
+    ],
+    [
+      {
+        text: "Copy column name",
+        icon: <ClipboardDocumentCheckIcon />,
+        onSelect: (popoverColumnIndex: number) => {
+          navigator.clipboard.writeText(props.headerRow[popoverColumnIndex])
+        },
+      },
+      {
+        text: "Copy values",
+        icon: <ClipboardDocumentListIcon />,
+        onSelect: (popoverColumnIndex: number) => {
+          navigator.clipboard.writeText(
+            props.rows.map((row) => row[popoverColumnIndex]).join("\n"),
+          )
+        },
+      },
+      {
+        text: "Copy values (unique)",
+        icon: <ClipboardDocumentListIcon />,
+        onSelect: (popoverColumnIndex: number) => {
+          navigator.clipboard.writeText(
+            uniq(props.rows.map((row) => row[popoverColumnIndex])).join("\n"),
+          )
+        },
+      },
+    ],
+  ]
+
   return (
     <div className="h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-sm">
       <Popover
@@ -234,17 +364,34 @@ export const DataTable = (props: {
           horizontal: "left",
         }}
       >
-        <div className="flex flex-col py-2 px-1">
-          <button
-            onPointerDown={() => console.log("sort asc", popoverColumnIndex)}
-          >
-            Sort ascending
-          </button>
-          <button
-            onPointerDown={() => console.log("sort desc", popoverColumnIndex)}
-          >
-            Sort descending
-          </button>
+        <div className="" style={{ width: "260px" }}>
+          {popoverEntries.map((group, gi) => {
+            return (
+              <div
+                key={gi}
+                className="flex flex-col align-middle items-start py-1 border-gray-200"
+                style={{
+                  borderBottomWidth:
+                    gi === popoverEntries.length - 1 ? 0 : "1px",
+                }}
+              >
+                {group.map((menuEntry, mi) => (
+                  <button
+                    key={mi}
+                    className="flex items-center w-full text-sm text-left text-gray-500 py-2 px-2 hover:bg-gray-100 hover:text-gray-600"
+                    onPointerDown={() => {
+                      menuEntry.onSelect(popoverColumnIndex!)
+                      setPopoverAnchorElement(null)
+                    }}
+                  >
+                    <span className="mr-3 size-5">{menuEntry.icon}</span>
+
+                    {menuEntry.text}
+                  </button>
+                ))}
+              </div>
+            )
+          })}
         </div>
       </Popover>
       {/* TODO: Last line hidden in case of horizontal scrolling */}
