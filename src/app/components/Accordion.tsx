@@ -22,7 +22,12 @@ const Accordion: React.FC<AccordionProps> = ({
   children,
 }) => {
   return (
-    <div className="border border-gray-300 rounded-md shadow-sm">
+    <div
+      className="border border-gray-300 rounded-md shadow-sm"
+      style={{
+        opacity: columnVisible ? 1 : 0.7,
+      }}
+    >
       <div
         className="cursor-pointer bg-gray-200 p-1 px-2 flex items-center justify-between"
         onPointerDown={(e) => {

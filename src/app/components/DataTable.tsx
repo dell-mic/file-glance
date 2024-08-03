@@ -56,7 +56,7 @@ export const DataTable = (props: {
 
   const growthFactor = (remainingWidth * 1.0) / columnWidthSum + 1
   const MinGrowthFactor = 1
-  const MaxGrowthFactor = 2
+  const MaxGrowthFactor = 1.77
   const growFactorEffective = Math.min(
     Math.max(growthFactor, MinGrowthFactor),
     MaxGrowthFactor,
@@ -378,7 +378,7 @@ export const DataTable = (props: {
                 {group.map((menuEntry, mi) => (
                   <button
                     key={mi}
-                    className="flex items-center w-full text-sm text-left text-gray-500 py-2 px-2 hover:bg-gray-100 hover:text-gray-600"
+                    className="flex items-center w-full text-sm text-left text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950"
                     onPointerDown={() => {
                       menuEntry.onSelect(popoverColumnIndex!)
                       setPopoverAnchorElement(null)
