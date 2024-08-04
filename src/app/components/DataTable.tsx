@@ -416,9 +416,9 @@ export const DataTable = (props: {
 }
 
 function estimateColumnWidthPx(valueMaxLength: number): number {
-  if (valueMaxLength <= 4) {
+  if (valueMaxLength <= 5) {
     return 64
-  } else if (valueMaxLength <= 10) {
+  } else if (valueMaxLength <= 12) {
     return 128
   } else {
     return 192
