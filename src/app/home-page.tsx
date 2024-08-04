@@ -350,7 +350,7 @@ export default function Home() {
               <div>
                 <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
                 <div className="text-2xl text-gray-500 m-4">
-                  Simple, privacy-friendly viewer for tabular data
+                  Simple, privacy-friendly tool for working with tabular data
                 </div>
                 <div className="flex flex-col items-center">
                   <FileChooser
