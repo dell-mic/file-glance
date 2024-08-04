@@ -1,6 +1,7 @@
 import { orderBy } from "lodash"
 import Accordion from "./Accordion"
 import { ColumnFilter } from "../home-page"
+import React from "react"
 
 export const ValuesInspector = (props: {
   filters: ColumnFilter[]
@@ -15,8 +16,9 @@ export const ValuesInspector = (props: {
   hiddenColumns: number[]
   onToggleColumnVisibility: (index: number) => void
 }) => {
-  // TODO: Implemment 'Display all' logic
-  const maxValuesDisplayed = 500
+  const [valuesDisplayed, setValuesDisplayed] = React.useState<number[]>([])
+
+  const ValuesDisplayedInitially = 50
 
   return (
     <div className="w-96 flex flex-shrink-0 flex-col gap-2 mb-2 pr-1 overflow-y-auto">
@@ -43,47 +45,67 @@ export const ValuesInspector = (props: {
             key={`${column.columnIndex}_${column.columnName}`}
           >
             <div className="py-1">
-              {columnValues.slice(0, maxValuesDisplayed).map((columnValue) => {
-                const existingColFilter = props.filters.find(
-                  (_) => _.columnIndex === column.columnIndex,
+              {columnValues
+                .slice(
+                  0,
+                  valuesDisplayed[column.columnIndex] ||
+                    ValuesDisplayedInitially,
                 )
-
-                const isFilteredValue =
-                  existingColFilter &&
-                  existingColFilter.includedValues.some(
-                    (fValue) => fValue === columnValue.valueName,
+                .map((columnValue) => {
+                  const existingColFilter = props.filters.find(
+                    (_) => _.columnIndex === column.columnIndex,
                   )
 
-                return (
-                  <div
-                    key={`${column.columnIndex}_${columnValue.valueName}`}
-                    className="text-sm"
-                  >
-                    <a
-                      href="#"
-                      className={`text-blue-500 ${
-                        columnValue.valueName ? "" : "font-mono"
-                      } ${isFilteredValue ? "font-bold" : ""}`}
-                      onClick={(e) => e.preventDefault()}
-                      onPointerDown={(e) => {
-                        e.preventDefault()
-                        // Do not react to secondary buttons (>0)
-                        if (e.button) {
-                          return
-                        }
-                        props.onFilterToggle(
-                          column.columnIndex,
-                          columnValue.valueName,
-                          e.metaKey,
-                        )
-                      }}
+                  const isFilteredValue =
+                    existingColFilter &&
+                    existingColFilter.includedValues.some(
+                      (fValue) => fValue === columnValue.valueName,
+                    )
+
+                  return (
+                    <div
+                      key={`${column.columnIndex}_${columnValue.valueName}`}
+                      className="text-sm"
                     >
-                      {columnValue.valueName || "empty"}
-                    </a>
-                    <span className="text-gray-500">{` ${columnValue.valueCount}`}</span>
-                  </div>
-                )
-              })}
+                      <a
+                        href="#"
+                        className={`text-blue-500 ${
+                          columnValue.valueName ? "" : "font-mono"
+                        } ${isFilteredValue ? "font-bold" : ""}`}
+                        onClick={(e) => e.preventDefault()}
+                        onPointerDown={(e) => {
+                          e.preventDefault()
+                          // Do not react to secondary buttons (>0)
+                          if (e.button) {
+                            return
+                          }
+                          props.onFilterToggle(
+                            column.columnIndex,
+                            columnValue.valueName,
+                            e.metaKey,
+                          )
+                        }}
+                      >
+                        {columnValue.valueName || "empty"}
+                      </a>
+                      <span className="text-gray-500">{` ${columnValue.valueCount}`}</span>
+                    </div>
+                  )
+                })}
+              {columnValues.length >
+              (valuesDisplayed[column.columnIndex] ||
+                ValuesDisplayedInitially) ? (
+                <button
+                  className="w-full hover:bg-gray-100 text-gray-600 text-sm py-2 px-4 rounded"
+                  onPointerDown={() => {
+                    const updatedValuesDisplayed = [...valuesDisplayed]
+                    updatedValuesDisplayed[column.columnIndex] = Infinity
+                    setValuesDisplayed(updatedValuesDisplayed)
+                  }}
+                >
+                  show all {columnValues.length} values
+                </button>
+              ) : null}
             </div>
           </Accordion>
         )
