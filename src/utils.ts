@@ -289,3 +289,167 @@ export async function readFileToString(file: File): Promise<string> {
     return enc.decode(v)
   })
 }
+
+export function hasHeader(data: any[][]): boolean {
+  console.time("hasHeader")
+  if (data.length < 2) return true
+
+  const numRowsToCompare = Math.min(5, data.length - 1) // Compare with up to 5 rows or all remaining rows if less than 5.
+
+  function calculateAverageSimilarity(row: number, numRows: number): number {
+    let totalDistance = 0
+
+    for (let col = 0; col < data[0].length; col++) {
+      let columnDistance = 0
+
+      for (let r = row; r < row + numRows; r++) {
+        // Compare distance on *patterns* such that e.g. number rows will have 0 distance, but >0 compared to header
+        const distance = stringDistance(
+          normalizeString(String(data[row][col])),
+          normalizeString(String(data[r + 1][col])),
+        )
+        columnDistance += distance
+        // console.log(`Comparing '${data[row][col].toString()}' vs '${data[r + 1][col].toString()}': ${distance}`)
+      }
+
+      columnDistance /= numRows
+
+      // console.log('col', col, 'columnDistance', columnDistance)
+
+      totalDistance += columnDistance
+    }
+
+    return totalDistance / data[0].length
+  }
+
+  const averageDistanceFirstRow = calculateAverageSimilarity(
+    0,
+    numRowsToCompare,
+  )
+
+  // console.log('averageDistanceFirstRow', averageDistanceFirstRow)
+  // console.log()
+
+  const averageDistanceContentRows = calculateAverageSimilarity(
+    1,
+    numRowsToCompare - 1,
+  )
+  // console.log('averageDistanceContentRows', averageDistanceContentRows)
+  // console.log()
+
+  console.timeEnd("hasHeader")
+
+  // Return true if the distance between rows 2-5 is lower than the distance of the first row to the rest
+  return averageDistanceContentRows < averageDistanceFirstRow
+}
+
+/**
+ * Levenshtein distance based on https://github.com/gustf/js-levenshtein as TypeScript
+ * @param a
+ * @param b
+ * @returns
+ */
+function stringDistance(a: string, b: string): number {
+  function _min(d0: number, d1: number, d2: number, bx: number, ay: number) {
+    return d0 < d1 || d2 < d1
+      ? d0 > d2
+        ? d2 + 1
+        : d0 + 1
+      : bx === ay
+        ? d1
+        : d1 + 1
+  }
+  if (a === b) {
+    return 0
+  }
+
+  if (a.length > b.length) {
+    var tmp = a
+    a = b
+    b = tmp
+  }
+
+  var la = a.length
+  var lb = b.length
+
+  while (la > 0 && a.charCodeAt(la - 1) === b.charCodeAt(lb - 1)) {
+    la--
+    lb--
+  }
+
+  var offset = 0
+
+  while (offset < la && a.charCodeAt(offset) === b.charCodeAt(offset)) {
+    offset++
+  }
+
+  la -= offset
+  lb -= offset
+
+  if (la === 0 || lb < 3) {
+    return lb
+  }
+
+  var x = 0
+  var y
+  var d0
+  var d1
+  var d2
+  var d3
+  var dd
+  var dy
+  var ay
+  var bx0
+  var bx1
+  var bx2
+  var bx3
+
+  var vector = []
+
+  for (y = 0; y < la; y++) {
+    vector.push(y + 1)
+    vector.push(a.charCodeAt(offset + y))
+  }
+
+  var len = vector.length - 1
+
+  for (; x < lb - 3; ) {
+    bx0 = b.charCodeAt(offset + (d0 = x))
+    bx1 = b.charCodeAt(offset + (d1 = x + 1))
+    bx2 = b.charCodeAt(offset + (d2 = x + 2))
+    bx3 = b.charCodeAt(offset + (d3 = x + 3))
+    dd = x += 4
+    for (y = 0; y < len; y += 2) {
+      dy = vector[y]
+      ay = vector[y + 1]
+      d0 = _min(dy, d0, d1, bx0, ay)
+      d1 = _min(d0, d1, d2, bx1, ay)
+      d2 = _min(d1, d2, d3, bx2, ay)
+      dd = _min(d2, d3, dd, bx3, ay)
+      vector[y] = dd
+      d3 = d2
+      d2 = d1
+      d1 = d0
+      d0 = dy
+    }
+  }
+
+  for (; x < lb; ) {
+    bx0 = b.charCodeAt(offset + (d0 = x))
+    dd = ++x
+    for (y = 0; y < len; y += 2) {
+      dy = vector[y]
+      vector[y] = dd = _min(dy, d0, dd, bx0, vector[y + 1])
+      d0 = dy
+    }
+  }
+
+  return dd!
+}
+
+export function normalizeString(input: string): string {
+  return input
+    .replace(/[A-Z]/g, "A") // Replace all uppercase letters with 'A'
+    .replace(/[a-z]/g, "a") // Replace all lowercase letters with 'a'
+    .replace(/[0-9]/g, "0") // Replace all digits with '0'
+}

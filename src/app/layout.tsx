@@ -3,6 +3,7 @@ import { Roboto, Roboto_Mono } from "next/font/google"
 
 import "./globals.css"
 import Script from "next/script"
+import { title } from "@/constants"
 
 const roboto_mono = Roboto_Mono({
   subsets: ["latin"],
@@ -18,7 +19,7 @@ const roboto = Roboto({
 })
 
 export const metadata: Metadata = {
-  title: "FileGlance - tool for working with tabular data",
+  title: title,
   description:
     "Simple, privacy-friendly tool for working with tabular data. Supports CSV, TSV, XLSX, JSON",
 }

@@ -11,10 +11,12 @@ import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
 import {
   generateSampleData,
+  hasHeader,
   jsonToTable,
   readFileToString,
   valueAsString,
 } from "@/utils"
+import { title } from "@/constants"
 
 export interface SortSetting {
   columnIndex: number
@@ -23,7 +25,7 @@ export interface SortSetting {
 
 export default function Home() {
   const [dragging, setDragging] = React.useState(false)
-  const [currentFile, setCurrentFile] = React.useState<File>()
+  const [currentFile, setCurrentFile] = React.useState<File | null>(null)
 
   const [openAccordions, setOpenAccordions] = React.useState<number[]>([])
   const [hiddenColumns, setHiddenColumns] = React.useState<number[]>([])
@@ -50,7 +52,7 @@ export default function Home() {
   const parseFile = async (file: File) => {
     console.time("parseFile")
     setData(file, [], [])
-    let data: string[][]
+    let data: string[][] = []
     let _headerRow: string[] = []
     let isHeaderSet = false
     if (file.name.toLowerCase().endsWith(".xlsx")) {
@@ -86,16 +88,41 @@ export default function Home() {
       // Somehow-Separated text
       const contentAsText: string = await readFileToString(file)
       const delimiter = detectDelimiter(contentAsText)
-      data = parse(contentAsText, { delimiter })
+      if (delimiter) {
+        data = parse(contentAsText, { delimiter })
+      }
       // console.log(data)
     }
 
-    if (!isHeaderSet) {
-      // TODO: Apply header row detection and synthetic generation if not present
-      _headerRow = data.shift()!
+    if (data.length) {
+      if (!isHeaderSet) {
+        const headerDetected = hasHeader(data)
+        console.log("headerDetected", headerDetected)
+        // header row detection and synthetic generation if not present
+        if (headerDetected) {
+          _headerRow = data.shift()!
+        } else {
+          _headerRow = data[0].map(
+            (v, i) => "col_" + `${i + 1}`.padStart(2, "0"),
+          )
+        }
+      }
+      setData(file, _headerRow, data)
+    } else {
+      // TODO: Better error handling
+      console.error("ERROR while parsing data")
+      setData(null, [], [])
     }
-    setData(file, _headerRow, data)
     console.timeEnd("parseFile")
+  }
+
+  const parseText = (text: string) => {
+    // A bit hacky, but easy way to re-use existing parseFile method
+    const blob = new Blob([text], { type: "text/plain" })
+    const syntheticFile = new File([blob], "CLIPBOARD", {
+      lastModified: new Date().getTime(),
+    })
+    parseFile(syntheticFile)
   }
 
   const onGenerateSampleData = () => {
@@ -114,7 +141,18 @@ export default function Home() {
     )
   }
 
-  const setData = (file: File, headerRow: string[], data: string[][]) => {
+  const setData = (
+    file: File | null,
+    headerRow: string[],
+    data: string[][],
+  ) => {
+    if (!file) {
+      document.title = title
+      setCurrentFile(null)
+      setHeaderRow([])
+      setAllRows([])
+      return
+    }
     document.title = file.name
     setCurrentFile(file)
     setHeaderRow(headerRow)
@@ -342,7 +380,18 @@ export default function Home() {
   ) : null
 
   return (
-    <main ref={drop} className="h-screen p-2">
+    <main
+      ref={drop}
+      className="h-screen p-2"
+      onPaste={(e) => {
+        // Do not want to replace current data in case of accidental paste
+        if (!currentFile) {
+          const contentAsText = e.clipboardData.getData("text")
+          // console.log(contentAsText)
+          parseText(contentAsText)
+        }
+      }}
+    >
       {(() => {
         switch (parsingState) {
           case "initial":
@@ -398,6 +447,9 @@ export default function Home() {
                       value={search}
                       onChange={(e) => {
                         setSearch(e.target.value)
+                      }}
+                      onPaste={(e) => {
+                        e.stopPropagation()
                       }}
                       placeholder="Search"
                     ></input>
@@ -468,7 +520,7 @@ function formatBytes(bytes: number, dp = 1): string {
   return bytes.toFixed(dp) + " " + units[u]
 }
 
-function detectDelimiter(input: string): string {
+function detectDelimiter(input: string): string | null {
   console.time("detectDelimiter")
   const supportedDelimiters = [",", ";", "|", "\t"]
   const counts: Record<string, number> = {}
@@ -482,7 +534,7 @@ function detectDelimiter(input: string): string {
   console.log("detected delimiter: ", maxEntry)
   console.timeEnd("detectDelimiter")
 
-  return maxEntry[0]
+  return maxEntry ? maxEntry[0] : null
 }
 
 type CountMap = Record<string, number>

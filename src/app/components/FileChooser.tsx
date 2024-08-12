@@ -26,7 +26,8 @@ export const FileChooser = (props: {
           </svg>
           <p className="mb-2 text-gray-600 text-3xl">
             <span className="font-semibold">Choose file</span> or{" "}
-            <span className="font-semibold">drag and drop</span>
+            <span className="font-semibold">drag & drop</span> or{" "}
+            <span className="font-semibold">paste</span>
           </p>
           <p className=" text-gray-500">CSV, TSV, XLSX, JSON, TXT</p>
         </div>
