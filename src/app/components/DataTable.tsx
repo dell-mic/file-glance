@@ -20,7 +20,7 @@ import "./DataTable.css"
 
 import { ColumnInfos } from "./ValueInspector"
 import { valueAsString } from "@/utils"
-import { Popover } from "./Popover"
+import { MenuPopover } from "./Popover"
 import useWindowDimensions from "../hooks/useWindowDimensions"
 import { SortSetting } from "../home-page"
 
@@ -327,25 +327,25 @@ export const DataTable = (props: {
       {
         text: "Copy column name",
         icon: <ClipboardDocumentCheckIcon />,
-        onSelect: (popoverColumnIndex: number) => {
-          navigator.clipboard.writeText(props.headerRow[popoverColumnIndex])
+        onSelect: () => {
+          navigator.clipboard.writeText(props.headerRow[popoverColumnIndex!])
         },
       },
       {
         text: "Copy values",
         icon: <ClipboardDocumentListIcon />,
-        onSelect: (popoverColumnIndex: number) => {
+        onSelect: () => {
           navigator.clipboard.writeText(
-            props.rows.map((row) => row[popoverColumnIndex]).join("\n"),
+            props.rows.map((row) => row[popoverColumnIndex!]).join("\n"),
           )
         },
       },
       {
         text: "Copy values (unique)",
         icon: <ClipboardDocumentListIcon />,
-        onSelect: (popoverColumnIndex: number) => {
+        onSelect: () => {
           navigator.clipboard.writeText(
-            uniq(props.rows.map((row) => row[popoverColumnIndex])).join("\n"),
+            uniq(props.rows.map((row) => row[popoverColumnIndex!])).join("\n"),
           )
         },
       },
@@ -354,46 +354,18 @@ export const DataTable = (props: {
 
   return (
     <div className="h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-sm">
-      <Popover
+      <MenuPopover
         id={"columnPopover"}
+        menuItems={popoverEntries}
         open={Boolean(popoverAnchorElement)}
         anchorEl={popoverAnchorElement}
         onClose={handlePopoverClose}
+        onSelect={() => setPopoverAnchorElement(null)}
         anchorOrigin={{
           vertical: "bottom",
           horizontal: "left",
         }}
-      >
-        <div className="" style={{ width: "260px" }}>
-          {popoverEntries.map((group, gi) => {
-            return (
-              <div
-                key={gi}
-                className="flex flex-col align-middle items-start py-1 border-gray-200"
-                style={{
-                  borderBottomWidth:
-                    gi === popoverEntries.length - 1 ? 0 : "1px",
-                }}
-              >
-                {group.map((menuEntry, mi) => (
-                  <button
-                    key={mi}
-                    className="flex items-center w-full text-sm text-left text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950"
-                    onPointerDown={() => {
-                      menuEntry.onSelect(popoverColumnIndex!)
-                      setPopoverAnchorElement(null)
-                    }}
-                  >
-                    <span className="mr-3 size-5">{menuEntry.icon}</span>
-
-                    {menuEntry.text}
-                  </button>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-      </Popover>
+      ></MenuPopover>
       {/* TODO: Last line hidden in case of horizontal scrolling */}
       <AutoSizer disableWidth>
         {({ height }) => (

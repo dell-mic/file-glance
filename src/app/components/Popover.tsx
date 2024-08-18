@@ -13,6 +13,17 @@ interface PopoverProps {
   children: React.ReactNode
 }
 
+interface MenuItem {
+  text: string
+  icon: React.ReactElement
+  onSelect: () => void
+}
+
+interface MenuPopoverProps extends Omit<PopoverProps, "children"> {
+  menuItems: MenuItem[][]
+  onSelect: (item: MenuItem) => void
+}
+
 export const Popover = ({
   id,
   open,
@@ -83,5 +94,41 @@ export const Popover = ({
       {children}
     </div>,
     document.body,
+  )
+}
+
+export const MenuPopover = (props: MenuPopoverProps) => {
+  const popoverEntries = props.menuItems
+
+  return (
+    <Popover {...props}>
+      <div className="" style={{ width: "260px" }}>
+        {popoverEntries.map((group, gi) => {
+          return (
+            <div
+              key={gi}
+              className="flex flex-col align-middle items-start py-1 border-gray-200"
+              style={{
+                borderBottomWidth: gi === popoverEntries.length - 1 ? 0 : "1px",
+              }}
+            >
+              {group.map((menuEntry, mi) => (
+                <button
+                  key={mi}
+                  className="flex items-center w-full text-sm text-left text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950"
+                  onPointerDown={() => {
+                    menuEntry.onSelect()
+                    props.onSelect(menuEntry)
+                  }}
+                >
+                  <span className="mr-3 size-5">{menuEntry.icon}</span>
+                  {menuEntry.text}
+                </button>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+    </Popover>
   )
 }

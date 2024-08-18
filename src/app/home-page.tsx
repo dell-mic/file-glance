@@ -6,6 +6,7 @@ import { maxBy, orderBy } from "lodash"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
+import { stringify as stringifyCSV } from "csv-stringify/browser/esm/sync"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
@@ -14,9 +15,15 @@ import {
   hasHeader,
   jsonToTable,
   readFileToString,
+  saveFile,
+  tableToJson,
+  tryParseJSONObject,
   valueAsString,
 } from "@/utils"
 import { title } from "@/constants"
+import { ArchiveBoxArrowDownIcon } from "@heroicons/react/24/outline"
+import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
+import { MenuPopover } from "./components/Popover"
 
 export interface SortSetting {
   columnIndex: number
@@ -32,6 +39,9 @@ export default function Home() {
   const [columnValueCounts, setColumnValueCounts] = React.useState<
     ColumnInfos[]
   >([])
+  const [popoverAnchorElement, setPopoverAnchorElement] =
+    React.useState<HTMLElement | null>(null)
+  const exportButtonRef = React.useRef(null)
 
   const [headerRow, setHeaderRow] = React.useState<Array<string>>([])
   const [allRows, setAllRows] = React.useState<any[][]>([])
@@ -41,6 +51,10 @@ export default function Home() {
   // const [columnValueCounts, setcColumnValueCounts] = React.useState<
   //   ColumnInfos[]
   // >([]);
+
+  const handlePopoverClose = () => {
+    setPopoverAnchorElement(null)
+  }
 
   const drop = React.useRef(null)
 
@@ -58,12 +72,12 @@ export default function Home() {
     if (file.name.toLowerCase().endsWith(".xlsx")) {
       const fileAsArrayBuffer = await file.arrayBuffer()
       const workbook = XLSX.read(fileAsArrayBuffer)
-      console.log("workbook.SheetNames", workbook.SheetNames)
+      // console.log("workbook.SheetNames", workbook.SheetNames)
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      console.log("firstSheet", firstSheet)
+      // console.log("firstSheet", firstSheet)
       data = XLSX.utils.sheet_to_json(firstSheet, {
         header: 1,
-        blankrows: true,
+        blankrows: false,
         defval: "",
       })
     } else if (file.name.toLowerCase().endsWith(".json")) {
@@ -89,7 +103,12 @@ export default function Home() {
       const contentAsText: string = await readFileToString(file)
       const delimiter = detectDelimiter(contentAsText)
       if (delimiter) {
-        data = parse(contentAsText, { delimiter })
+        data = parse(contentAsText, {
+          delimiter,
+          bom: true,
+          skip_empty_lines: true,
+          relax_column_count: true,
+        })
       }
       // console.log(data)
     }
@@ -117,9 +136,15 @@ export default function Home() {
   }
 
   const parseText = (text: string) => {
-    // A bit hacky, but easy way to re-use existing parseFile method
+    // detect if text looks like proper json
+    const isJson = tryParseJSONObject(text) !== false
+    // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
     const blob = new Blob([text], { type: "text/plain" })
-    const syntheticFile = new File([blob], "CLIPBOARD", {
+    let syntheticFileName = "CLIPBOARD"
+    if (isJson) {
+      syntheticFileName += ".json"
+    }
+    const syntheticFile = new File([blob], syntheticFileName, {
       lastModified: new Date().getTime(),
     })
     parseFile(syntheticFile)
@@ -354,6 +379,75 @@ export default function Home() {
     parsingState = "finished"
   }
 
+  const getExportFileName = (newEnding: string): string => {
+    return (
+      currentFile!.name.substring(
+        0,
+        currentFile!.name.lastIndexOf(".") > 0
+          ? currentFile!.name.lastIndexOf(".")
+          : currentFile!.name.length,
+      ) +
+      "." +
+      newEnding
+    )
+  }
+
+  const getExportData = (): any[][] => {
+    // Need to filter columns as they are still part of displayed data for index consistency
+    return [headerRow, ...displayedData].map((row) =>
+      row.filter((v, i) => !hiddenColumns.includes(i)),
+    )
+  }
+
+  const exportPopoverEntries = [
+    [
+      {
+        text: "Export as CSV",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: () => {
+          const fileName = getExportFileName("csv")
+          saveFile(
+            new Blob([
+              stringifyCSV(getExportData(), {
+                cast: {
+                  boolean: (v) => String(v),
+                },
+              }),
+            ]),
+            fileName,
+          )
+        },
+      },
+      {
+        text: "Export as XLSX",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: () => {
+          const fileName = getExportFileName("xlsx")
+          const workbook = XLSX.utils.book_new()
+          const worksheet = XLSX.utils.aoa_to_sheet(getExportData())
+          XLSX.utils.book_append_sheet(workbook, worksheet, fileName)
+          XLSX.writeFile(workbook, fileName, {
+            bookType: "xlsx",
+            compression: true,
+          })
+        },
+      },
+      {
+        text: "Export as JSON",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: () => {
+          const fileName = getExportFileName("json")
+          saveFile(
+            new Blob([
+              JSON.stringify(tableToJson(getExportData()), null, "\t"),
+            ]),
+            fileName,
+          )
+        },
+      },
+    ],
+  ]
+
   const clearFilterButton = isFiltered ? (
     <button
       onPointerDown={() => {
@@ -411,7 +505,7 @@ export default function Home() {
                   </span>
 
                   <button
-                    onClick={onGenerateSampleData}
+                    onPointerDown={onGenerateSampleData}
                     className="text-xl hover:bg-gray-100 text-gray-600 font-semibold py-2 px-4 rounded"
                   >
                     Load sample data
@@ -440,10 +534,31 @@ export default function Home() {
                     </span>
                     {clearFilterButton}
                   </div>
-                  <div>
+                  <div className="flex gap-1">
+                    <button
+                      ref={exportButtonRef}
+                      onPointerDown={() => {
+                        setPopoverAnchorElement(exportButtonRef.current)
+                      }}
+                      className="text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950 p-2 rounded-md"
+                    >
+                      <ArchiveBoxArrowDownIcon className="size-5" />
+                    </button>
+                    <MenuPopover
+                      id={"exportPopover"}
+                      menuItems={exportPopoverEntries}
+                      open={Boolean(popoverAnchorElement)}
+                      anchorEl={popoverAnchorElement}
+                      onClose={handlePopoverClose}
+                      onSelect={() => setPopoverAnchorElement(null)}
+                      anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "left",
+                      }}
+                    ></MenuPopover>
                     <input
                       type="search"
-                      className="min-w-52 bg-gray-50 border border-gray-300 text-gray-600 text-sm rounded-lg p-2"
+                      className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
                       value={search}
                       onChange={(e) => {
                         setSearch(e.target.value)

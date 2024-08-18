@@ -1,4 +1,5 @@
 import * as jschardet from "jschardet"
+import { set } from "lodash"
 
 export function valueAsString(v: any): string {
   // Convert false,0 to string, but null/undefined to empty string
@@ -40,6 +41,35 @@ export function jsonToTable(jsonArray: Array<any>): {
   const rows = flatArray.map((item) => header.map((h) => item[h] ?? ""))
 
   return { data: rows, headerRow: header }
+}
+
+export function tableToJson(data: any[][]) {
+  const headerRow = data.shift()!
+  const output = []
+  for (const [, row] of data.entries()) {
+    const rowAsObject = {}
+    for (const [columnIndex, value] of row.entries()) {
+      set(rowAsObject, headerRow[columnIndex], value)
+    }
+    output.push(rowAsObject)
+  }
+  return output
+}
+
+export const tryParseJSONObject = (jsonString: string): any => {
+  try {
+    var o = JSON.parse(jsonString)
+
+    // Handle non-exception-throwing cases:
+    // Neither JSON.parse(false) or JSON.parse(1234) throw errors, hence the type-checking,
+    // but... JSON.parse(null) returns null, and typeof null === "object",
+    // so we must check for that, too. Thankfully, null is falsey, so this suffices:
+    if (o && typeof o === "object") {
+      return o
+    }
+  } catch (e) {}
+
+  return false
 }
 
 function getRandomInt(min: number, max: number) {
@@ -299,6 +329,9 @@ export function hasHeader(data: any[][]): boolean {
   function calculateAverageSimilarity(row: number, numRows: number): number {
     let totalDistance = 0
 
+    // For single column/value comparisons do not exceed this limit to not get screwed by longer string length differences
+    // This way 0 distances where values follow the exact same pattern get implicilty more weight
+    const MaxDistance = 1
     for (let col = 0; col < data[0].length; col++) {
       let columnDistance = 0
 
@@ -308,7 +341,7 @@ export function hasHeader(data: any[][]): boolean {
           normalizeString(String(data[row][col])),
           normalizeString(String(data[r + 1][col])),
         )
-        columnDistance += distance
+        columnDistance += Math.min(distance, MaxDistance)
         // console.log(`Comparing '${data[row][col].toString()}' vs '${data[r + 1][col].toString()}': ${distance}`)
       }
 
@@ -327,20 +360,20 @@ export function hasHeader(data: any[][]): boolean {
     numRowsToCompare,
   )
 
-  // console.log('averageDistanceFirstRow', averageDistanceFirstRow)
-  // console.log()
+  console.log("averageDistanceFirstRow", averageDistanceFirstRow)
+  console.log()
 
-  const averageDistanceContentRows = calculateAverageSimilarity(
+  const averageDistanceSecondRow = calculateAverageSimilarity(
     1,
     numRowsToCompare - 1,
   )
-  // console.log('averageDistanceContentRows', averageDistanceContentRows)
-  // console.log()
+  console.log("averageDistanceSecondRow", averageDistanceSecondRow)
+  console.log()
 
   console.timeEnd("hasHeader")
 
   // Return true if the distance between rows 2-5 is lower than the distance of the first row to the rest
-  return averageDistanceContentRows < averageDistanceFirstRow
+  return averageDistanceSecondRow < averageDistanceFirstRow
 }
 
 /**
@@ -452,4 +485,14 @@ export function normalizeString(input: string): string {
     .replace(/[A-Z]/g, "A") // Replace all uppercase letters with 'A'
     .replace(/[a-z]/g, "a") // Replace all lowercase letters with 'a'
     .replace(/[0-9]/g, "0") // Replace all digits with '0'
+}
+
+export const saveFile = async (blob: Blob, name: string) => {
+  const a = document.createElement("a")
+  a.download = name
+  a.href = URL.createObjectURL(blob)
+  a.addEventListener("click", (e) => {
+    setTimeout(() => URL.revokeObjectURL(a.href), 30 * 1000)
+  })
+  a.click()
 }
