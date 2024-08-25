@@ -13,6 +13,7 @@ import {
 import {
   ArrowUpIcon as ArrowUpIconMicro,
   ArrowDownIcon as ArrowDownIconMicro,
+  CogIcon as CogIconMicro,
 } from "@heroicons/react/16/solid"
 import { BookmarkSlashIcon } from "@heroicons/react/24/outline"
 
@@ -23,10 +24,17 @@ import { valueAsString } from "@/utils"
 import { MenuPopover } from "./Popover"
 import useWindowDimensions from "../hooks/useWindowDimensions"
 import { SortSetting } from "../home-page"
+import { Modal } from "./Modal"
 
 export interface SortEvent {
   columnIndex: number
   sortOrder: "asc" | "desc" | "unsorted"
+}
+
+export interface TransformerAddedEvent {
+  columnIndex: number
+  transformerFunctionCode: string
+  transformer: Function
 }
 
 export const DataTable = (props: {
@@ -36,6 +44,7 @@ export const DataTable = (props: {
   hiddenColumns: number[]
   sortSetting: SortSetting | null
   onSortingChange: (e: SortEvent) => void
+  onTransformerAdded: (e: TransformerAddedEvent) => void
 }) => {
   const { width: windowWidth } = useWindowDimensions()
 
@@ -74,10 +83,15 @@ export const DataTable = (props: {
   const [popoverColumnIndex, setPopoverColumnIndex] = React.useState<
     number | null
   >(null)
-  // const [popoverCoordinates, setPopoverCoordinates] = React.useState<any>({
-  //   top: 0,
-  //   left: 0,
-  // })
+  const [transformModalOpen, setTransformModalOpen] =
+    React.useState<boolean>(false)
+  const [transformerFunctionCode, setTransformerFunctionCode] =
+    React.useState<string>("")
+
+  const handleTransformModalClose = () => {
+    setTransformModalOpen(false)
+    setTransformerFunctionCode("")
+  }
 
   const handlePopoverClose = () => {
     console.log("handlePopoverClose")
@@ -350,6 +364,15 @@ export const DataTable = (props: {
         },
       },
     ],
+    [
+      {
+        text: "Transform",
+        icon: <CogIconMicro />,
+        onSelect: () => {
+          setTransformModalOpen(true)
+        },
+      },
+    ],
   ]
 
   return (
@@ -366,6 +389,76 @@ export const DataTable = (props: {
           horizontal: "left",
         }}
       ></MenuPopover>
+      <Modal
+        id="columnTransformDialog"
+        open={transformModalOpen}
+        onClose={() => {
+          handleTransformModalClose()
+        }}
+      >
+        <div>
+          <h2 className="m-auto text-2xl text-gray-700">
+            Transform Column: {props.headerRow[popoverColumnIndex!]}
+          </h2>
+          <textarea
+            className="w-full"
+            value={transformerFunctionCode}
+            onChange={(e) => {
+              // TODO: Could be debounced
+              setTransformerFunctionCode(e.target.value)
+            }}
+          ></textarea>
+          <div className="flex justify-end gap-4">
+            <button onPointerDown={() => handleTransformModalClose()}>
+              Cancel
+            </button>
+            <button
+              className="font-semibold"
+              onPointerDown={() => {
+                let transformer = null
+
+                try {
+                  transformer = new Function(
+                    "value",
+                    "columnIndex",
+                    "rowIndex",
+                    "headerName",
+                    "allRows",
+                    "originalValue",
+                    transformerFunctionCode,
+                  )
+                } catch (err: any) {
+                  console.error(err.toString())
+                }
+
+                if (transformer) {
+                  props.onTransformerAdded({
+                    columnIndex: popoverColumnIndex!,
+                    transformerFunctionCode: transformerFunctionCode,
+                    transformer,
+                  })
+                  handleTransformModalClose()
+                } else {
+                  // TODO: Error handling
+                }
+
+                // props.rows.forEach((value, index, allRows) => {
+                //   console.log(
+                //     transformer(
+                //       value[popoverColumnIndex!],
+                //       index,
+                //       props.headerRow[popoverColumnIndex!],
+                //       allRows,
+                //     ),
+                //   )
+                // })
+              }}
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </Modal>
       {/* TODO: Last line hidden in case of horizontal scrolling */}
       <AutoSizer disableWidth>
         {({ height }) => (

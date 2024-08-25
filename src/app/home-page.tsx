@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { maxBy, orderBy } from "lodash"
+import { cloneDeep, maxBy, orderBy } from "lodash"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
@@ -10,6 +10,7 @@ import { stringify as stringifyCSV } from "csv-stringify/browser/esm/sync"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
+import { Modal } from "./components/Modal"
 import {
   generateSampleData,
   hasHeader,
@@ -30,15 +31,21 @@ export interface SortSetting {
   sortOrder: "asc" | "desc"
 }
 
+export interface Transformer {
+  columnIndex: number
+  transformerFunctionCode: string
+  transformer: Function
+}
+
 export default function Home() {
   const [dragging, setDragging] = React.useState(false)
   const [currentFile, setCurrentFile] = React.useState<File | null>(null)
 
   const [openAccordions, setOpenAccordions] = React.useState<number[]>([])
   const [hiddenColumns, setHiddenColumns] = React.useState<number[]>([])
-  const [columnValueCounts, setColumnValueCounts] = React.useState<
-    ColumnInfos[]
-  >([])
+  // const [columnValueCounts, setColumnValueCounts] = React.useState<
+  //   ColumnInfos[]
+  // >([])
   const [popoverAnchorElement, setPopoverAnchorElement] =
     React.useState<HTMLElement | null>(null)
   const exportButtonRef = React.useRef(null)
@@ -46,6 +53,7 @@ export default function Home() {
   const [headerRow, setHeaderRow] = React.useState<Array<string>>([])
   const [allRows, setAllRows] = React.useState<any[][]>([])
   const [filters, setFilters] = React.useState<Array<ColumnFilter>>([])
+  const [transformers, setTransformers] = React.useState<Array<Transformer>>([])
   const [search, setSearch] = React.useState<string>("")
   const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
   // const [columnValueCounts, setcColumnValueCounts] = React.useState<
@@ -183,9 +191,8 @@ export default function Home() {
     setHeaderRow(headerRow)
     setAllRows(data)
 
+    // TODO: More efficient way to find empty columns?
     const _columnValueCounts = countValues(headerRow, data)
-
-    setColumnValueCounts(_columnValueCounts)
 
     // Hide empty columns initially
     setHiddenColumns(
@@ -314,10 +321,41 @@ export default function Home() {
     setFilters(updatedFilters)
   }
 
+  // Apply transformers
+  let displayedData: any[][] = cloneDeep(allRows)
+  console.time("applyTransfomer")
+  console.log("transformers", transformers)
+  if (transformers.length) {
+    for (const [rowIndex, row] of displayedData.entries()) {
+      for (const columnIndex of row.keys()) {
+        for (const transformer of transformers) {
+          if (transformer.columnIndex === columnIndex) {
+            try {
+              row[columnIndex] = transformer.transformer(
+                row[columnIndex],
+                columnIndex,
+                rowIndex,
+                headerRow[columnIndex],
+                displayedData,
+                allRows[rowIndex][columnIndex],
+              )
+            } catch (err: any) {
+              // TODO: Better error handling
+              console.error("Error while applying transformer:", err.toString())
+            }
+          }
+        }
+      }
+    }
+  }
+  console.timeEnd("applyTransfomer")
+
+  const columnValueCounts = countValues(headerRow, displayedData)
+
   // Apply filter and sorting
   console.time("filterAndSorting")
-  let displayedData = filters.length
-    ? allRows.filter((row) => {
+  displayedData = filters.length
+    ? displayedData.filter((row) => {
         return filters.every((filter) =>
           filter.includedValues.some(
             (filterValue) =>
@@ -325,7 +363,7 @@ export default function Home() {
           ),
         )
       })
-    : allRows
+    : displayedData
 
   // When ':' is used search
   const searchSplits = search.split(":")
@@ -556,6 +594,12 @@ export default function Home() {
                         horizontal: "left",
                       }}
                     ></MenuPopover>
+                    {/* TODO:Implement export dialog */}
+                    <Modal id="exportDialog" open={false} onClose={() => {}}>
+                      <div className="m-auto text-2xl text-gray-700">
+                        <span>Export</span>
+                      </div>
+                    </Modal>
                     <input
                       type="search"
                       className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
@@ -599,6 +643,14 @@ export default function Home() {
                       } else {
                         setSortSetting(null)
                       }
+                    }}
+                    onTransformerAdded={(e) => {
+                      console.log("onTransformerAdded", e)
+                      setTransformers([...transformers, e])
+                      // Remove column filters if present as they might conflict with new values
+                      setFilters(
+                        filters.filter((f) => f.columnIndex !== e.columnIndex),
+                      )
                     }}
                   ></DataTable>
                 </div>

@@ -24,14 +24,14 @@ interface MenuPopoverProps extends Omit<PopoverProps, "children"> {
   onSelect: (item: MenuItem) => void
 }
 
-export const Popover = ({
+export const Popover: React.FC<PopoverProps> = ({
   id,
   open,
   onClose,
   anchorEl,
   anchorOrigin,
   children,
-}: PopoverProps) => {
+}) => {
   const popoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export const Popover = ({
   )
 }
 
-export const MenuPopover = (props: MenuPopoverProps) => {
+export const MenuPopover: React.FC<MenuPopoverProps> = (props) => {
   const popoverEntries = props.menuItems
 
   return (
