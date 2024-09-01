@@ -123,6 +123,7 @@ export interface ColumnInfos {
 }
 
 export interface ColumnValues {
+  value: any
   valueName: string
   valueCount: number
 }

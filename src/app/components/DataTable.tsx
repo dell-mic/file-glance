@@ -17,6 +17,11 @@ import {
 } from "@heroicons/react/16/solid"
 import { BookmarkSlashIcon } from "@heroicons/react/24/outline"
 
+import { highlight, languages } from "prismjs"
+import "prismjs/components/prism-clike"
+import "prismjs/components/prism-javascript"
+import "prismjs/themes/prism.css" //Example style, you can use another
+
 import "./DataTable.css"
 
 import { ColumnInfos } from "./ValueInspector"
@@ -25,6 +30,16 @@ import { MenuPopover } from "./Popover"
 import useWindowDimensions from "../hooks/useWindowDimensions"
 import { SortSetting } from "../home-page"
 import { Modal } from "./Modal"
+import Editor from "react-simple-code-editor"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./select"
+import { Button } from "./button"
 
 export interface SortEvent {
   columnIndex: number
@@ -37,6 +52,16 @@ export interface TransformerAddedEvent {
   transformer: Function
 }
 
+interface TransformerSampleResult {
+  value: any
+  result: string | null
+  error: string | null
+}
+interface TransformerValidation {
+  compilationError: string | null
+  sampleResults: TransformerSampleResult[]
+}
+
 export const DataTable = (props: {
   headerRow: string[]
   rows: Array<Array<any>>
@@ -46,6 +71,9 @@ export const DataTable = (props: {
   onSortingChange: (e: SortEvent) => void
   onTransformerAdded: (e: TransformerAddedEvent) => void
 }) => {
+  const TransformerFunctionComment =
+    "// (value, columnIndex, rowIndex, headerName, allRows, originalValue) =>\n"
+
   const { width: windowWidth } = useWindowDimensions()
 
   // console.log(rows)
@@ -86,11 +114,15 @@ export const DataTable = (props: {
   const [transformModalOpen, setTransformModalOpen] =
     React.useState<boolean>(false)
   const [transformerFunctionCode, setTransformerFunctionCode] =
-    React.useState<string>("")
+    React.useState<string>(TransformerFunctionComment)
+
+  const [transformerValidation, setTransformerValidation] =
+    React.useState<TransformerValidation | null>(null)
 
   const handleTransformModalClose = () => {
     setTransformModalOpen(false)
-    setTransformerFunctionCode("")
+    setTransformerFunctionCode(TransformerFunctionComment)
+    setTransformerValidation(null)
   }
 
   const handlePopoverClose = () => {
@@ -287,6 +319,111 @@ export const DataTable = (props: {
 
   // console.log("Datatable - anchorEl", anchorEl)
 
+  const handleTransformerSelected = (value: string) => {
+    switch (value) {
+      case "custom":
+        handleTransfomerCodeChanged(TransformerFunctionComment)
+        break
+      case "uppercase":
+        handleTransfomerCodeChanged("return value.toUpperCase()")
+        break
+      case "lowercase":
+        handleTransfomerCodeChanged("return value.toLowerCase()")
+        break
+      case "trim":
+        handleTransfomerCodeChanged("return value.trim()")
+        break
+      case "emaildomain":
+        handleTransfomerCodeChanged("return value.split('@')[1]")
+        break
+      case "parseint":
+        handleTransfomerCodeChanged("return parseInt(value, 10)")
+        break
+      case "parsefloat":
+        handleTransfomerCodeChanged("return parseFloat(value)")
+        break
+      default:
+        console.error("Unexpected select option value: " + value)
+        break
+    }
+  }
+
+  const compileTransformerCode = (code: string) => {
+    let transformer = null
+    let error = null
+    try {
+      transformer = new Function(
+        "value",
+        "columnIndex",
+        "rowIndex",
+        "headerName",
+        "allRows",
+        "originalValue",
+        code,
+      )
+    } catch (err: any) {
+      error = err.toString()
+    }
+
+    return {
+      transformer,
+      error,
+    }
+  }
+
+  const handleTransfomerCodeChanged = (code: string) => {
+    // TODO: Could be debounced?
+    // console.log("code", code)
+    setTransformerFunctionCode(code)
+
+    const { transformer, error } = compileTransformerCode(code)
+    if (transformer) {
+      const sampleValues = sampleValuesFromArray(
+        props.columnValueCounts
+          .find((cvc) => cvc.columnIndex === popoverColumnIndex)!
+          .columnValues.map((cv) => cv.value)
+          .slice()
+          .sort(),
+      )
+
+      const sampleResults = sampleValues.map((value, index) => {
+        let result
+        let error
+
+        try {
+          result = transformer(
+            value,
+            popoverColumnIndex,
+            index,
+            props.headerRow[popoverColumnIndex!],
+            value, // TODO: How to pass actual originalValue?
+          )
+        } catch (err: any) {
+          error = err.toString()
+        }
+
+        return {
+          value,
+          result,
+          error,
+        }
+      })
+
+      console.log("sampleResults", sampleResults)
+      setTransformerValidation({
+        compilationError: null,
+        sampleResults: sampleResults,
+      })
+    } else if (error) {
+      setTransformerValidation({
+        compilationError: error,
+        sampleResults: [],
+      })
+    } else {
+      throw "This should never happen: Should either get compiled transformer or error!"
+    }
+  }
+
   const popoverColumnsIsSorted =
     props.sortSetting && props.sortSetting.columnIndex === popoverColumnIndex
   const sortOrder = props.sortSetting?.sortOrder
@@ -370,6 +507,7 @@ export const DataTable = (props: {
         icon: <CogIconMicro />,
         onSelect: () => {
           setTransformModalOpen(true)
+          handleTransfomerCodeChanged(transformerFunctionCode)
         },
       },
     ],
@@ -391,45 +529,97 @@ export const DataTable = (props: {
       ></MenuPopover>
       <Modal
         id="columnTransformDialog"
+        closeOnClickOutside={false}
         open={transformModalOpen}
         onClose={() => {
           handleTransformModalClose()
         }}
       >
         <div>
-          <h2 className="m-auto text-2xl text-gray-700">
+          <h2 className="m-auto text-2xl text-gray-700 mb-4">
             Transform Column: {props.headerRow[popoverColumnIndex!]}
           </h2>
-          <textarea
-            className="w-full"
+          <Select onValueChange={handleTransformerSelected}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Transformer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="trim">Trim</SelectItem>
+              <SelectItem value="uppercase">Uppercase</SelectItem>
+              <SelectItem value="lowercase">Lowercase</SelectItem>
+              <SelectItem value="emaildomain">Domain from Email</SelectItem>
+              <SelectSeparator />
+              <SelectItem value="parseint">Parse Integer</SelectItem>
+              <SelectItem value="parsefloat">Parse Float</SelectItem>
+              <SelectSeparator />
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          <Editor
+            className="w-full h-20 bg-gray-100 border border-gray-700 border-solid font-mono my-2"
             value={transformerFunctionCode}
-            onChange={(e) => {
-              // TODO: Could be debounced
-              setTransformerFunctionCode(e.target.value)
-            }}
-          ></textarea>
-          <div className="flex justify-end gap-4">
-            <button onPointerDown={() => handleTransformModalClose()}>
-              Cancel
-            </button>
-            <button
-              className="font-semibold"
-              onPointerDown={() => {
-                let transformer = null
+            highlight={(code) => highlight(code, languages.js, "js")}
+            padding={5}
+            onValueChange={handleTransfomerCodeChanged}
+          ></Editor>
+          <div className="h-52 w-full mt-4">
+            <h3 className="text-xl">Preview</h3>
+            {transformerValidation?.compilationError && (
+              <div className="text-red-600 font-bold my-10 text-center">
+                Compilation Error: {transformerValidation?.compilationError}
+              </div>
+            )}
 
-                try {
-                  transformer = new Function(
-                    "value",
-                    "columnIndex",
-                    "rowIndex",
-                    "headerName",
-                    "allRows",
-                    "originalValue",
-                    transformerFunctionCode,
-                  )
-                } catch (err: any) {
-                  console.error(err.toString())
-                }
+            <table
+              className="w-full border-collapse table-fixed text-sm"
+              style={{
+                display: transformerValidation?.compilationError
+                  ? "none"
+                  : "table",
+              }}
+            >
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-2 py-1 text-left">
+                    Value
+                  </th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">
+                    Result
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {transformerValidation?.sampleResults.map((sample, index) => (
+                  <tr key={index} className="even:bg-gray-100 font-mono">
+                    <td className="border border-gray-300 px-2 py-1">
+                      {JSON.stringify(sample.value)}
+                    </td>
+                    <td
+                      className={`border border-gray-300 px-2 py-1 ${
+                        sample.error ? "text-red-600" : "text-green-600"
+                      }`}
+                    >
+                      {sample.error
+                        ? sample.error
+                        : JSON.stringify(sample.result)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-4 mt-4">
+            <Button
+              variant="ghost"
+              onPointerDown={() => handleTransformModalClose()}
+            >
+              Cancel
+            </Button>
+            <Button
+              onPointerDown={() => {
+                const { transformer } = compileTransformerCode(
+                  transformerFunctionCode,
+                )
 
                 if (transformer) {
                   props.onTransformerAdded({
@@ -441,21 +631,10 @@ export const DataTable = (props: {
                 } else {
                   // TODO: Error handling
                 }
-
-                // props.rows.forEach((value, index, allRows) => {
-                //   console.log(
-                //     transformer(
-                //       value[popoverColumnIndex!],
-                //       index,
-                //       props.headerRow[popoverColumnIndex!],
-                //       allRows,
-                //     ),
-                //   )
-                // })
               }}
             >
               Apply
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
@@ -488,4 +667,14 @@ function estimateColumnWidthPx(valueMaxLength: number): number {
   } else {
     return 192
   }
+}
+
+function sampleValuesFromArray(data: any[]) {
+  if (data.length <= 5) return data
+
+  const beginning = data.slice(0, 2)
+  const middle = [data[Math.floor((data.length - 1) / 2)]]
+  const ending = data.slice(-2)
+
+  return [...beginning, ...middle, ...ending]
 }

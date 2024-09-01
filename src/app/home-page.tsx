@@ -342,6 +342,7 @@ export default function Home() {
             } catch (err: any) {
               // TODO: Better error handling
               console.error("Error while applying transformer:", err.toString())
+              row[columnIndex] = err.toString()
             }
           }
         }
@@ -485,6 +486,8 @@ export default function Home() {
       },
     ],
   ]
+
+  // console.log(displayedData)
 
   const clearFilterButton = isFiltered ? (
     <button
@@ -704,7 +707,12 @@ function detectDelimiter(input: string): string | null {
   return maxEntry ? maxEntry[0] : null
 }
 
-type CountMap = Record<string, number>
+type ValuInfos = {
+  valueCount: number
+  value: any
+}
+
+type CountMap = Record<string, ValuInfos>
 
 function countValues(headers: string[], input: string[][]): ColumnInfos[] {
   console.time("countValues")
@@ -714,8 +722,10 @@ function countValues(headers: string[], input: string[][]): ColumnInfos[] {
     // console.log(row);
     row.forEach((value, valueIndex) => {
       // const currentColumn = headers[valueIndex];
-      countsPerColumn[valueIndex][value] =
-        (countsPerColumn[valueIndex][value] || 0) + 1
+      countsPerColumn[valueIndex][value] = {
+        valueCount: (countsPerColumn[valueIndex][value]?.valueCount || 0) + 1,
+        value: value, // Preserve original value (w/o converting to string)
+      }
     })
   })
 
@@ -724,7 +734,8 @@ function countValues(headers: string[], input: string[][]): ColumnInfos[] {
     const columnName = headers[columnIndex]
     const columnValues = Object.entries(v).map((e) => ({
       valueName: e[0],
-      valueCount: e[1],
+      valueCount: e[1].valueCount,
+      value: e[1].value,
     }))
     const valuesMaxLength = Math.max(
       0,
