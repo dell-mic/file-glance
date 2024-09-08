@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "./select"
 import { Button } from "./button"
+import { toast } from "@/hooks/use-toast"
 
 export interface SortEvent {
   columnIndex: number
@@ -171,8 +172,10 @@ export const DataTable = (props: {
                   width: sColumnWidths[vi],
                 }}
                 onClick={() => {
-                  // TODO: Should show info
                   navigator.clipboard.writeText(_valueAsString)
+                  toast({
+                    title: "Value copied to clipboard",
+                  })
                 }}
               >
                 {valueCell}

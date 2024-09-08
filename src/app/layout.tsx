@@ -4,6 +4,7 @@ import { Roboto, Roboto_Mono } from "next/font/google"
 import "./globals.css"
 import Script from "next/script"
 import { title } from "@/constants"
+import { Toaster } from "./components/toaster"
 
 const roboto_mono = Roboto_Mono({
   subsets: ["latin"],
@@ -54,7 +55,8 @@ export default function RootLayout({
       <body
         className={`${roboto.className} ${roboto.variable} ${roboto_mono.variable}`}
       >
-        {children}
+        <main>{children}</main>
+        <Toaster />
       </body>
     </html>
   )

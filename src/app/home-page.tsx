@@ -25,6 +25,7 @@ import { title } from "@/constants"
 import { ArchiveBoxArrowDownIcon } from "@heroicons/react/24/outline"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
 import { MenuPopover } from "./components/Popover"
+import { useToast } from "@/hooks/use-toast"
 
 export interface SortSetting {
   columnIndex: number
@@ -38,6 +39,8 @@ export interface Transformer {
 }
 
 export default function Home() {
+  const { toast } = useToast()
+
   const [dragging, setDragging] = React.useState(false)
   const [currentFile, setCurrentFile] = React.useState<File | null>(null)
 
@@ -77,6 +80,7 @@ export default function Home() {
     let data: any[][] = []
     let _headerRow: string[] = []
     let isHeaderSet = false
+    let errorMessage = ""
     if (file.name.toLowerCase().endsWith(".xlsx")) {
       const fileAsArrayBuffer = await file.arrayBuffer()
       const workbook = XLSX.read(fileAsArrayBuffer)
@@ -103,20 +107,23 @@ export default function Home() {
       } else {
         data = []
         _headerRow = []
-        // TODO: Better error handling
-        console.error("No array in JSON found")
+        errorMessage = "No array in JSON found"
       }
     } else {
       // Somehow-Separated text
       const contentAsText: string = await readFileToString(file)
       const delimiter = detectDelimiter(contentAsText)
       if (delimiter) {
-        data = parse(contentAsText, {
-          delimiter,
-          bom: true,
-          skip_empty_lines: true,
-          relax_column_count: true,
-        })
+        try {
+          data = parse(contentAsText, {
+            delimiter,
+            bom: true,
+            skip_empty_lines: true,
+            relax_column_count: true,
+          })
+        } catch (err) {
+          errorMessage = "Parsing failed"
+        }
       }
       // console.log(data)
     }
@@ -143,10 +150,19 @@ export default function Home() {
         }
       }
 
+      toast({
+        title: file.name + " parsed",
+        description: data.length + " lines found",
+        // variant: "success", // TODO: Wait for support
+      })
       setData(file, _headerRow, data)
     } else {
-      // TODO: Better error handling
-      console.error("ERROR while parsing data")
+      console.error(errorMessage)
+      toast({
+        title: "File not supported!",
+        description: errorMessage,
+        variant: "destructive",
+      })
       setData(null, [], [])
     }
     console.timeEnd("parseFile")
