@@ -342,6 +342,11 @@ export const DataTable = (props: {
       case "parsefloat":
         handleTransfomerCodeChanged("return parseFloat(value)")
         break
+      case "parse_unix_ts":
+        handleTransfomerCodeChanged(
+          "return new Date(Number(value) * 1000).toISOString()",
+        )
+        break
       default:
         console.error("Unexpected select option value: " + value)
         break
@@ -551,6 +556,9 @@ export const DataTable = (props: {
               <SelectSeparator />
               <SelectItem value="parseint">Parse Integer</SelectItem>
               <SelectItem value="parsefloat">Parse Float</SelectItem>
+              <SelectItem value="parse_unix_ts">
+                Parse UNIX Timestamp
+              </SelectItem>
               <SelectSeparator />
               <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
