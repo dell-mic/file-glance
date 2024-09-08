@@ -74,7 +74,7 @@ export default function Home() {
   const parseFile = async (file: File) => {
     console.time("parseFile")
     setData(file, [], [])
-    let data: string[][] = []
+    let data: any[][] = []
     let _headerRow: string[] = []
     let isHeaderSet = false
     if (file.name.toLowerCase().endsWith(".xlsx")) {
@@ -122,6 +122,7 @@ export default function Home() {
     }
 
     if (data.length) {
+      const longestRowLength = maxBy(data, (d) => d.length)!.length
       if (!isHeaderSet) {
         const headerDetected = hasHeader(data)
         console.log("headerDetected", headerDetected)
@@ -129,11 +130,19 @@ export default function Home() {
         if (headerDetected) {
           _headerRow = data.shift()!
         } else {
-          _headerRow = data[0].map(
-            (v, i) => "col_" + `${i + 1}`.padStart(2, "0"),
+          _headerRow = Array.from(Array(longestRowLength).keys()).map(
+            (i) => "col_" + `${i + 1}`.padStart(2, "0"),
           )
         }
       }
+
+      // Fill shorter rows with null values if needed
+      for (const row of data) {
+        if (row.length < longestRowLength) {
+          row.push(...Array(longestRowLength - row.length).fill(null))
+        }
+      }
+
       setData(file, _headerRow, data)
     } else {
       // TODO: Better error handling
