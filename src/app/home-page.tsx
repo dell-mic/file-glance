@@ -26,6 +26,7 @@ import { ArchiveBoxArrowDownIcon } from "@heroicons/react/24/outline"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
 import { MenuPopover } from "./components/Popover"
 import { useToast } from "@/hooks/use-toast"
+import { isMarkdownTable, parseMarkdownTable } from "@/markdownUtils"
 
 export interface SortSetting {
   columnIndex: number
@@ -109,9 +110,21 @@ export default function Home() {
         _headerRow = []
         errorMessage = "No array in JSON found"
       }
-    } else {
-      // Somehow-Separated text
+    } else if (file.name.toLowerCase().endsWith(".md")) {
       const contentAsText: string = await readFileToString(file)
+
+      const markdownParsinResult = parseMarkdownTable(contentAsText)
+      data = markdownParsinResult.rows
+      _headerRow = markdownParsinResult.headerRow
+      isHeaderSet = true
+      console.log(
+        "Parsed as markdown with headers:",
+        markdownParsinResult.headerRow,
+      )
+    } else {
+      const contentAsText: string = await readFileToString(file)
+
+      // Assume somehow-Separated text
       const delimiter = detectDelimiter(contentAsText)
       if (delimiter) {
         try {
@@ -125,6 +138,7 @@ export default function Home() {
           errorMessage = "Parsing failed"
         }
       }
+
       // console.log(data)
     }
 
@@ -176,6 +190,10 @@ export default function Home() {
     let syntheticFileName = "CLIPBOARD"
     if (isJson) {
       syntheticFileName += ".json"
+    } else if (isMarkdownTable(text)) {
+      syntheticFileName += ".md"
+    } else {
+      // If no ending parsing logic will attempt CSV parings
     }
     const syntheticFile = new File([blob], syntheticFileName, {
       lastModified: new Date().getTime(),
