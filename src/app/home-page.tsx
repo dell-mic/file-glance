@@ -167,7 +167,7 @@ export default function Home() {
       toast({
         title: file.name + " parsed",
         description: data.length + " lines found",
-        // variant: "success", // TODO: Wait for support
+        variant: "success",
       })
       setData(file, _headerRow, data)
     } else {
@@ -175,7 +175,7 @@ export default function Home() {
       toast({
         title: "File not supported!",
         description: errorMessage,
-        variant: "destructive",
+        variant: "error",
       })
       setData(null, [], [])
     }
