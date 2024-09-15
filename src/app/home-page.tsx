@@ -150,6 +150,10 @@ export default function Home() {
         // header row detection and synthetic generation if not present
         if (headerDetected) {
           _headerRow = data.shift()!
+          // Fill empty headers
+          _headerRow = _headerRow.map((h, i) =>
+            h ? h : "col_" + `${i + 1}`.padStart(2, "0"),
+          )
         } else {
           _headerRow = Array.from(Array(longestRowLength).keys()).map(
             (i) => "col_" + `${i + 1}`.padStart(2, "0"),
