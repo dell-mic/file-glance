@@ -410,11 +410,11 @@ export const DataTable = (props: {
               <tbody>
                 {transformerValidation?.sampleResults.map((sample, index) => (
                   <tr key={index} className="even:bg-gray-100 font-mono">
-                    <td className="border border-gray-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1 overflow-hidden">
                       {JSON.stringify(sample.value)}
                     </td>
                     <td
-                      className={`border border-gray-300 px-2 py-1 ${
+                      className={`border border-gray-300 px-2 py-1 overflow-hidden ${
                         sample.error ? "text-red-600" : "text-green-600"
                       }`}
                     >
