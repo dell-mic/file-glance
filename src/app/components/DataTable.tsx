@@ -1,6 +1,5 @@
 import { sum, uniq } from "lodash"
-import React, { createContext, forwardRef } from "react"
-import { FixedSizeList } from "react-window"
+import React from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 
 import {
@@ -10,11 +9,7 @@ import {
   ArrowDownIcon,
 } from "@heroicons/react/20/solid"
 
-import {
-  ArrowUpIcon as ArrowUpIconMicro,
-  ArrowDownIcon as ArrowDownIconMicro,
-  CogIcon as CogIconMicro,
-} from "@heroicons/react/16/solid"
+import { CogIcon as CogIconMicro } from "@heroicons/react/16/solid"
 import { BookmarkSlashIcon } from "@heroicons/react/24/outline"
 
 import { highlight, languages } from "prismjs"
@@ -25,7 +20,6 @@ import "prismjs/themes/prism.css" //Example style, you can use another
 import "./DataTable.css"
 
 import { ColumnInfos } from "./ValueInspector"
-import { valueAsString } from "@/utils"
 import { MenuPopover } from "./Popover"
 import useWindowDimensions from "../hooks/useWindowDimensions"
 import { SortSetting } from "../home-page"
@@ -40,7 +34,8 @@ import {
   SelectValue,
 } from "./select"
 import { Button } from "./button"
-import { toast } from "@/hooks/use-toast"
+import { innerElementType, Row, StickyList } from "./VirtualizedList"
+import { useToast } from "@/hooks/use-toast"
 
 export interface SortEvent {
   columnIndex: number
@@ -76,6 +71,8 @@ export const DataTable = (props: {
     "// (value, columnIndex, rowIndex, headerName, allRows, originalValue) =>\n"
 
   const { width: windowWidth } = useWindowDimensions()
+
+  const { toast } = useToast()
 
   // console.log(rows)
   const rows = [props.headerRow, ...props.rows]
@@ -127,198 +124,9 @@ export const DataTable = (props: {
   }
 
   const handlePopoverClose = () => {
-    console.log("handlePopoverClose")
+    // console.log("handlePopoverClose")
     setPopoverAnchorElement(null)
   }
-
-  // Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
-  // See also: https://github.com/bvaughn/react-window?tab=readme-ov-file
-  const StickyListContext = createContext([])
-  StickyListContext.displayName = "StickyListContext"
-
-  // @ts-ignore
-  const ItemWrapper = ({ data, index, style }) => {
-    const { ItemRenderer, stickyIndices } = data
-    if (stickyIndices && stickyIndices.includes(index)) {
-      return null
-    }
-    return <ItemRenderer index={index} style={style} />
-  }
-
-  // @ts-ignore
-  const Row = ({ index, style }) => {
-    const rowClasses = "flex flex-row" + (index % 2 === 0 ? " bg-gray-100" : "")
-    // console.log("row index:", index)
-    // console.log("row:", rows[index])
-    return (
-      <div style={style} className={rowClasses}>
-        {rows[index].map((v, vi) => {
-          if (hiddenColumns.includes(vi)) {
-            return null
-          } else {
-            const _valueAsString = valueAsString(v)
-            let valueCell
-            if (_valueAsString) {
-              valueCell = _valueAsString
-            } else {
-              valueCell = <span className="text-gray-500 font-mono">empty</span>
-            }
-            return (
-              <span
-                key={vi}
-                title={_valueAsString.length > 5 ? _valueAsString : undefined}
-                className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
-                style={{
-                  width: sColumnWidths[vi],
-                }}
-                onClick={() => {
-                  navigator.clipboard.writeText(_valueAsString)
-                  toast({
-                    title: "Value copied to clipboard",
-                  })
-                }}
-              >
-                {valueCell}
-              </span>
-            )
-          }
-        })}
-      </div>
-    )
-  }
-
-  // @ts-ignore
-  const StickyRow = ({ index, style }) => {
-    // const buttonRef = React.useRef<HTMLButtonElement>(null)
-
-    const cellRef = React.useRef<Array<HTMLElement | null>>([])
-    // you can access the elements with itemsRef.current[n]
-
-    React.useEffect(() => {
-      cellRef.current = cellRef.current.slice(0, props.headerRow.length)
-    }, [])
-
-    const SortIndicator = ({
-      sortOrder,
-    }: {
-      sortOrder: "asc" | "desc" | null
-    }) => {
-      if (sortOrder === "asc") {
-        return <ArrowUpIconMicro className="size-3 ml-0.5 text-gray-700" />
-      } else if (sortOrder === "desc") {
-        return <ArrowDownIconMicro className="size-3 ml-0.5 text-gray-700" />
-      } else {
-        return null
-      }
-    }
-
-    return (
-      <div className="sticky flex flex-row" style={style}>
-        {props.headerRow.map((v: string, vi: number) => {
-          return props.hiddenColumns.includes(vi) ? null : (
-            <div
-              key={vi}
-              ref={(el) => {
-                cellRef.current[vi] = el
-              }}
-              className="group flex flex-row justify-between p-0.5 bg-gray-200"
-              style={{
-                width: sColumnWidths[vi],
-              }}
-              title={v}
-            >
-              <span
-                className="flex flex-row flex-grow cursor-pointer select-none items-center text-xs font-medium overflow-hidden whitespace-nowrap overflow-ellipsis"
-                onPointerDown={() => {
-                  let newSortOrder: SortEvent["sortOrder"] = "asc"
-                  if (props.sortSetting?.columnIndex === vi) {
-                    if (props.sortSetting?.sortOrder === "desc") {
-                      newSortOrder = "unsorted"
-                    } else if (props.sortSetting?.sortOrder === "asc") {
-                      newSortOrder = "desc"
-                    }
-                  }
-
-                  props.onSortingChange({
-                    columnIndex: vi,
-                    sortOrder: newSortOrder,
-                  })
-                  setPopoverAnchorElement(null)
-                }}
-              >
-                {v}
-                <SortIndicator
-                  sortOrder={
-                    props.sortSetting?.columnIndex === vi
-                      ? props.sortSetting.sortOrder
-                      : null
-                  }
-                />
-              </span>
-
-              <button
-                className="px-1 text-gray-800 hidden group-hover:block hover:text-black"
-                onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
-                  if (!e.button) {
-                    // console.log(e)
-                    e.stopPropagation()
-                    setPopoverAnchorElement(cellRef.current[vi])
-                    setPopoverColumnIndex(vi)
-                  }
-                }}
-              >
-                <svg
-                  className="w-3 h-3"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
-                </svg>
-              </button>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  // @ts-ignore
-  const StickyList = ({ children, stickyIndices, ...rest }) => (
-    <StickyListContext.Provider
-      // @ts-ignore
-      value={{ ItemRenderer: children, stickyIndices }}
-    >
-      {/* @ts-ignore */}
-      <FixedSizeList
-        itemData={{ ItemRenderer: children, stickyIndices }}
-        {...rest}
-      >
-        {ItemWrapper}
-      </FixedSizeList>
-    </StickyListContext.Provider>
-  )
-
-  // @ts-ignore
-  const innerElementType = forwardRef(({ children, ...rest }, ref) => (
-    <StickyListContext.Consumer>
-      {/* @ts-ignore */}
-      {({ stickyIndices }) => (
-        // @ts-ignore
-        <div ref={ref} {...rest}>
-          {stickyIndices.map((index: number) => (
-            <StickyRow
-              index={index}
-              key={index}
-              style={{ top: index * 20, left: 0, width: "100%", height: 20 }}
-            />
-          ))}
-
-          {children}
-        </div>
-      )}
-    </StickyListContext.Consumer>
-  ))
-  innerElementType.displayName = "ListInner"
 
   // console.log("Datatable - anchorEl", anchorEl)
 
@@ -652,6 +460,7 @@ export const DataTable = (props: {
       {/* TODO: Last line hidden in case of horizontal scrolling */}
       <AutoSizer disableWidth>
         {({ height }) => (
+          // @ts-ignore
           <StickyList
             className=""
             innerElementType={innerElementType}
@@ -661,6 +470,37 @@ export const DataTable = (props: {
             itemSize={20}
             overscanCount={50}
             width={tableWidth}
+            hiddenColumns={hiddenColumns}
+            rows={rows}
+            headerRow={props.headerRow}
+            columnsWidths={sColumnWidths}
+            sortSetting={props.sortSetting}
+            onHeaderPressed={({ columnIndex }) => {
+              let newSortOrder: SortEvent["sortOrder"] = "asc"
+              if (props.sortSetting?.columnIndex === columnIndex) {
+                if (props.sortSetting?.sortOrder === "desc") {
+                  newSortOrder = "unsorted"
+                } else if (props.sortSetting?.sortOrder === "asc") {
+                  newSortOrder = "desc"
+                }
+              }
+
+              props.onSortingChange({
+                columnIndex: columnIndex,
+                sortOrder: newSortOrder,
+              })
+              setPopoverAnchorElement(null)
+            }}
+            onHeaderMenuPressed={({ columnIndex, headerElement }) => {
+              setPopoverAnchorElement(headerElement)
+              setPopoverColumnIndex(columnIndex)
+            }}
+            onValueCellPressed={({ valueAsString }) => {
+              navigator.clipboard.writeText(valueAsString)
+              toast({
+                title: "Value copied to clipboard",
+              })
+            }}
           >
             {Row}
           </StickyList>
@@ -671,9 +511,9 @@ export const DataTable = (props: {
 }
 
 function estimateColumnWidthPx(valueMaxLength: number): number {
-  if (valueMaxLength <= 5) {
+  if (valueMaxLength <= 6) {
     return 64
-  } else if (valueMaxLength <= 12) {
+  } else if (valueMaxLength <= 15) {
     return 128
   } else {
     return 192
