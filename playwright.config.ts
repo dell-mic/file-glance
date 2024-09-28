@@ -33,6 +33,9 @@ export default defineConfig({
   },
 
   expect: {
+    toHaveScreenshot: {
+      maxDiffPixels: 500, // Should ignore e.g. whether horizonatal scrollbar is rendered or not
+    },
     toMatchSnapshot: {
       maxDiffPixels: 500, // Should ignore e.g. whether horizonatal scrollbar is rendered or not
     },

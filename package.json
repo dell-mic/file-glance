@@ -10,7 +10,8 @@
     "lint": "next lint",
     "typeCheck": "tsc --noEmit ",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "@heroicons/react": "2.1.5",
