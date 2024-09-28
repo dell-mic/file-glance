@@ -462,6 +462,7 @@ export const DataTable = (props: {
         {({ height }) => (
           // @ts-ignore
           <StickyList
+            data-testid="dataTable"
             className=""
             innerElementType={innerElementType}
             stickyIndices={[0]}

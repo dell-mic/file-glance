@@ -6,7 +6,7 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "check": "npm run format:check &&npm run typeCheck && npm run next lint && bun test",
+    "check": "npm run format:check &&npm run typeCheck && npm run next lint && bun test test/unit",
     "lint": "next lint",
     "typeCheck": "tsc --noEmit ",
     "format": "prettier . --write",
@@ -36,6 +36,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@playwright/test": "1.47.2",
     "@types/bun": "latest",
     "@types/lodash": "4.17.7",
     "@types/node": "22.5.5",

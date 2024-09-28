@@ -562,7 +562,7 @@ export default function Home() {
   ) : null
 
   return (
-    <main
+    <div
       ref={drop}
       className="h-screen p-2"
       onPaste={(e) => {
@@ -652,6 +652,7 @@ export default function Home() {
                     </Modal>
                     <input
                       type="search"
+                      data-testid="searchInput"
                       className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
                       value={search}
                       onChange={(e) => {
@@ -708,7 +709,7 @@ export default function Home() {
             )
         }
       })()}
-    </main>
+    </div>
   )
 }
 
