@@ -108,7 +108,7 @@ const StickyRow = ({
 
   React.useEffect(() => {
     cellRef.current = cellRef.current.slice(0, headerRow.length)
-  }, [])
+  }, [headerRow])
 
   const SortIndicator = ({
     sortOrder,
