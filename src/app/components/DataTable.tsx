@@ -375,6 +375,7 @@ export const DataTable = (props: {
             </SelectContent>
           </Select>
           <Editor
+            data-testid={`transformCodeInput`}
             className="w-full h-20 bg-gray-100 border border-gray-700 border-solid font-mono my-2"
             value={transformerFunctionCode}
             highlight={(code) => highlight(code, languages.js, "js")}
@@ -429,12 +430,14 @@ export const DataTable = (props: {
           </div>
           <div className="flex justify-end gap-4 mt-4">
             <Button
+              data-testid="btnTransfomCancel"
               variant="ghost"
               onPointerDown={() => handleTransformModalClose()}
             >
               Cancel
             </Button>
             <Button
+              data-testid="btnTransfomApply"
               onPointerDown={() => {
                 const { transformer } = compileTransformerCode(
                   transformerFunctionCode,

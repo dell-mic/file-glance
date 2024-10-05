@@ -3,6 +3,7 @@
 import React, { ReactNode } from "react"
 
 interface AccordionProps {
+  id: string
   header: string
   subHeader: string
   open: boolean
@@ -13,6 +14,7 @@ interface AccordionProps {
 }
 
 const Accordion: React.FC<AccordionProps> = ({
+  id,
   header,
   subHeader,
   open,
@@ -23,6 +25,7 @@ const Accordion: React.FC<AccordionProps> = ({
 }) => {
   return (
     <div
+      data-testid={id}
       className="border border-gray-300 rounded-md shadow-sm"
       style={{
         opacity: columnVisible ? 1 : 0.7,

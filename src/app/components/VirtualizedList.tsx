@@ -130,6 +130,7 @@ const StickyRow = ({
         return hiddenColumns.includes(vi) ? null : (
           <div
             key={vi}
+            data-testid={`header_${vi}_${v}`}
             ref={(el) => {
               cellRef.current[vi] = el
             }}
@@ -156,6 +157,7 @@ const StickyRow = ({
             </span>
 
             <button
+              data-testid={`headerBtn_${vi}_${v}`}
               className="px-1 text-gray-800 hidden group-hover:block hover:text-black"
               onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
                 if (!e.button) {

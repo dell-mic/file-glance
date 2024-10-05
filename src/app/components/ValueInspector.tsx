@@ -20,12 +20,16 @@ export const ValuesInspector = (props: {
 
   const ValuesDisplayedInitially = 50
 
+  const isEffectivlyFiltered = props.columnValueCounts.some((ci) =>
+    ci.columnValues.some((cv) => cv.valueCountTotal !== cv.valueCountFiltered),
+  )
+
   return (
     <div className="w-96 flex flex-shrink-0 flex-col gap-2 mb-2 pr-1 overflow-y-auto">
       {props.columnValueCounts.map((column) => {
         const columnValues = orderBy(
           column.columnValues,
-          ["valueCount", "valueName"],
+          ["valueCountTotal", "valueName"],
           ["desc", "asc"],
         )
         return (
@@ -43,6 +47,7 @@ export const ValuesInspector = (props: {
               column.columnIndex,
             )}
             key={`${column.columnIndex}_${column.columnName}`}
+            id={`valueInspector_${column.columnIndex}_${column.columnName}`}
           >
             <div className="py-1">
               {columnValues
@@ -62,10 +67,17 @@ export const ValuesInspector = (props: {
                       (fValue) => fValue === columnValue.valueName,
                     )
 
+                  const displayedValueCounts = isEffectivlyFiltered
+                    ? `${columnValue.valueCountFiltered}\u2009/\u2009${columnValue.valueCountTotal}`
+                    : `${columnValue.valueCountTotal}`
+
                   return (
                     <div
                       key={`${column.columnIndex}_${columnValue.valueName}`}
                       className="text-sm"
+                      style={{
+                        opacity: columnValue.valueCountFiltered ? 1 : 0.7,
+                      }}
                     >
                       <a
                         href="#"
@@ -88,7 +100,9 @@ export const ValuesInspector = (props: {
                       >
                         {columnValue.valueName || "empty"}
                       </a>
-                      <span className="text-gray-500">{` ${columnValue.valueCount}`}</span>
+                      <span className="text-gray-500 ml-2">
+                        {displayedValueCounts}
+                      </span>
                     </div>
                   )
                 })}
@@ -125,5 +139,6 @@ export interface ColumnInfos {
 export interface ColumnValues {
   value: any
   valueName: string
-  valueCount: number
+  valueCountTotal: number
+  valueCountFiltered: number
 }

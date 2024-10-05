@@ -239,7 +239,7 @@ export default function Home() {
     setAllRows(data)
 
     // TODO: More efficient way to find empty columns?
-    const _columnValueCounts = countValues(headerRow, data)
+    const _columnValueCounts = countValues(headerRow, data, [])
 
     // Hide empty columns initially
     setHiddenColumns(
@@ -398,11 +398,9 @@ export default function Home() {
   }
   console.timeEnd("applyTransfomer")
 
-  const columnValueCounts = countValues(headerRow, displayedData)
-
   // Apply filter and sorting
   console.time("filterAndSorting")
-  displayedData = filters.length
+  let displayedDataFiltered = filters.length
     ? displayedData.filter((row) => {
         return filters.every((filter) =>
           filter.includedValues.some(
@@ -415,32 +413,36 @@ export default function Home() {
 
   // When ':' is used search
   const searchSplits = search.split(":")
-  const searchColumn = columnValueCounts.find(
-    (ci) => ci.columnName === searchSplits[0],
+  const searchColumnIndex = headerRow.findIndex(
+    (header) => header === searchSplits[0],
   )
-  const isColumnSearch = searchSplits.length > 1 && !!searchColumn
+  const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
   const searchValue = isColumnSearch ? searchSplits.slice(1).join(":") : search
 
-  displayedData = search.length
-    ? displayedData.filter((row) => {
+  displayedDataFiltered = search.length
+    ? displayedDataFiltered.filter((row) => {
         if (isColumnSearch) {
-          return valueAsString(row[searchColumn.columnIndex]).includes(
-            searchValue,
-          )
+          return valueAsString(row[searchColumnIndex]).includes(searchValue)
         } else {
           return row.some((value) => valueAsString(value).includes(searchValue))
         }
       })
-    : displayedData
+    : displayedDataFiltered
 
   if (sortSetting) {
-    displayedData = orderBy(
-      displayedData,
+    displayedDataFiltered = orderBy(
+      displayedDataFiltered,
       (e) => e[sortSetting?.columnIndex],
       sortSetting.sortOrder,
     )
   }
   console.timeEnd("filterAndSorting")
+
+  const columnValueCounts = countValues(
+    headerRow,
+    displayedData,
+    displayedDataFiltered,
+  )
 
   // console.log("displayedData", displayedData);
 
@@ -454,7 +456,7 @@ export default function Home() {
     fileInfos.push(`${allRows.length} rows`)
   }
   if (isFiltered) {
-    fileInfos.push(`${displayedData.length} filtered`)
+    fileInfos.push(`${displayedDataFiltered.length} filtered`)
   }
 
   let parsingState: "initial" | "parsing" | "finished" = "initial"
@@ -480,7 +482,7 @@ export default function Home() {
 
   const getExportData = (): any[][] => {
     // Need to filter columns as they are still part of displayed data for index consistency
-    return [headerRow, ...displayedData].map((row) =>
+    return [headerRow, ...displayedDataFiltered].map((row) =>
       row.filter((v, i) => !hiddenColumns.includes(i)),
     )
   }
@@ -533,8 +535,6 @@ export default function Home() {
       },
     ],
   ]
-
-  // console.log(displayedData)
 
   const clearFilterButton = isFiltered ? (
     <button
@@ -684,7 +684,7 @@ export default function Home() {
                   <DataTable
                     key={currentFile?.name}
                     headerRow={headerRow}
-                    rows={displayedData}
+                    rows={displayedDataFiltered}
                     columnValueCounts={columnValueCounts}
                     hiddenColumns={hiddenColumns}
                     sortSetting={sortSetting}
@@ -756,13 +756,18 @@ function detectDelimiter(input: string): string | null {
 }
 
 type ValuInfos = {
-  valueCount: number
+  valueCountTotal: number
+  valueCountFiltered: number
   value: any
 }
 
 type CountMap = Record<string, ValuInfos>
 
-function countValues(headers: string[], input: string[][]): ColumnInfos[] {
+function countValues(
+  headers: string[],
+  input: string[][],
+  inputFiltered: string[][],
+): ColumnInfos[] {
   console.time("countValues")
   const countsPerColumn: CountMap[] = headers.map((v, i) => ({}))
 
@@ -771,9 +776,20 @@ function countValues(headers: string[], input: string[][]): ColumnInfos[] {
     row.forEach((value, valueIndex) => {
       // const currentColumn = headers[valueIndex];
       countsPerColumn[valueIndex][value] = {
-        valueCount: (countsPerColumn[valueIndex][value]?.valueCount || 0) + 1,
+        valueCountTotal:
+          (countsPerColumn[valueIndex][value]?.valueCountTotal || 0) + 1,
+        valueCountFiltered: 0,
         value: value, // Preserve original value (w/o converting to string)
       }
+    })
+  })
+
+  inputFiltered.forEach((row, rowIndex) => {
+    // console.log(row);
+    row.forEach((value, valueIndex) => {
+      // const currentColumn = headers[valueIndex];
+      countsPerColumn[valueIndex][value].valueCountFiltered =
+        countsPerColumn[valueIndex][value]?.valueCountFiltered + 1
     })
   })
 
@@ -782,7 +798,8 @@ function countValues(headers: string[], input: string[][]): ColumnInfos[] {
     const columnName = headers[columnIndex]
     const columnValues = Object.entries(v).map((e) => ({
       valueName: e[0],
-      valueCount: e[1].valueCount,
+      valueCountTotal: e[1].valueCountTotal,
+      valueCountFiltered: e[1].valueCountFiltered,
       value: e[1].value,
     }))
     const valuesMaxLength = Math.max(
