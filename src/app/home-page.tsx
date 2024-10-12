@@ -369,11 +369,11 @@ export default function Home() {
   }
 
   // Apply transformers
-  let displayedData: any[][] = cloneDeep(allRows)
+  const transformedData: any[][] = cloneDeep(allRows)
   console.time("applyTransfomer")
   console.log("transformers", transformers)
   if (transformers.length) {
-    for (const [rowIndex, row] of displayedData.entries()) {
+    for (const [rowIndex, row] of transformedData.entries()) {
       for (const columnIndex of row.keys()) {
         for (const transformer of transformers) {
           if (transformer.columnIndex === columnIndex) {
@@ -383,7 +383,7 @@ export default function Home() {
                 columnIndex,
                 rowIndex,
                 headerRow[columnIndex],
-                displayedData,
+                transformedData,
                 allRows[rowIndex][columnIndex],
               )
             } catch (err: any) {
@@ -400,8 +400,8 @@ export default function Home() {
 
   // Apply filter and sorting
   console.time("filterAndSorting")
-  let displayedDataFiltered = filters.length
-    ? displayedData.filter((row) => {
+  const displayedDataFiltered = filters.length
+    ? transformedData.filter((row) => {
         return filters.every((filter) =>
           filter.includedValues.some(
             (filterValue) =>
@@ -409,7 +409,7 @@ export default function Home() {
           ),
         )
       })
-    : displayedData
+    : transformedData
 
   // When ':' is used search
   const searchSplits = search.split(":")
@@ -419,7 +419,7 @@ export default function Home() {
   const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
   const searchValue = isColumnSearch ? searchSplits.slice(1).join(":") : search
 
-  displayedDataFiltered = search.length
+  const displayedDataFilteredSearched = search.length
     ? displayedDataFiltered.filter((row) => {
         if (isColumnSearch) {
           return valueAsString(row[searchColumnIndex]).includes(searchValue)
@@ -429,19 +429,26 @@ export default function Home() {
       })
     : displayedDataFiltered
 
-  if (sortSetting) {
-    displayedDataFiltered = orderBy(
-      displayedDataFiltered,
-      (e) => e[sortSetting?.columnIndex],
-      sortSetting.sortOrder,
-    )
-  }
+  // if (sortSetting) {
+  //   displayedDataFiltered = orderBy(
+  //     displayedDataFiltered,
+  //     (e) => e[sortSetting?.columnIndex],
+  //     sortSetting.sortOrder,
+  //   )
+  // }
+  const displayedDataFilteredSearchedSorted = sortSetting
+    ? orderBy(
+        displayedDataFilteredSearched,
+        (e) => e[sortSetting?.columnIndex],
+        sortSetting.sortOrder,
+      )
+    : displayedDataFilteredSearched
   console.timeEnd("filterAndSorting")
 
   const columnValueCounts = countValues(
     headerRow,
-    displayedData,
-    displayedDataFiltered,
+    transformedData,
+    displayedDataFilteredSearchedSorted,
   )
 
   // console.log("displayedData", displayedData);
@@ -684,7 +691,7 @@ export default function Home() {
                   <DataTable
                     key={currentFile?.name}
                     headerRow={headerRow}
-                    rows={displayedDataFiltered}
+                    rows={displayedDataFilteredSearchedSorted}
                     columnValueCounts={columnValueCounts}
                     hiddenColumns={hiddenColumns}
                     sortSetting={sortSetting}
