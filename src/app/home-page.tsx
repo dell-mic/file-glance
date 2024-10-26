@@ -12,6 +12,7 @@ import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
 import { Modal } from "./components/Modal"
 import {
+  detectDelimiter,
   generateSampleData,
   hasHeader,
   jsonToTable,
@@ -736,23 +737,6 @@ function formatBytes(bytes: number, dp = 1): string {
   )
 
   return bytes.toFixed(dp) + " " + units[u]
-}
-
-function detectDelimiter(input: string): string | null {
-  console.time("detectDelimiter")
-  const supportedDelimiters = [",", ";", "|", "\t"]
-  const counts: Record<string, number> = {}
-  for (const c of input.substring(0, 10_000)) {
-    if (supportedDelimiters.includes(c)) {
-      counts[c] = (counts[c] || 0) + 1
-    }
-  }
-  // console.log(counts)
-  const maxEntry = maxBy(Object.entries(counts), (_) => _[1])!
-  console.log("detected delimiter: ", maxEntry)
-  console.timeEnd("detectDelimiter")
-
-  return maxEntry ? maxEntry[0] : null
 }
 
 type ValuInfos = {

@@ -1,5 +1,5 @@
 import * as jschardet from "jschardet"
-import { set } from "lodash"
+import { maxBy, set } from "lodash"
 
 export function valueAsString(v: any): string {
   // Convert false,0 to string, but null/undefined to empty string
@@ -495,4 +495,43 @@ export const saveFile = async (blob: Blob, name: string) => {
     setTimeout(() => URL.revokeObjectURL(a.href), 30 * 1000)
   })
   a.click()
+}
+
+export function detectDelimiter(input: string): string | null {
+  console.time("detectDelimiter")
+  const supportedDelimiters = [",", "\t", ";", "|"] // Note: Order matters in case of equal occurence count!
+  const counts: Record<string, number> = {}
+  const linesToTest = input
+    .split("\n")
+    .slice(0, 50)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+
+  if (!linesToTest.length) {
+    return null
+  }
+
+  let delimtersToTest = supportedDelimiters.filter((sd) =>
+    linesToTest[0].includes(sd),
+  )
+  for (const line of linesToTest) {
+    // Disregard delimter candidates which are not occuring at all for one or more line
+    if (line.trim().length > 1) {
+      delimtersToTest = delimtersToTest.filter((dl) => line.includes(dl))
+    }
+    for (const c of line) {
+      if (delimtersToTest.includes(c)) {
+        counts[c] = (counts[c] || 0) + 1
+      }
+    }
+  }
+  // console.log(counts)
+  const maxEntry = maxBy(
+    Object.entries(counts).filter((c) => delimtersToTest.includes(c[0])),
+    (_) => _[1],
+  )!
+  console.log("detected delimiter: ", maxEntry)
+  console.timeEnd("detectDelimiter")
+
+  return maxEntry ? maxEntry[0] : null
 }
