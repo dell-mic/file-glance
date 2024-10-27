@@ -498,7 +498,6 @@ export const saveFile = async (blob: Blob, name: string) => {
 }
 
 export function detectDelimiter(input: string): string | null {
-  console.time("detectDelimiter")
   const supportedDelimiters = [",", "\t", ";", "|"] // Note: Order matters in case of equal occurence count!
   const counts: Record<string, number> = {}
   const linesToTest = input
@@ -530,8 +529,7 @@ export function detectDelimiter(input: string): string | null {
     Object.entries(counts).filter((c) => delimtersToTest.includes(c[0])),
     (_) => _[1],
   )!
-  console.log("detected delimiter: ", maxEntry)
-  console.timeEnd("detectDelimiter")
+  // console.log("detected delimiter: ", maxEntry)
 
   return maxEntry ? maxEntry[0] : null
 }

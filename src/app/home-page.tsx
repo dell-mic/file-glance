@@ -126,7 +126,10 @@ export default function Home() {
       const contentAsText: string = await readFileToString(file)
 
       // Assume somehow-Separated text
+      console.time("detectDelimiter")
       const delimiter = detectDelimiter(contentAsText)
+      console.timeEnd("detectDelimiter")
+      console.log("detected delimter: ", delimiter)
       if (delimiter) {
         try {
           data = parse(contentAsText, {
