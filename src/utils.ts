@@ -67,7 +67,7 @@ export const tryParseJSONObject = (jsonString: string): any => {
     if (o && typeof o === "object") {
       return o
     }
-  } catch (e) {}
+  } catch {}
 
   return false
 }

@@ -136,6 +136,7 @@ export default function Home() {
             relax_column_count: true,
           })
         } catch (err) {
+          console.error(err)
           errorMessage = "Parsing failed"
         }
       }
