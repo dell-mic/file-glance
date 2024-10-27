@@ -150,7 +150,9 @@ export default function Home() {
     if (data.length) {
       const longestRowLength = maxBy(data, (d) => d.length)!.length
       if (!isHeaderSet) {
+        console.time("hasHeader")
         const headerDetected = hasHeader(data)
+        console.timeEnd("hasHeader")
         console.log("headerDetected", headerDetected)
         // header row detection and synthetic generation if not present
         if (headerDetected) {

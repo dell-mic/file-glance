@@ -321,10 +321,21 @@ export async function readFileToString(file: File): Promise<string> {
 }
 
 export function hasHeader(data: any[][]): boolean {
-  console.time("hasHeader")
   if (data.length < 2) return true
 
-  const numRowsToCompare = Math.min(5, data.length - 1) // Compare with up to 5 rows or all remaining rows if less than 5.
+  if (hasDuplicates(data[0])) return false
+
+  const numRowsToCompare = Math.min(5, data.length - 1)
+
+  // Check if values from first row also occur in other rows (probably not header values then)
+  for (const value of data[0]) {
+    if (valueAsString(value).length) {
+      for (const line of data.slice(1, numRowsToCompare)) {
+        // TODO: Maybe better checkin same columns only?
+        if (line.includes(value)) return false
+      }
+    }
+  }
 
   function calculateAverageSimilarity(row: number, numRows: number): number {
     let totalDistance = 0
@@ -360,17 +371,15 @@ export function hasHeader(data: any[][]): boolean {
     numRowsToCompare,
   )
 
-  console.log("averageDistanceFirstRow", averageDistanceFirstRow)
-  console.log()
+  // console.log("averageDistanceFirstRow", averageDistanceFirstRow)
+  // console.log()
 
   const averageDistanceSecondRow = calculateAverageSimilarity(
     1,
     numRowsToCompare - 1,
   )
-  console.log("averageDistanceSecondRow", averageDistanceSecondRow)
-  console.log()
-
-  console.timeEnd("hasHeader")
+  // console.log("averageDistanceSecondRow", averageDistanceSecondRow)
+  // console.log()
 
   // Return true if the distance between rows 2-5 is lower than the distance of the first row to the rest
   return averageDistanceSecondRow < averageDistanceFirstRow
@@ -532,4 +541,8 @@ export function detectDelimiter(input: string): string | null {
   // console.log("detected delimiter: ", maxEntry)
 
   return maxEntry ? maxEntry[0] : null
+}
+
+function hasDuplicates(arr: any[]): boolean {
+  return new Set(arr).size !== arr.length
 }
