@@ -2,6 +2,7 @@ import { orderBy } from "lodash"
 import Accordion from "./Accordion"
 import { ColumnFilter } from "../home-page"
 import React from "react"
+import MiddleEllipsis from "./MiddleEllipsis"
 
 export const ValuesInspector = (props: {
   filters: ColumnFilter[]
@@ -49,7 +50,7 @@ export const ValuesInspector = (props: {
             key={`${column.columnIndex}_${column.columnName}`}
             id={`valueInspector_${column.columnIndex}_${column.columnName}`}
           >
-            <div className="py-1">
+            <div className="py-1 overflow-x-hidden">
               {columnValues
                 .slice(
                   0,
@@ -74,16 +75,17 @@ export const ValuesInspector = (props: {
                   return (
                     <div
                       key={`${column.columnIndex}_${columnValue.valueName}`}
-                      className="text-sm"
+                      className="text-sm flex whitespace-nowrap"
                       style={{
                         opacity: columnValue.valueCountFiltered ? 1 : 0.7,
                       }}
                     >
                       <a
                         href="#"
-                        className={`text-blue-500 ${
+                        className={`text-blue-500 shrink grow-0 overflow-hidden${
                           columnValue.valueName ? "" : "font-mono"
                         } ${isFilteredValue ? "font-bold" : ""}`}
+                        title={columnValue.valueName}
                         onClick={(e) => e.preventDefault()}
                         onPointerDown={(e) => {
                           e.preventDefault()
@@ -98,9 +100,11 @@ export const ValuesInspector = (props: {
                           )
                         }}
                       >
-                        {columnValue.valueName || "empty"}
+                        <MiddleEllipsis>
+                          <span>{columnValue.valueName || "empty"}</span>
+                        </MiddleEllipsis>
                       </a>
-                      <span className="text-gray-500 ml-2">
+                      <span className="text-gray-500 ml-2 shrink-0">
                         {displayedValueCounts}
                       </span>
                     </div>
