@@ -16,6 +16,7 @@ Try the live version at [FileGlance.info](https://www.fileglance.info/)
 - Advanced value transformation using custom JavaScript
 - One-click export to CSV, XLSX, or JSON
 - Supports larger files through virtualized list rendering
+- Privacy-focused: Your data stays on your device
 
 ## Roadmap
 
