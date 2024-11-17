@@ -84,7 +84,7 @@ export const ValuesInspector = (props: {
                         href="#"
                         className={`text-blue-500 shrink grow-0 overflow-hidden${
                           columnValue.valueName ? "" : "font-mono"
-                        } ${isFilteredValue ? "font-bold" : ""}`}
+                        } ${isFilteredValue ? "font-medium" : ""}`}
                         title={columnValue.valueName}
                         onClick={(e) => e.preventDefault()}
                         onPointerDown={(e) => {

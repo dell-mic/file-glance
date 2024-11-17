@@ -385,7 +385,7 @@ export const DataTable = (props: {
           <div className="h-52 w-full mt-4">
             <h3 className="text-xl">Preview</h3>
             {transformerValidation?.compilationError && (
-              <div className="text-red-600 font-bold my-10 text-center">
+              <div className="text-red-600 font-medium my-10 text-center">
                 Compilation Error: {transformerValidation?.compilationError}
               </div>
             )}
