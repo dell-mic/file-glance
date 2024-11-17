@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# [FileGlance](https://www.fileglance.info/)
 
-## Getting Started
+_Simple, privacy-friendly tool for working with tabular data of any format: CSV/JSON/XLSX etc._
 
-First, run the development server:
+Try the deployed version at [FileGlance.info](https://www.fileglance.info/)
+
+## Features
+
+- Drag & drop support for the most commons file types and formats
+- Automatic detection of encoding and delimiters
+- Opinionated display (empty columns are hidden by default)
+- Preview all counts for distinct values
+- Simple filtering via value facets for exact matches
+- Search through all data
+- Basic sorting
+- Powerful value transformation by applying arbitrary JavaScript
+- Export to CSV/XLSX/JSON with one click
+- Handles larger(ish) files thanks to virtualized list rendering
+
+## Roadmap
+
+- Proper handling numeric values
+- Visual presentation of value counts (esp. numeric)
+- Support even more file formats
+- Advanced manipulation like renaming columns / adding new ones (based on transformers)
+- Allow overriding detected encoding and delimiter
+- More settings for export
+- PWA
+
+## Out of Scope
+
+- Any kind of server processing
+- Mobile/touch optimizations
+- Support for older browsers
+- Very large files (for files bigger than several GBs the browser is probably not the right tool)
+
+## Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- TypeScript
+- NextJS / React
+- Tailwind
