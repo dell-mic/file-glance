@@ -145,7 +145,7 @@ export const DataTable = (props: {
         handleTransfomerCodeChanged("return value.trim()")
         break
       case "emaildomain":
-        handleTransfomerCodeChanged("return value.split('@')[1]")
+        handleTransfomerCodeChanged("return value.split('@')[1] || ''")
         break
       case "parseint":
         handleTransfomerCodeChanged("return parseInt(value, 10)")
