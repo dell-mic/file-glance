@@ -1,6 +1,12 @@
 # [FileGlance](https://www.fileglance.info/)
 
-_A simple, privacy-friendly tool for working with tabular data in various formats: CSV, JSON, XLSX, and more._
+<p align="center">
+
+_Simple, privacy-friendly tool for working with tabular data in various formats: CSV, JSON, XLSX, and more._
+
+![Screen Recording](./recoding.gif)
+
+</p>
 
 Try the live version at [FileGlance.info](https://www.fileglance.info/)
 
@@ -16,7 +22,7 @@ Try the live version at [FileGlance.info](https://www.fileglance.info/)
 - Advanced value transformation using custom JavaScript
 - One-click export to CSV, XLSX, or JSON
 - Supports larger files through virtualized list rendering
-- Privacy-focused: Your data stays on your device
+- Privacy-focused: Your data never leaves your device
 
 ## Roadmap
 
