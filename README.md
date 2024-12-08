@@ -7,7 +7,7 @@ Try the live version at [FileGlance.info](https://www.fileglance.info/)
 ## Features
 
 - Drag-and-drop support for common file types and formats
-- Automatic detection of file encoding and delimiters
+- Automatic detection of file encoding, delimiters, data location etc.
 - Optimized display (hides empty columns by default)
 - Count previews for distinct values
 - Simple filtering with value facets for exact matches
@@ -30,6 +30,7 @@ Try the live version at [FileGlance.info](https://www.fileglance.info/)
 
 ## Out of Scope
 
+- Spreadsheet-like editing single cells
 - Server-side processing
 - Mobile and touch optimizations
 - Support for legacy browsers
