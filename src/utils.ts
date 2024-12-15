@@ -342,7 +342,7 @@ export function hasHeader(data: any[][]): boolean {
 
     // For single column/value comparisons do not exceed this limit to not get screwed by longer string length differences
     // This way 0 distances where values follow the exact same pattern get implicilty more weight
-    const MaxDistance = 1
+    const MaxDistance = 5
     for (let col = 0; col < data[0].length; col++) {
       let columnDistance = 0
 
@@ -353,7 +353,9 @@ export function hasHeader(data: any[][]): boolean {
           normalizeString(String(data[r + 1][col])),
         )
         columnDistance += Math.min(distance, MaxDistance)
-        // console.log(`Comparing '${data[row][col].toString()}' vs '${data[r + 1][col].toString()}': ${distance}`)
+        // console.log(
+        //   `Comparing '${data[row][col]}' vs '${data[r + 1][col]}': ${distance}`,
+        // )
       }
 
       columnDistance /= numRows
