@@ -12,6 +12,7 @@ const files = [
   "small_sample.tsv",
   "noHeader_sample.csv",
   "sample.json",
+  "long_values.csv",
 ]
 
 files.forEach((file) => {

@@ -1,6 +1,7 @@
 // src/components/Accordion.tsx
 
 import React, { ReactNode } from "react"
+import MiddleEllipsis from "./MiddleEllipsis"
 
 interface AccordionProps {
   id: string
@@ -32,7 +33,8 @@ const Accordion: React.FC<AccordionProps> = ({
       }}
     >
       <div
-        className="cursor-pointer bg-gray-200 p-1 px-2 flex items-center justify-between"
+        className="cursor-pointer bg-gray-200 p-1 px-2 flex items-center justify-between overflow-hidden"
+        title={`${header} (${subHeader})`}
         onPointerDown={(e) => {
           if (!e.button) {
             // console.log(e)
@@ -41,11 +43,16 @@ const Accordion: React.FC<AccordionProps> = ({
           }
         }}
       >
-        <div className="">
-          <span>{header}</span>
-          <span className="text-gray-500 text-sm ml-1">{subHeader}</span>
+        <div className="shrink overflow-hidden flex items-baseline">
+          <MiddleEllipsis>
+            <span className="grow shrink">{header}</span>
+          </MiddleEllipsis>
+          <span className="text-gray-500 text-sm ml-1 shrink-0">
+            {subHeader}
+          </span>
         </div>
         <button
+          className="text-gray-400 shrink-0"
           onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
             if (!e.button) {
               // console.log(e)
@@ -53,7 +60,6 @@ const Accordion: React.FC<AccordionProps> = ({
               onToggleColumnVisibility()
             }
           }}
-          className="text-gray-400"
         >
           {columnVisible ? <IconVisible /> : <IconHidden />}
         </button>

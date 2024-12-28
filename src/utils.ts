@@ -1,5 +1,5 @@
 import * as jschardet from "jschardet"
-import { set } from "lodash"
+import { maxBy, set } from "lodash"
 
 export function valueAsString(v: any): string {
   // Convert false,0 to string, but null/undefined to empty string
@@ -67,7 +67,7 @@ export const tryParseJSONObject = (jsonString: string): any => {
     if (o && typeof o === "object") {
       return o
     }
-  } catch (e) {}
+  } catch {}
 
   return false
 }
@@ -321,17 +321,28 @@ export async function readFileToString(file: File): Promise<string> {
 }
 
 export function hasHeader(data: any[][]): boolean {
-  console.time("hasHeader")
   if (data.length < 2) return true
 
-  const numRowsToCompare = Math.min(5, data.length - 1) // Compare with up to 5 rows or all remaining rows if less than 5.
+  if (hasDuplicates(data[0])) return false
+
+  const numRowsToCompare = Math.min(5, data.length - 1)
+
+  // Check if values from first row also occur in other rows (probably not header values then)
+  for (const value of data[0]) {
+    if (valueAsString(value).length) {
+      for (const line of data.slice(1, numRowsToCompare)) {
+        // TODO: Maybe better checkin same columns only?
+        if (line.includes(value)) return false
+      }
+    }
+  }
 
   function calculateAverageSimilarity(row: number, numRows: number): number {
     let totalDistance = 0
 
     // For single column/value comparisons do not exceed this limit to not get screwed by longer string length differences
     // This way 0 distances where values follow the exact same pattern get implicilty more weight
-    const MaxDistance = 1
+    const MaxDistance = 5
     for (let col = 0; col < data[0].length; col++) {
       let columnDistance = 0
 
@@ -342,7 +353,9 @@ export function hasHeader(data: any[][]): boolean {
           normalizeString(String(data[r + 1][col])),
         )
         columnDistance += Math.min(distance, MaxDistance)
-        // console.log(`Comparing '${data[row][col].toString()}' vs '${data[r + 1][col].toString()}': ${distance}`)
+        // console.log(
+        //   `Comparing '${data[row][col]}' vs '${data[r + 1][col]}': ${distance}`,
+        // )
       }
 
       columnDistance /= numRows
@@ -360,17 +373,15 @@ export function hasHeader(data: any[][]): boolean {
     numRowsToCompare,
   )
 
-  console.log("averageDistanceFirstRow", averageDistanceFirstRow)
-  console.log()
+  // console.log("averageDistanceFirstRow", averageDistanceFirstRow)
+  // console.log()
 
   const averageDistanceSecondRow = calculateAverageSimilarity(
     1,
     numRowsToCompare - 1,
   )
-  console.log("averageDistanceSecondRow", averageDistanceSecondRow)
-  console.log()
-
-  console.timeEnd("hasHeader")
+  // console.log("averageDistanceSecondRow", averageDistanceSecondRow)
+  // console.log()
 
   // Return true if the distance between rows 2-5 is lower than the distance of the first row to the rest
   return averageDistanceSecondRow < averageDistanceFirstRow
@@ -495,4 +506,45 @@ export const saveFile = async (blob: Blob, name: string) => {
     setTimeout(() => URL.revokeObjectURL(a.href), 30 * 1000)
   })
   a.click()
+}
+
+export function detectDelimiter(input: string): string | null {
+  const supportedDelimiters = [",", "\t", ";", "|"] // Note: Order matters in case of equal occurence count!
+  const counts: Record<string, number> = {}
+  const linesToTest = input
+    .split("\n")
+    .slice(0, 50)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+
+  if (!linesToTest.length) {
+    return null
+  }
+
+  let delimtersToTest = supportedDelimiters.filter((sd) =>
+    linesToTest[0].includes(sd),
+  )
+  for (const line of linesToTest) {
+    // Disregard delimter candidates which are not occuring at all for one or more line
+    if (line.trim().length > 1) {
+      delimtersToTest = delimtersToTest.filter((dl) => line.includes(dl))
+    }
+    for (const c of line) {
+      if (delimtersToTest.includes(c)) {
+        counts[c] = (counts[c] || 0) + 1
+      }
+    }
+  }
+  // console.log(counts)
+  const maxEntry = maxBy(
+    Object.entries(counts).filter((c) => delimtersToTest.includes(c[0])),
+    (_) => _[1],
+  )!
+  // console.log("detected delimiter: ", maxEntry)
+
+  return maxEntry ? maxEntry[0] : null
+}
+
+function hasDuplicates(arr: any[]): boolean {
+  return new Set(arr).size !== arr.length
 }

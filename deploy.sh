@@ -5,16 +5,6 @@ set -e
 # load .env file
 export $(grep -v '^#' .env | xargs)
 
-# # Parse params
-# target="$1"
-# # echo "Target: $target"
-
-# if [[ "$target" = "prod" ]]; then
-#     REMOTEPATH='docs_final'
-# else
-#     REMOTEPATH='docs_test'
-# fi
-
 REMOTEPATH=""
 # echo "REMOTEPATH: $REMOTEPATH"
 
@@ -28,11 +18,9 @@ EXCLUDES='--exclude-glob .git --exclude-glob .DS_Store'
 DELETE='--delete' #deletes ANYTHING on the remote that isn't in the local, other than the EXCLUDES.
 
 # Actual FTP upload
-
-
 lftp -f "
 set ftp:ssl-force true;
-set ftp:ssl-protect-data false; # TODO: This seems to slow down lftp deploy considarbly!
+set ftp:ssl-protect-data false; # TODO: This seems to slow down lftp deploy considarbly?
 set ftp:use-utf8 true;
 set file:charset UTF-8;
 set ftp:charset UTF-8;

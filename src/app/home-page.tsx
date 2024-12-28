@@ -12,6 +12,7 @@ import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
 import { Modal } from "./components/Modal"
 import {
+  detectDelimiter,
   generateSampleData,
   hasHeader,
   jsonToTable,
@@ -125,7 +126,10 @@ export default function Home() {
       const contentAsText: string = await readFileToString(file)
 
       // Assume somehow-Separated text
+      console.time("detectDelimiter")
       const delimiter = detectDelimiter(contentAsText)
+      console.timeEnd("detectDelimiter")
+      console.log("detected delimter: ", delimiter)
       if (delimiter) {
         try {
           data = parse(contentAsText, {
@@ -135,6 +139,7 @@ export default function Home() {
             relax_column_count: true,
           })
         } catch (err) {
+          console.error(err)
           errorMessage = "Parsing failed"
         }
       }
@@ -145,7 +150,9 @@ export default function Home() {
     if (data.length) {
       const longestRowLength = maxBy(data, (d) => d.length)!.length
       if (!isHeaderSet) {
+        console.time("hasHeader")
         const headerDetected = hasHeader(data)
+        console.timeEnd("hasHeader")
         console.log("headerDetected", headerDetected)
         // header row detection and synthetic generation if not present
         if (headerDetected) {
@@ -601,7 +608,7 @@ export default function Home() {
 
                   <button
                     onPointerDown={onGenerateSampleData}
-                    className="text-xl hover:bg-gray-100 text-gray-600 font-semibold py-2 px-4 rounded"
+                    className="text-xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded"
                   >
                     Load sample data
                   </button>
@@ -745,23 +752,6 @@ function formatBytes(bytes: number, dp = 1): string {
   return bytes.toFixed(dp) + " " + units[u]
 }
 
-function detectDelimiter(input: string): string | null {
-  console.time("detectDelimiter")
-  const supportedDelimiters = [",", ";", "|", "\t"]
-  const counts: Record<string, number> = {}
-  for (const c of input.substring(0, 10_000)) {
-    if (supportedDelimiters.includes(c)) {
-      counts[c] = (counts[c] || 0) + 1
-    }
-  }
-  // console.log(counts)
-  const maxEntry = maxBy(Object.entries(counts), (_) => _[1])!
-  console.log("detected delimiter: ", maxEntry)
-  console.timeEnd("detectDelimiter")
-
-  return maxEntry ? maxEntry[0] : null
-}
-
 type ValuInfos = {
   valueCountTotal: number
   valueCountFiltered: number
@@ -809,9 +799,9 @@ function countValues(
       valueCountFiltered: e[1].valueCountFiltered,
       value: e[1].value,
     }))
-    const valuesMaxLength = Math.max(
-      0,
-      ...columnValues.map((value) => `${value.valueName}`.length),
+
+    const valuesMaxLength = getMaxStringLength(
+      columnValues.map((v) => v.valueName),
     )
 
     const isEmptyColumn = valuesMaxLength === 0
@@ -830,6 +820,34 @@ function countValues(
   // console.log("columnInfos", columnInfos)
 
   return columnInfos
+}
+
+function getMaxStringLength(input: string[]) {
+  if (!input || !input.length) {
+    return 0
+  }
+
+  const maxChecks = 500
+  let maxLength = 0
+  const arrayLength = input.length
+
+  if (arrayLength <= maxChecks) {
+    for (let str of input) {
+      if (str?.length) {
+        maxLength = Math.max(maxLength, str.length)
+      }
+    }
+    return maxLength
+  } else {
+    // Loop over at most _maxChecks_ elements distributed across the array
+    const step = Math.ceil(arrayLength / maxChecks)
+
+    for (let i = 0; i < arrayLength; i += step) {
+      maxLength = Math.max(maxLength, input[i].length)
+    }
+
+    return maxLength
+  }
 }
 
 /**

@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# [FileGlance](https://www.fileglance.info/)
 
-## Getting Started
+<p align="center">
 
-First, run the development server:
+_Simple, privacy-friendly tool for working with tabular data in various formats: CSV, JSON, XLSX, and more._
+
+![Screen Recording](./recoding.gif)
+
+</p>
+
+Try the live version at [FileGlance.info](https://www.fileglance.info/)
+
+## Features
+
+- Drag-and-drop support for common file types and formats
+- Automatic detection of file encoding, delimiters, data location etc.
+- Optimized display (hides empty columns by default)
+- Count previews for distinct values
+- Simple filtering with value facets for exact matches
+- Full-text search across data
+- Basic sorting functionality
+- Advanced value transformation using custom JavaScript
+- One-click export to CSV, XLSX, or JSON
+- Supports larger files through virtualized list rendering
+- Privacy-focused: Your data never leaves your device
+
+## Roadmap
+
+- Enhanced handling of numeric values
+- Visual representation of value counts (especially for numeric data)
+- Support for additional file formats
+- Advanced data manipulation, including column renaming and custom transformations
+- Options to override detected encoding and delimiters
+- Expanded export settings
+- Progressive Web App (PWA) support
+
+## Out of Scope
+
+- Spreadsheet-like editing single cells
+- Server-side processing
+- Mobile and touch optimizations
+- Support for legacy browsers
+- Handling very large files (e.g., files larger than several GBs may be better managed outside the browser)
+
+## Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- TypeScript
+- Next.js / React
+- Tailwind CSS
