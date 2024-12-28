@@ -792,9 +792,9 @@ function countValues(
       valueCountFiltered: e[1].valueCountFiltered,
       value: e[1].value,
     }))
-    const valuesMaxLength = Math.max(
-      0,
-      ...columnValues.map((value) => `${value.valueName}`.length),
+
+    const valuesMaxLength = getMaxStringLength(
+      columnValues.map((v) => v.valueName),
     )
 
     const isEmptyColumn = valuesMaxLength === 0
@@ -813,6 +813,34 @@ function countValues(
   // console.log("columnInfos", columnInfos)
 
   return columnInfos
+}
+
+function getMaxStringLength(input: string[]) {
+  if (!input || !input.length) {
+    return 0
+  }
+
+  const maxChecks = 500
+  let maxLength = 0
+  const arrayLength = input.length
+
+  if (arrayLength <= maxChecks) {
+    for (let str of input) {
+      if (str?.length) {
+        maxLength = Math.max(maxLength, str.length)
+      }
+    }
+    return maxLength
+  } else {
+    // Loop over at most _maxChecks_ elements distributed across the array
+    const step = Math.ceil(arrayLength / maxChecks)
+
+    for (let i = 0; i < arrayLength; i += step) {
+      maxLength = Math.max(maxLength, input[i].length)
+    }
+
+    return maxLength
+  }
 }
 
 /**
