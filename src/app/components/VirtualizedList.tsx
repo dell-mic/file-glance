@@ -52,14 +52,16 @@ const ItemWrapper = ({ data, index, style }) => {
 
 export const Row = (
   // @ts-ignore
-  { index, style, rows, hiddenColumns, columnsWidths, onValueCellPressed },
+  // prettier-ignore
+  { index, style, rows, headerRow, hiddenColumns, columnsWidths, onValueCellPressed },
 ) => {
   const rowClasses = "flex flex-row" + (index % 2 === 0 ? " bg-gray-100" : "")
   // console.log("row index:", index)
   // console.log("row:", rows[index])
   return (
     <div style={style} className={rowClasses}>
-      {rows[index].map((v: any, vi: number) => {
+      {headerRow.map((_: any, vi: number) => {
+        const v = rows[index][vi]
         if (hiddenColumns.includes(vi)) {
           return null
         } else {

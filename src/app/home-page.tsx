@@ -765,11 +765,15 @@ function countValues(
     // console.log(row);
     row.forEach((value, valueIndex) => {
       // const currentColumn = headers[valueIndex];
-      countsPerColumn[valueIndex][value] = {
-        valueCountTotal:
-          (countsPerColumn[valueIndex][value]?.valueCountTotal || 0) + 1,
-        valueCountFiltered: 0,
-        value: value, // Preserve original value (w/o converting to string)
+
+      // Do not crash on oversized rows which do not have a header
+      if (countsPerColumn[valueIndex]) {
+        countsPerColumn[valueIndex][value] = {
+          valueCountTotal:
+            (countsPerColumn[valueIndex][value]?.valueCountTotal || 0) + 1,
+          valueCountFiltered: 0,
+          value: value, // Preserve original value (w/o converting to string)
+        }
       }
     })
   })
@@ -778,8 +782,11 @@ function countValues(
     // console.log(row);
     row.forEach((value, valueIndex) => {
       // const currentColumn = headers[valueIndex];
-      countsPerColumn[valueIndex][value].valueCountFiltered =
-        countsPerColumn[valueIndex][value]?.valueCountFiltered + 1
+      // Do not crash on oversized rows which do not have a header
+      if (countsPerColumn[valueIndex]) {
+        countsPerColumn[valueIndex][value].valueCountFiltered =
+          countsPerColumn[valueIndex][value]?.valueCountFiltered + 1
+      }
     })
   })
 

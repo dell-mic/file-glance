@@ -327,12 +327,17 @@ export function hasHeader(data: any[][]): boolean {
 
   const numRowsToCompare = Math.min(5, data.length - 1)
 
-  // Check if values from first row also occur in other rows (probably not header values then)
-  for (const value of data[0]) {
-    if (valueAsString(value).length) {
+  // Check if value patterns from first row also occur in other rows (probably not header values then)
+  for (const [headerIndex, headerValue] of data[0].entries()) {
+    if (valueAsString(headerValue).length) {
       for (const line of data.slice(1, numRowsToCompare)) {
-        // TODO: Maybe better checkin same columns only?
-        if (line.includes(value)) return false
+        const rowValue = line[headerIndex]
+        if (
+          normalizeString(valueAsString(rowValue)) ===
+          normalizeString(headerValue)
+        ) {
+          return false
+        }
       }
     }
   }
@@ -341,7 +346,7 @@ export function hasHeader(data: any[][]): boolean {
     let totalDistance = 0
 
     // For single column/value comparisons do not exceed this limit to not get screwed by longer string length differences
-    // This way 0 distances where values follow the exact same pattern get implicilty more weight
+    // This way 0 distances where values follow the exact same pattern get implicitly more weight
     const MaxDistance = 5
     for (let col = 0; col < data[0].length; col++) {
       let columnDistance = 0

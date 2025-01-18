@@ -184,4 +184,18 @@ describe("hasHeader", () => {
     const result = hasHeader(data)
     expect(result).toBe(true)
   })
+
+  it("should return false when pattern from first row exist exactly in data", () => {
+    const data =
+      `amelia.clark@example.com,2025-01-14 14:04:48 +0100,origin/feature/87626-monitoring-log-all-succesful-authentication-events,#87626: Add exception to monitoringMessage and persist only in finally block
+logan.moore@example.com,2025-01-14 14:03:02 +0100,origin/feature/short
+alexander.wilson@example.com,2025-01-14 13:33:38 +0100,origin/internal/92368
+alexander.wilson@example.com,2025-01-14 13:08:19 +0100,,spotless
+alexander.wilson@example.com,2025-01-14 13:02:00 +0100,,test files`
+        .split("\n")
+        .map((_) => _.split(","))
+
+    const result = hasHeader(data)
+    expect(result).toBe(false)
+  })
 })
