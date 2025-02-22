@@ -27,7 +27,12 @@ import { ArchiveBoxArrowDownIcon } from "@heroicons/react/24/outline"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
 import { MenuPopover } from "./components/Popover"
 import { useToast } from "@/hooks/use-toast"
-import { isMarkdownTable, parseMarkdownTable } from "@/markdownUtils"
+import {
+  isMarkdownTable,
+  parseMarkdownTable,
+  stringifyMarkdownTable,
+} from "@/markdownUtils"
+import { ClipboardDocumentCheckIcon } from "@heroicons/react/20/solid"
 
 export interface SortSetting {
   columnIndex: number
@@ -344,10 +349,7 @@ export default function Home() {
     const existingColFilter = filters.find((_) => _.columnIndex === columnIndex)
     // Easy case: No filter for this column so far => Simply add with clicked value
     if (!existingColFilter) {
-      newColFilter = {
-        columnIndex: columnIndex,
-        includedValues: [valueName],
-      }
+      newColFilter = { columnIndex: columnIndex, includedValues: [valueName] }
     } else {
       if (isAdding) {
         // With meta key pressed allow selecting of several values
@@ -504,9 +506,7 @@ export default function Home() {
           saveFile(
             new Blob([
               stringifyCSV(getExportData(), {
-                cast: {
-                  boolean: (v) => String(v),
-                },
+                cast: { boolean: (v) => String(v) },
               }),
             ]),
             fileName,
@@ -538,6 +538,27 @@ export default function Home() {
             ]),
             fileName,
           )
+        },
+      },
+    ],
+    [
+      {
+        text: "Copy as TSV",
+        icon: <ClipboardDocumentCheckIcon />,
+        onSelect: () => {
+          navigator.clipboard.writeText(
+            stringifyCSV(getExportData(), {
+              delimiter: "\t",
+              cast: { boolean: (v) => String(v) },
+            }),
+          )
+        },
+      },
+      {
+        text: "Copy as Markdown",
+        icon: <ClipboardDocumentCheckIcon />,
+        onSelect: () => {
+          navigator.clipboard.writeText(stringifyMarkdownTable(getExportData()))
         },
       },
     ],
@@ -646,10 +667,7 @@ export default function Home() {
                       anchorEl={popoverAnchorElement}
                       onClose={handlePopoverClose}
                       onSelect={() => setPopoverAnchorElement(null)}
-                      anchorOrigin={{
-                        vertical: "bottom",
-                        horizontal: "left",
-                      }}
+                      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
                     ></MenuPopover>
                     {/* TODO:Implement export dialog */}
                     <Modal id="exportDialog" open={false} onClose={() => {}}>

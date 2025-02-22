@@ -51,6 +51,30 @@ export function parseMarkdownTable(text: string): MarkdownParsingResult {
   return { headerRow: headers, rows: rows }
 }
 
+export function stringifyMarkdownTable(data: any[][]): string {
+  const headerRow = data.shift()!
+
+  // Convert single row into a Markdown row string
+  const formatRow = (row: string[]) => {
+    let result = "| "
+    for (const value of row) {
+      const escapedValue =
+        typeof value === "string" ? value.replaceAll("|", "\\|") : value
+      result += escapedValue + " | "
+    }
+    return result
+  }
+
+  const headerSeparator = `| ${headerRow.map(() => "---").join(" | ")} |`
+
+  let output = formatRow(headerRow) + "\n" + headerSeparator + "\n"
+  for (const row of data) {
+    output += formatRow(row) + "\n"
+  }
+
+  return output.trim()
+}
+
 function iterateRowsSync(
   lines: Iterable<string>,
   options: TableIterationOptions,
