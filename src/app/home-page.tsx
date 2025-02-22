@@ -601,7 +601,7 @@ export default function Home() {
 
                   <button
                     onPointerDown={onGenerateSampleData}
-                    className="text-xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded"
+                    className="text-xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
                   >
                     Load sample data
                   </button>

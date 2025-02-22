@@ -27,7 +27,7 @@ const Accordion: React.FC<AccordionProps> = ({
   return (
     <div
       data-testid={id}
-      className="border border-gray-300 rounded-md shadow-sm"
+      className="border border-gray-300 rounded-md shadow-xs"
       style={{
         opacity: columnVisible ? 1 : 0.7,
       }}

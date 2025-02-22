@@ -143,7 +143,7 @@ const StickyRow = ({
             title={v}
           >
             <span
-              className="flex flex-row flex-grow cursor-pointer select-none items-center text-xs font-medium overflow-hidden whitespace-nowrap overflow-ellipsis"
+              className="flex flex-row grow cursor-pointer select-none items-center text-xs font-medium overflow-hidden whitespace-nowrap text-ellipsis"
               onPointerDown={() => {
                 onHeaderPressed({
                   columnIndex: vi,
