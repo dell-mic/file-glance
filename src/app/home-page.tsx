@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 
 import { cloneDeep, maxBy, orderBy } from "lodash"
 
@@ -377,12 +377,17 @@ export default function Home() {
     setFilters(updatedFilters)
   }
 
-  // Apply transformers
-  let displayedData: any[][] = cloneDeep(allRows)
-  console.time("applyTransfomer")
-  console.log("transformers", transformers)
-  if (transformers.length) {
-    for (const [rowIndex, row] of displayedData.entries()) {
+  const displayedData = useMemo(() => {
+    console.time("applyTransfomer")
+
+    if (!transformers.length) {
+      console.timeEnd("applyTransfomer")
+      return cloneDeep(allRows)
+    }
+
+    let transformedData = cloneDeep(allRows)
+
+    for (const [rowIndex, row] of transformedData.entries()) {
       for (const columnIndex of row.keys()) {
         for (const transformer of transformers) {
           if (transformer.columnIndex === columnIndex) {
@@ -392,11 +397,10 @@ export default function Home() {
                 columnIndex,
                 rowIndex,
                 headerRow[columnIndex],
-                displayedData,
+                transformedData,
                 allRows[rowIndex][columnIndex],
               )
             } catch (err: any) {
-              // TODO: Better error handling
               console.error("Error while applying transformer:", err.toString())
               row[columnIndex] = err.toString()
             }
@@ -404,54 +408,57 @@ export default function Home() {
         }
       }
     }
-  }
-  console.timeEnd("applyTransfomer")
 
-  // Apply filter and sorting
-  console.time("filterAndSorting")
-  let displayedDataFiltered = filters.length
-    ? displayedData.filter((row) => {
-        return filters.every((filter) =>
-          filter.includedValues.some(
-            (filterValue) =>
-              filterValue === valueAsString(row[filter.columnIndex]),
+    console.timeEnd("applyTransfomer")
+    return transformedData
+  }, [allRows, transformers, headerRow])
+
+  const displayedDataFiltered = useMemo(() => {
+    console.time("filterAndSorting")
+
+    let filteredData = filters.length
+      ? displayedData.filter((row) =>
+          filters.every((filter) =>
+            filter.includedValues.some(
+              (filterValue) =>
+                filterValue === valueAsString(row[filter.columnIndex]),
+            ),
           ),
         )
-      })
-    : displayedData
+      : displayedData
 
-  // When ':' is used search
-  const searchSplits = search.split(":")
-  const searchColumnIndex = headerRow.findIndex(
-    (header) => header === searchSplits[0],
-  )
-  const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
-  const searchValue = isColumnSearch ? searchSplits.slice(1).join(":") : search
-
-  displayedDataFiltered = search.length
-    ? displayedDataFiltered.filter((row) => {
-        if (isColumnSearch) {
-          return valueAsString(row[searchColumnIndex]).includes(searchValue)
-        } else {
-          return row.some((value) => valueAsString(value).includes(searchValue))
-        }
-      })
-    : displayedDataFiltered
-
-  if (sortSetting) {
-    displayedDataFiltered = orderBy(
-      displayedDataFiltered,
-      (e) => e[sortSetting?.columnIndex],
-      sortSetting.sortOrder,
+    const searchSplits = search.split(":")
+    const searchColumnIndex = headerRow.findIndex(
+      (header) => header === searchSplits[0],
     )
-  }
-  console.timeEnd("filterAndSorting")
+    const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
+    const searchValue = isColumnSearch
+      ? searchSplits.slice(1).join(":")
+      : search
 
-  const columnValueCounts = countValues(
-    headerRow,
-    displayedData,
-    displayedDataFiltered,
-  )
+    filteredData = search.length
+      ? filteredData.filter((row) =>
+          isColumnSearch
+            ? valueAsString(row[searchColumnIndex]).includes(searchValue)
+            : row.some((value) => valueAsString(value).includes(searchValue)),
+        )
+      : filteredData
+
+    if (sortSetting) {
+      filteredData = orderBy(
+        filteredData,
+        (e) => e[sortSetting?.columnIndex],
+        sortSetting.sortOrder,
+      )
+    }
+
+    console.timeEnd("filterAndSorting")
+    return filteredData
+  }, [displayedData, filters, search, headerRow, sortSetting])
+
+  const columnValueCounts = useMemo(() => {
+    return countValues(headerRow, displayedData, displayedDataFiltered)
+  }, [headerRow, displayedData, displayedDataFiltered])
 
   // console.log("displayedData", displayedData);
 
