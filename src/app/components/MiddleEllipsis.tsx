@@ -46,8 +46,7 @@ const Component: React.FC<ComponentProps> = ({ width, children }) => {
     <div
       ref={measuredParent}
       style={{
-        wordBreak: "keep-all",
-        overflowWrap: "normal",
+        whiteSpace: "nowrap",
         ...(width && { width }),
       }}
     >
