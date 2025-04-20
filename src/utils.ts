@@ -551,5 +551,6 @@ export function detectDelimiter(input: string): string | null {
 }
 
 function hasDuplicates(arr: any[]): boolean {
+  arr = arr.filter(Boolean)
   return new Set(arr).size !== arr.length
 }

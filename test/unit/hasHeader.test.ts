@@ -17,9 +17,20 @@ describe("hasHeader", () => {
     expect(result).toBe(true)
   })
 
-  it("return false when there are repating values in first row (as almost always are values then)", () => {
+  it("return false when there are repeating values in first row (as almost always are values then)", () => {
     const data = [
       ["value1", "value1", "some-other-stuff"],
+      ["value1", "value1", "value2"],
+      ["value1", "value1", "value2"],
+    ]
+
+    const result = hasHeader(data)
+    expect(result).toBe(false)
+  })
+
+  it("return false when there are repeating values in first row, but only for non-empty strings", () => {
+    const data = [
+      ["value1", "value1", "", "", ""],
       ["value1", "value1", "value2"],
       ["value1", "value1", "value2"],
     ]
