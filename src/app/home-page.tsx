@@ -43,6 +43,8 @@ export interface Transformer {
   columnIndex: number
   transformerFunctionCode: string
   transformer: Function
+  asNewColumn?: boolean
+  newColumnName?: string
 }
 
 export default function Home() {
@@ -377,6 +379,22 @@ export default function Home() {
     setFilters(updatedFilters)
   }
 
+  // Update headerRow based on transformers
+  const displayedHeader = useMemo(() => {
+    let transformedHeaderRow = cloneDeep(headerRow)
+    for (const transformer of transformers) {
+      if (transformer.asNewColumn) {
+        transformedHeaderRow.splice(
+          transformer.columnIndex + 1,
+          0,
+          transformer.newColumnName ||
+            headerRow[transformer.columnIndex] + "_NEW",
+        )
+      }
+    }
+    return transformedHeaderRow
+  }, [headerRow, transformers])
+
   const displayedData = useMemo(() => {
     console.time("applyTransfomer")
 
@@ -391,18 +409,24 @@ export default function Home() {
       for (const columnIndex of row.keys()) {
         for (const transformer of transformers) {
           if (transformer.columnIndex === columnIndex) {
+            let newValue
             try {
-              row[columnIndex] = transformer.transformer(
+              newValue = transformer.transformer(
                 row[columnIndex],
                 columnIndex,
                 rowIndex,
-                headerRow[columnIndex],
+                displayedHeader[columnIndex],
                 transformedData,
                 allRows[rowIndex][columnIndex],
               )
             } catch (err: any) {
               console.error("Error while applying transformer:", err.toString())
-              row[columnIndex] = err.toString()
+              newValue = err.toString()
+            }
+            if (transformer.asNewColumn) {
+              row.splice(columnIndex + 1, 0, newValue)
+            } else {
+              row[columnIndex] = newValue
             }
           }
         }
@@ -411,7 +435,7 @@ export default function Home() {
 
     console.timeEnd("applyTransfomer")
     return transformedData
-  }, [allRows, transformers, headerRow])
+  }, [allRows, transformers, displayedHeader])
 
   const displayedDataFiltered = useMemo(() => {
     console.time("filterAndSorting")
@@ -428,7 +452,7 @@ export default function Home() {
       : displayedData
 
     const searchSplits = search.split(":")
-    const searchColumnIndex = headerRow.findIndex(
+    const searchColumnIndex = displayedHeader.findIndex(
       (header) => header === searchSplits[0],
     )
     const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
@@ -454,11 +478,11 @@ export default function Home() {
 
     console.timeEnd("filterAndSorting")
     return filteredData
-  }, [displayedData, filters, search, headerRow, sortSetting])
+  }, [displayedData, filters, search, displayedHeader, sortSetting])
 
   const columnValueCounts = useMemo(() => {
-    return countValues(headerRow, displayedData, displayedDataFiltered)
-  }, [headerRow, displayedData, displayedDataFiltered])
+    return countValues(displayedHeader, displayedData, displayedDataFiltered)
+  }, [displayedHeader, displayedData, displayedDataFiltered])
 
   // console.log("displayedData", displayedData);
 
@@ -498,7 +522,7 @@ export default function Home() {
 
   const getExportData = (): any[][] => {
     // Need to filter columns as they are still part of displayed data for index consistency
-    return [headerRow, ...displayedDataFiltered].map((row) =>
+    return [displayedHeader, ...displayedDataFiltered].map((row) =>
       row.filter((v, i) => !hiddenColumns.includes(i)),
     )
   }
@@ -715,7 +739,7 @@ export default function Home() {
                   ></ValuesInspector>
                   <DataTable
                     key={currentFile?.name}
-                    headerRow={headerRow}
+                    headerRow={displayedHeader}
                     rows={displayedDataFiltered}
                     columnValueCounts={columnValueCounts}
                     hiddenColumns={hiddenColumns}
@@ -730,10 +754,29 @@ export default function Home() {
                     onTransformerAdded={(e) => {
                       console.log("onTransformerAdded", e)
                       setTransformers([...transformers, e])
-                      // Remove column filters if present as they might conflict with new values
+                      // Adjust other filters in case affected by newly added column
                       setFilters(
-                        filters.filter((f) => f.columnIndex !== e.columnIndex),
+                        filters
+                          .map((f) => {
+                            if (
+                              e.asNewColumn &&
+                              f.columnIndex > e.columnIndex
+                            ) {
+                              return {
+                                ...f,
+                                columnIndex: f.columnIndex + 1,
+                              }
+                            } else {
+                              return f
+                            }
+                          })
+                          // Remove column filters  if present as they might conflict with new values
+                          .filter(
+                            (f) =>
+                              !e.asNewColumn || f.columnIndex !== e.columnIndex,
+                          ),
                       )
+                      // FIXME: Adjust expanded accordion
                     }}
                   ></DataTable>
                 </div>

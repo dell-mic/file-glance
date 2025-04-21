@@ -36,6 +36,9 @@ import {
 import { Button } from "./button"
 import { innerElementType, Row, StickyList } from "./VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Input } from "@/components/ui/input"
 
 export interface SortEvent {
   columnIndex: number
@@ -46,6 +49,8 @@ export interface TransformerAddedEvent {
   columnIndex: number
   transformerFunctionCode: string
   transformer: Function
+  asNewColumn: boolean
+  newColumnName: string
 }
 
 interface TransformerSampleResult {
@@ -116,6 +121,12 @@ export const DataTable = (props: {
 
   const [transformerValidation, setTransformerValidation] =
     React.useState<TransformerValidation | null>(null)
+
+  const [targetType, setTargetType] = React.useState<"current" | "new">(
+    "current",
+  )
+
+  const [newColName, setNewColName] = React.useState<string>("")
 
   const handleTransformModalClose = () => {
     setTransformModalOpen(false)
@@ -323,6 +334,7 @@ export const DataTable = (props: {
         icon: <CogIconMicro />,
         onSelect: () => {
           setTransformModalOpen(true)
+          setNewColName(props.headerRow[popoverColumnIndex!] + " Trans")
           handleTransfomerCodeChanged(transformerFunctionCode)
         },
       },
@@ -355,6 +367,39 @@ export const DataTable = (props: {
           <h2 className="m-auto text-2xl text-gray-700 mb-4">
             Transform Column: {props.headerRow[popoverColumnIndex!]}
           </h2>
+
+          <div className="mb-4">
+            <Label>Apply transformation to</Label>
+            <RadioGroup
+              value={targetType}
+              onValueChange={(v: "current" | "new") => setTargetType(v)}
+              className="flex items-center min-h-9 space-x-4"
+            >
+              <div className="flex flex-row items-center space-x-2">
+                <RadioGroupItem value="current" id="current" />
+                <Label htmlFor="current">Current column</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="new" id="new" />
+                <Label htmlFor="new">
+                  New column{targetType === "new" ? ":" : ""}
+                </Label>
+                {targetType === "new" && (
+                  <div>
+                    <Input
+                      id="newColumnName"
+                      value={newColName}
+                      onChange={(e) => setNewColName(e.target.value)}
+                      // onFocus={e => e.target.select()}
+                      placeholder="e.g. name_cleaned"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            </RadioGroup>
+          </div>
+
           <Select onValueChange={handleTransformerSelected}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Transformer" />
@@ -376,7 +421,7 @@ export const DataTable = (props: {
           </Select>
           <Editor
             data-testid={`transformCodeInput`}
-            className="w-full h-20 bg-gray-100 border border-gray-700 border-solid font-mono my-2"
+            className="w-full h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm my-2"
             value={transformerFunctionCode}
             highlight={(code) => highlight(code, languages.js, "js")}
             padding={5}
@@ -448,6 +493,8 @@ export const DataTable = (props: {
                     columnIndex: popoverColumnIndex!,
                     transformerFunctionCode: transformerFunctionCode,
                     transformer,
+                    asNewColumn: targetType === "new",
+                    newColumnName: newColName,
                   })
                   handleTransformModalClose()
                 } else {
