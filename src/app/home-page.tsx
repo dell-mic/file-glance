@@ -776,7 +776,17 @@ export default function Home() {
                               !e.asNewColumn || f.columnIndex !== e.columnIndex,
                           ),
                       )
-                      // FIXME: Adjust expanded accordion
+                      // Adjust hidden column indexes if necessary
+                      setHiddenColumns(
+                        hiddenColumns.map((i) =>
+                          i > e.columnIndex ? i + 1 : i,
+                        ),
+                      )
+                      setOpenAccordions(
+                        openAccordions.map((i) =>
+                          i > e.columnIndex ? i + 1 : i,
+                        ),
+                      )
                     }}
                   ></DataTable>
                 </div>
