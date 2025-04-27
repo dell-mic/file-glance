@@ -13,6 +13,7 @@ import { FileChooser } from "./components/FileChooser"
 import { Modal } from "./components/Modal"
 import {
   detectDelimiter,
+  generateHeaderRow,
   generateSampleData,
   hasHeader,
   jsonToTable,
@@ -33,6 +34,8 @@ import {
   stringifyMarkdownTable,
 } from "@/markdownUtils"
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/20/solid"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 export interface SortSetting {
   columnIndex: number
@@ -62,6 +65,10 @@ export default function Home() {
     React.useState<HTMLElement | null>(null)
   const exportButtonRef = React.useRef(null)
 
+  const [dataFormatAlwaysIncludesHeader, setDataFormatAlwaysIncludesHeader] =
+    React.useState<boolean>(false)
+  const [dataIncludesHeaderRow, setDataIncludesHeaderRow] =
+    React.useState<boolean>(false)
   const [headerRow, setHeaderRow] = React.useState<Array<string>>([])
   const [allRows, setAllRows] = React.useState<any[][]>([])
   const [filters, setFilters] = React.useState<Array<ColumnFilter>>([])
@@ -113,6 +120,8 @@ export default function Home() {
         data = jsonAsTable.data
         _headerRow = jsonAsTable.headerRow
         isHeaderSet = true
+        setDataFormatAlwaysIncludesHeader(true)
+        setDataIncludesHeaderRow(true)
       } else {
         data = []
         _headerRow = []
@@ -125,6 +134,8 @@ export default function Home() {
       data = markdownParsinResult.rows
       _headerRow = markdownParsinResult.headerRow
       isHeaderSet = true
+      setDataFormatAlwaysIncludesHeader(true)
+      setDataIncludesHeaderRow(true)
       console.log(
         "Parsed as markdown with headers:",
         markdownParsinResult.headerRow,
@@ -161,17 +172,13 @@ export default function Home() {
         const headerDetected = hasHeader(data)
         console.timeEnd("hasHeader")
         console.log("headerDetected", headerDetected)
+        setDataIncludesHeaderRow(headerDetected)
         // header row detection and synthetic generation if not present
         if (headerDetected) {
           _headerRow = data.shift()!
-          // Fill empty headers
-          _headerRow = _headerRow.map((h, i) =>
-            h ? h : "col_" + `${i + 1}`.padStart(2, "0"),
-          )
+          _headerRow = generateHeaderRow(longestRowLength, _headerRow)
         } else {
-          _headerRow = Array.from(Array(longestRowLength).keys()).map(
-            (i) => "col_" + `${i + 1}`.padStart(2, "0"),
-          )
+          _headerRow = generateHeaderRow(longestRowLength)
         }
       }
 
@@ -233,6 +240,8 @@ export default function Home() {
       sampleData.headerRow,
       jsonToTable(sampleData.data).data,
     )
+    setDataIncludesHeaderRow(true)
+    setDataFormatAlwaysIncludesHeader(true)
   }
 
   const setData = (
@@ -487,7 +496,7 @@ export default function Home() {
   // console.log("displayedData", displayedData);
 
   let fileInfos: string[] = [] // TODO
-  const isFiltered = filters.length || search.length
+  const isFiltered = filters.length > 0 || search.length > 0
 
   if (currentFile) {
     fileInfos.push(formatBytes(currentFile.size))
@@ -674,12 +683,49 @@ export default function Home() {
             return (
               <React.Fragment>
                 <div className="mb-2 flex flex-row items-center justify-between">
-                  <div>
+                  <div className="flex flex-row items-baseline">
                     <span className="text-2xl">{currentFile?.name || ""} </span>
-                    <span className="text-gray-500 text-sm">
+                    <span className="text-gray-500 text-sm ml-1.5">
                       {fileInfos.join(", ")}
                     </span>
-                    {clearFilterButton}
+                    <span>{clearFilterButton}</span>
+
+                    <span className="flex flex-row items-center ml-3">
+                      <Label
+                        htmlFor="hasHeader"
+                        className="mr-1 text-gray-500 text-sm"
+                      >
+                        Has Header
+                      </Label>
+                      <Switch
+                        id="hasHeader"
+                        data-testid={"switch-hasHeader"}
+                        disabled={dataFormatAlwaysIncludesHeader || isFiltered}
+                        checked={dataIncludesHeaderRow}
+                        onCheckedChange={(checked) => {
+                          const longestRowLength = maxBy(
+                            allRows,
+                            (d) => d.length,
+                          )!.length
+                          if (checked) {
+                            // No header row -> With header row
+                            const _headerRow = generateHeaderRow(
+                              longestRowLength,
+                              allRows.shift(),
+                            )
+                            setHeaderRow(_headerRow)
+                            setAllRows(allRows)
+                          } else {
+                            // With header row -> no header row
+                            const _headerRow =
+                              generateHeaderRow(longestRowLength)
+                            setHeaderRow(_headerRow)
+                            setAllRows([headerRow, ...allRows])
+                          }
+                          setDataIncludesHeaderRow(checked)
+                        }}
+                      ></Switch>
+                    </span>
                   </div>
                   <div className="flex gap-1">
                     <button

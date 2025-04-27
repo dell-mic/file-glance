@@ -554,3 +554,15 @@ function hasDuplicates(arr: any[]): boolean {
   arr = arr.filter(Boolean)
   return new Set(arr).size !== arr.length
 }
+
+export function generateHeaderRow(
+  length: number,
+  existing?: string[],
+): string[] {
+  return Array.from(Array(length).keys()).map(
+    (i) =>
+      existing && existing[i]
+        ? existing[i]
+        : "col_" + `${i + 1}`.padStart(2, "0"), // Fill empty headers
+  )
+}
