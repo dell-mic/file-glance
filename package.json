@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "buildAndStart": "next build && serve out",
     "check": "npm run format:check && npm run typeCheck && npm run lint && bun test test/unit && npm run test:e2e",
     "lint": "next lint",
     "typeCheck": "tsc --noEmit ",
@@ -54,6 +54,7 @@
     "eslint-config-next": "15.3.1",
     "postcss": "8.5.3",
     "prettier": "3.5.3",
+    "serve": "14.2.4",
     "tailwindcss": "4.1.4",
     "typescript": "5.8.3"
   },

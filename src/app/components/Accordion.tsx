@@ -60,6 +60,7 @@ const Accordion: React.FC<AccordionProps> = ({
               onToggleColumnVisibility()
             }
           }}
+          data-testid={`btn-hide-${id}`}
         >
           {columnVisible ? <IconVisible /> : <IconHidden />}
         </button>

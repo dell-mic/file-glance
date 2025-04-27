@@ -376,11 +376,19 @@ export const DataTable = (props: {
               className="flex items-center min-h-9 space-x-4"
             >
               <div className="flex flex-row items-center space-x-2">
-                <RadioGroupItem value="current" id="current" />
+                <RadioGroupItem
+                  value="current"
+                  id="current"
+                  data-testid={`transform-current`}
+                />
                 <Label htmlFor="current">Current column</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="new" id="new" />
+                <RadioGroupItem
+                  value="new"
+                  id="new"
+                  data-testid={`transform-new`}
+                />
                 <Label htmlFor="new">
                   New column{targetType === "new" ? ":" : ""}
                 </Label>
@@ -388,6 +396,7 @@ export const DataTable = (props: {
                   <div>
                     <Input
                       id="newColumnName"
+                      data-testid={`transform-newColumnName`}
                       value={newColName}
                       onChange={(e) => setNewColName(e.target.value)}
                       // onFocus={e => e.target.select()}
