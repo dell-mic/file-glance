@@ -566,3 +566,77 @@ export function generateHeaderRow(
         : "col_" + `${i + 1}`.padStart(2, "0"), // Fill empty headers
   )
 }
+
+export async function stringToBase64Gzipped(
+  input: string,
+  format: CompressionFormat = "gzip",
+): Promise<string> {
+  const encoder = new TextEncoder()
+  const uint8Input = encoder.encode(input)
+
+  const compressionStream = new CompressionStream(format)
+  const writer = compressionStream.writable.getWriter()
+  writer.write(uint8Input)
+  writer.close()
+
+  const arrayBuffer = await new Response(
+    compressionStream.readable,
+  ).arrayBuffer()
+  const base64String = btoa(
+    new Uint8Array(arrayBuffer).reduce(
+      (data, byte) => data + String.fromCharCode(byte),
+      "",
+    ),
+  )
+
+  return base64String
+}
+
+export async function base64GzippedToString(
+  base64Data: string,
+  format: CompressionFormat = "gzip",
+): Promise<string> {
+  const binaryString = atob(base64Data)
+
+  const byteArray = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    byteArray[i] = binaryString.charCodeAt(i)
+  }
+
+  const decompressionStream = new DecompressionStream(format)
+  const compressedStream = new Response(byteArray).body!.pipeThrough(
+    decompressionStream,
+  )
+
+  const decompressedArrayBuffer = await new Response(
+    compressedStream,
+  ).arrayBuffer()
+  const decoder = new TextDecoder()
+  return decoder.decode(decompressedArrayBuffer)
+}
+
+export function compileTransformerCode(code: string): {
+  transformer: Function | null
+  error: string | null
+} {
+  let transformer = null
+  let error = null
+  try {
+    transformer = new Function(
+      "value",
+      "columnIndex",
+      "rowIndex",
+      "headerName",
+      "allRows",
+      "originalValue",
+      code,
+    )
+  } catch (err: any) {
+    error = err.toString()
+  }
+
+  return {
+    transformer,
+    error,
+  }
+}

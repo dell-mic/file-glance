@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react"
 
-import { cloneDeep, maxBy, orderBy } from "lodash"
+import { cloneDeep, maxBy, omit, orderBy } from "lodash"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
@@ -12,9 +12,11 @@ import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
 import { Modal } from "./components/Modal"
 import {
+  base64GzippedToString,
   detectDelimiter,
   generateHeaderRow,
   generateSampleData,
+  stringToBase64Gzipped,
   hasHeader,
   jsonToTable,
   readFileToString,
@@ -22,9 +24,9 @@ import {
   tableToJson,
   tryParseJSONObject,
   valueAsString,
+  compileTransformerCode,
 } from "@/utils"
 import { title } from "@/constants"
-import { ArchiveBoxArrowDownIcon } from "@heroicons/react/24/outline"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
 import { MenuPopover } from "./components/Popover"
 import { useToast } from "@/hooks/use-toast"
@@ -34,21 +36,10 @@ import {
   stringifyMarkdownTable,
 } from "@/markdownUtils"
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/20/solid"
+import { ShareIcon } from "@heroicons/react/20/solid"
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-
-export interface SortSetting {
-  columnIndex: number
-  sortOrder: "asc" | "desc"
-}
-
-export interface Transformer {
-  columnIndex: number
-  transformerFunctionCode: string
-  transformer: Function
-  asNewColumn?: boolean
-  newColumnName?: string
-}
 
 export default function Home() {
   const { toast } = useToast()
@@ -74,6 +65,9 @@ export default function Home() {
   const [filters, setFilters] = React.useState<Array<ColumnFilter>>([])
   const [transformers, setTransformers] = React.useState<Array<Transformer>>([])
   const [search, setSearch] = React.useState<string>("")
+  const [parsingState, setParsingState] = React.useState<
+    "initial" | "parsing" | "finished"
+  >("initial")
   const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
   // const [columnValueCounts, setcColumnValueCounts] = React.useState<
   //   ColumnInfos[]
@@ -90,9 +84,10 @@ export default function Home() {
     e.stopPropagation()
   }
 
-  const parseFile = async (file: File) => {
+  const parseFile = async (file: File, hideEmptyColumns: boolean) => {
     console.time("parseFile")
-    setData(file, [], [])
+    setParsingState("parsing")
+    setData(file, [], [], hideEmptyColumns)
     let data: any[][] = []
     let _headerRow: string[] = []
     let isHeaderSet = false
@@ -194,7 +189,7 @@ export default function Home() {
         description: data.length + " lines found",
         variant: "success",
       })
-      setData(file, _headerRow, data)
+      setData(file, _headerRow, data, hideEmptyColumns)
     } else {
       console.error(errorMessage)
       toast({
@@ -202,17 +197,21 @@ export default function Home() {
         description: errorMessage,
         variant: "error",
       })
-      setData(null, [], [])
+      setData(null, [], [], true)
     }
     console.timeEnd("parseFile")
   }
 
-  const parseText = (text: string) => {
+  const parseText = (
+    text: string,
+    syntheticFileName: string,
+    hideEmptyColumns: boolean,
+  ) => {
+    setParsingState("parsing")
     // detect if text looks like proper json
     const isJson = tryParseJSONObject(text) !== false
     // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
     const blob = new Blob([text], { type: "text/plain" })
-    let syntheticFileName = "CLIPBOARD"
     if (isJson) {
       syntheticFileName += ".json"
     } else if (isMarkdownTable(text)) {
@@ -223,7 +222,7 @@ export default function Home() {
     const syntheticFile = new File([blob], syntheticFileName, {
       lastModified: new Date().getTime(),
     })
-    parseFile(syntheticFile)
+    parseFile(syntheticFile, hideEmptyColumns)
   }
 
   const onGenerateSampleData = () => {
@@ -239,6 +238,7 @@ export default function Home() {
       }),
       sampleData.headerRow,
       jsonToTable(sampleData.data).data,
+      true,
     )
     setDataIncludesHeaderRow(true)
     setDataFormatAlwaysIncludesHeader(true)
@@ -248,28 +248,33 @@ export default function Home() {
     file: File | null,
     headerRow: string[],
     data: string[][],
+    hideEmptyColumns: boolean,
   ) => {
     if (!file) {
       document.title = title
       setCurrentFile(null)
       setHeaderRow([])
       setAllRows([])
+      setParsingState("initial")
       return
     }
     document.title = file.name
     setCurrentFile(file)
     setHeaderRow(headerRow)
     setAllRows(data)
+    setParsingState("finished")
 
     // TODO: More efficient way to find empty columns?
     const _columnValueCounts = countValues(headerRow, data, [])
 
     // Hide empty columns initially
-    setHiddenColumns(
-      _columnValueCounts
-        .filter((cvc) => cvc.isEmptyColumn)
-        .map((cvc) => cvc.columnIndex),
-    )
+    if (hideEmptyColumns) {
+      setHiddenColumns(
+        _columnValueCounts
+          .filter((cvc) => cvc.isEmptyColumn)
+          .map((cvc) => cvc.columnIndex),
+      )
+    }
   }
 
   const handleDrop = async (e: DragEvent) => {
@@ -283,7 +288,7 @@ export default function Home() {
     console.log("dropped files:", files)
     if (files.length) {
       const firstFile = files[0]
-      parseFile(firstFile)
+      parseFile(firstFile, true)
     }
   }
 
@@ -296,7 +301,7 @@ export default function Home() {
 
     if (files.length) {
       const firstFile = files[0]
-      parseFile(firstFile)
+      parseFile(firstFile, true)
     }
   }
 
@@ -349,6 +354,48 @@ export default function Home() {
     }
   }, [])
 
+  // Check URL for data/project hash
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash
+      const StartHashContent = 3
+      console.log(hash)
+      if (hash.startsWith("#d=")) {
+        setParsingState("parsing")
+        parseText(decodeURI(hash.substring(StartHashContent)), "URL Data", true)
+      } else if (hash.startsWith("#p=")) {
+        setParsingState("parsing")
+
+        base64GzippedToString(hash.substring(StartHashContent)).then((p) => {
+          try {
+            const project: ProjectExport = JSON.parse(p)
+            console.log(project)
+            setTransformers(
+              project.transformers.map((t) => ({
+                ...t,
+                transformer: compileTransformerCode(t.transformerFunctionCode)
+                  .transformer!,
+              })),
+            )
+            setFilters(project.filters)
+            setSearch(project.search)
+            setHiddenColumns(project.hiddenColumns)
+            parseText(project.data, project.name, false)
+          } catch (error) {
+            // Most probably incomplete/corrupted URL data
+            console.error(error)
+            toast({
+              title: "Invalid data in URL",
+              variant: "error",
+            })
+            setParsingState("initial")
+          }
+        })
+      }
+      history.replaceState(undefined, "", "#")
+    }
+  }, [])
+
   // console.log("dragging", dragging)
 
   const onFilterToggle = (
@@ -372,7 +419,7 @@ export default function Home() {
           ),
         }
       } else {
-        // Deslect already selected / replace
+        // Deselect already selected / replace
         newColFilter = {
           columnIndex: columnIndex,
           includedValues: existingColFilter.includedValues.includes(valueName)
@@ -508,14 +555,6 @@ export default function Home() {
     fileInfos.push(`${displayedDataFiltered.length} filtered`)
   }
 
-  let parsingState: "initial" | "parsing" | "finished" = "initial"
-
-  if (currentFile && !allRows.length) {
-    parsingState = "parsing"
-  } else if (currentFile && allRows.length) {
-    parsingState = "finished"
-  }
-
   const getExportFileName = (newEnding: string): string => {
     return (
       currentFile!.name.substring(
@@ -585,20 +624,63 @@ export default function Home() {
       {
         text: "Copy as TSV",
         icon: <ClipboardDocumentCheckIcon />,
-        onSelect: () => {
+        onSelect: async () => {
           navigator.clipboard.writeText(
             stringifyCSV(getExportData(), {
               delimiter: "\t",
               cast: { boolean: (v) => String(v) },
             }),
           )
+          toast({
+            title: "TSV copied to clipboard",
+          })
         },
       },
       {
         text: "Copy as Markdown",
         icon: <ClipboardDocumentCheckIcon />,
-        onSelect: () => {
-          navigator.clipboard.writeText(stringifyMarkdownTable(getExportData()))
+        onSelect: async () => {
+          await navigator.clipboard.writeText(
+            stringifyMarkdownTable(getExportData()),
+          )
+          toast({
+            title: "Markdown copied to clipboard",
+          })
+        },
+      },
+    ],
+    [
+      {
+        text: "Share Link",
+        icon: <ShareIcon />,
+        onSelect: async () => {
+          const project = {
+            v: 1,
+            name: currentFile?.name,
+            data: stringifyCSV([headerRow, ...allRows], {
+              delimiter: ";",
+              cast: { boolean: (v) => String(v) },
+            }),
+            transformers: transformers.map((t) => omit(t, "transformer")),
+            hiddenColumns: hiddenColumns,
+            filters: filters,
+            search: search,
+          }
+          const urlWithoutHash = window.location.href.split("#")[0]
+
+          console.time("Compressing")
+          const base64Data = await stringToBase64Gzipped(
+            JSON.stringify(project),
+          )
+          // console.log(base64Data)
+          console.timeEnd("Compressing")
+
+          const newHash = `#p=${base64Data}`
+          const targetUrl = urlWithoutHash + newHash
+          await navigator.clipboard.writeText(targetUrl)
+          toast({
+            title: "Link copied to clipboard",
+          })
         },
       },
     ],
@@ -638,7 +720,7 @@ export default function Home() {
         if (!currentFile) {
           const contentAsText = e.clipboardData.getData("text")
           // console.log(contentAsText)
-          parseText(contentAsText)
+          parseText(contentAsText, "CLIPBOARD", true)
         }
       }}
     >
@@ -729,13 +811,14 @@ export default function Home() {
                   </div>
                   <div className="flex gap-1">
                     <button
+                      data-testid={"btnExport"}
                       ref={exportButtonRef}
                       onPointerDown={() => {
                         setPopoverAnchorElement(exportButtonRef.current)
                       }}
                       className="text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950 p-2 rounded-md"
                     >
-                      <ArchiveBoxArrowDownIcon className="size-5" />
+                      <ArrowTopRightOnSquareIcon className="size-5" />
                     </button>
                     <MenuPopover
                       id={"exportPopover"}
@@ -823,16 +906,18 @@ export default function Home() {
                           ),
                       )
                       // Adjust hidden column indexes if necessary
-                      setHiddenColumns(
-                        hiddenColumns.map((i) =>
-                          i > e.columnIndex ? i + 1 : i,
-                        ),
-                      )
-                      setOpenAccordions(
-                        openAccordions.map((i) =>
-                          i > e.columnIndex ? i + 1 : i,
-                        ),
-                      )
+                      if (e.asNewColumn) {
+                        setHiddenColumns(
+                          hiddenColumns.map((i) =>
+                            i > e.columnIndex ? i + 1 : i,
+                          ),
+                        )
+                        setOpenAccordions(
+                          openAccordions.map((i) =>
+                            i > e.columnIndex ? i + 1 : i,
+                          ),
+                        )
+                      }
                     }}
                   ></DataTable>
                 </div>
@@ -1004,4 +1089,27 @@ function findArray(json: any): any[] | null {
 export interface ColumnFilter {
   columnIndex: number
   includedValues: string[]
+}
+
+export interface SortSetting {
+  columnIndex: number
+  sortOrder: "asc" | "desc"
+}
+
+export interface Transformer {
+  columnIndex: number
+  transformerFunctionCode: string
+  transformer: Function
+  asNewColumn?: boolean
+  newColumnName?: string
+}
+
+interface ProjectExport {
+  v: number
+  data: string
+  filters: ColumnFilter[]
+  hiddenColumns: number[]
+  name: string
+  search: string
+  transformers: Omit<Transformer, "transformer">[]
 }

@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
+import { compileTransformerCode } from "@/utils"
 
 export interface SortEvent {
   columnIndex: number
@@ -144,28 +145,28 @@ export const DataTable = (props: {
   const handleTransformerSelected = (value: string) => {
     switch (value) {
       case "custom":
-        handleTransfomerCodeChanged(TransformerFunctionComment)
+        handleTransformerCodeChanged(TransformerFunctionComment)
         break
       case "uppercase":
-        handleTransfomerCodeChanged("return value.toUpperCase()")
+        handleTransformerCodeChanged("return value.toUpperCase()")
         break
       case "lowercase":
-        handleTransfomerCodeChanged("return value.toLowerCase()")
+        handleTransformerCodeChanged("return value.toLowerCase()")
         break
       case "trim":
-        handleTransfomerCodeChanged("return value.trim()")
+        handleTransformerCodeChanged("return value.trim()")
         break
       case "emaildomain":
-        handleTransfomerCodeChanged("return value.split('@')[1] || ''")
+        handleTransformerCodeChanged("return value.split('@')[1] || ''")
         break
       case "parseint":
-        handleTransfomerCodeChanged("return parseInt(value, 10)")
+        handleTransformerCodeChanged("return parseInt(value, 10)")
         break
       case "parsefloat":
-        handleTransfomerCodeChanged("return parseFloat(value)")
+        handleTransformerCodeChanged("return parseFloat(value)")
         break
       case "parse_unix_ts":
-        handleTransfomerCodeChanged(
+        handleTransformerCodeChanged(
           "return new Date(Number(value) * 1000).toISOString()",
         )
         break
@@ -175,30 +176,7 @@ export const DataTable = (props: {
     }
   }
 
-  const compileTransformerCode = (code: string) => {
-    let transformer = null
-    let error = null
-    try {
-      transformer = new Function(
-        "value",
-        "columnIndex",
-        "rowIndex",
-        "headerName",
-        "allRows",
-        "originalValue",
-        code,
-      )
-    } catch (err: any) {
-      error = err.toString()
-    }
-
-    return {
-      transformer,
-      error,
-    }
-  }
-
-  const handleTransfomerCodeChanged = (code: string) => {
+  const handleTransformerCodeChanged = (code: string) => {
     // TODO: Could be debounced?
     // console.log("code", code)
     setTransformerFunctionCode(code)
@@ -335,7 +313,7 @@ export const DataTable = (props: {
         onSelect: () => {
           setTransformModalOpen(true)
           setNewColName(props.headerRow[popoverColumnIndex!] + " Trans")
-          handleTransfomerCodeChanged(transformerFunctionCode)
+          handleTransformerCodeChanged(transformerFunctionCode)
         },
       },
     ],
@@ -434,7 +412,7 @@ export const DataTable = (props: {
             value={transformerFunctionCode}
             highlight={(code) => highlight(code, languages.js, "js")}
             padding={5}
-            onValueChange={handleTransfomerCodeChanged}
+            onValueChange={handleTransformerCodeChanged}
           ></Editor>
           <div className="h-52 w-full mt-4">
             <h3 className="text-xl">Preview</h3>
@@ -491,7 +469,7 @@ export const DataTable = (props: {
               Cancel
             </Button>
             <Button
-              data-testid="btnTransfomApply"
+              data-testid="btnTransformApply"
               onPointerDown={() => {
                 const { transformer } = compileTransformerCode(
                   transformerFunctionCode,

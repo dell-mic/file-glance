@@ -18,7 +18,7 @@ test(`Transform column`, async ({ page }) => {
     .getByTestId("transformCodeInput")
     .locator("textarea")
     .fill("return 'NEW ' + value + ' xxx'")
-  await page.getByTestId("btnTransfomApply").click()
+  await page.getByTestId("btnTransformApply").click()
   await expect(page).toHaveScreenshot()
 })
 
@@ -35,6 +35,6 @@ test(`Transform column as new column`, async ({ page }) => {
     .getByTestId("transformCodeInput")
     .locator("textarea")
     .fill("return 'NEW ' + value + ' xxx'")
-  await page.getByTestId("btnTransfomApply").click()
+  await page.getByTestId("btnTransformApply").click()
   await expect(page).toHaveScreenshot()
 })
