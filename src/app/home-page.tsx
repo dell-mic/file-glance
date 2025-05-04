@@ -360,39 +360,45 @@ export default function Home() {
       const hash = window.location.hash
       const StartHashContent = 3
       console.log(hash)
-      if (hash.startsWith("#d=")) {
-        setParsingState("parsing")
-        parseText(decodeURI(hash.substring(StartHashContent)), "URL Data", true)
-      } else if (hash.startsWith("#p=")) {
-        setParsingState("parsing")
+      if (hash) {
+        if (hash.startsWith("#d=")) {
+          setParsingState("parsing")
+          parseText(
+            decodeURI(hash.substring(StartHashContent)),
+            "URL Data",
+            true,
+          )
+        } else if (hash.startsWith("#p=")) {
+          setParsingState("parsing")
 
-        base64GzippedToString(hash.substring(StartHashContent)).then((p) => {
-          try {
-            const project: ProjectExport = JSON.parse(p)
-            console.log(project)
-            setTransformers(
-              project.transformers.map((t) => ({
-                ...t,
-                transformer: compileTransformerCode(t.transformerFunctionCode)
-                  .transformer!,
-              })),
-            )
-            setFilters(project.filters)
-            setSearch(project.search)
-            setHiddenColumns(project.hiddenColumns)
-            parseText(project.data, project.name, false)
-          } catch (error) {
-            // Most probably incomplete/corrupted URL data
-            console.error(error)
-            toast({
-              title: "Invalid data in URL",
-              variant: "error",
-            })
-            setParsingState("initial")
-          }
-        })
+          base64GzippedToString(hash.substring(StartHashContent)).then((p) => {
+            try {
+              const project: ProjectExport = JSON.parse(p)
+              console.log(project)
+              setTransformers(
+                project.transformers.map((t) => ({
+                  ...t,
+                  transformer: compileTransformerCode(t.transformerFunctionCode)
+                    .transformer!,
+                })),
+              )
+              setFilters(project.filters)
+              setSearch(project.search)
+              setHiddenColumns(project.hiddenColumns)
+              parseText(project.data, project.name, false)
+            } catch (error) {
+              // Most probably incomplete/corrupted URL data
+              console.error(error)
+              toast({
+                title: "Invalid data in URL",
+                variant: "error",
+              })
+              setParsingState("initial")
+            }
+          })
+        }
+        history.replaceState(undefined, "", "#")
       }
-      history.replaceState(undefined, "", "#")
     }
   }, [])
 
