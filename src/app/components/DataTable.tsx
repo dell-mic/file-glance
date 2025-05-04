@@ -133,6 +133,7 @@ export const DataTable = (props: {
     setTransformModalOpen(false)
     setTransformerFunctionCode(TransformerFunctionComment)
     setTransformerValidation(null)
+    setTargetType("current")
   }
 
   const handlePopoverClose = () => {
