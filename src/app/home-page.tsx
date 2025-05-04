@@ -25,6 +25,9 @@ import {
   tryParseJSONObject,
   valueAsString,
   compileTransformerCode,
+  compressString,
+  decompressString,
+  generateSyntheticFile,
 } from "@/utils"
 import { title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -92,6 +95,16 @@ export default function Home() {
     let _headerRow: string[] = []
     let isHeaderSet = false
     let errorMessage = ""
+
+    // Import full project (no postprocessing needed / return early)
+    if (file.name.toLowerCase().endsWith(".fg")) {
+      const data = await file.arrayBuffer()
+      const project = await decompressString(data)
+      importProject(project)
+      return
+    }
+
+    // Parse data/content from file (including some postprocessing)
     if (file.name.toLowerCase().endsWith(".xlsx")) {
       const fileAsArrayBuffer = await file.arrayBuffer()
       const workbook = XLSX.read(fileAsArrayBuffer)
@@ -210,8 +223,6 @@ export default function Home() {
     setParsingState("parsing")
     // detect if text looks like proper json
     const isJson = tryParseJSONObject(text) !== false
-    // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
-    const blob = new Blob([text], { type: "text/plain" })
     if (isJson) {
       syntheticFileName += ".json"
     } else if (isMarkdownTable(text)) {
@@ -219,9 +230,9 @@ export default function Home() {
     } else {
       // If no ending parsing logic will attempt CSV parings
     }
-    const syntheticFile = new File([blob], syntheticFileName, {
-      lastModified: new Date().getTime(),
-    })
+
+    // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
+    const syntheticFile = generateSyntheticFile(text, syntheticFileName)
     parseFile(syntheticFile, hideEmptyColumns)
   }
 
@@ -230,12 +241,10 @@ export default function Home() {
     const simulatedFileBytes = Array.from(
       { length: rowsAmount * 50 },
       () => "1",
-    )
+    ).join()
     const sampleData = generateSampleData(rowsAmount)
     setData(
-      new File(simulatedFileBytes, "Generated-Sample.csv", {
-        lastModified: new Date().getTime(),
-      }),
+      generateSyntheticFile(simulatedFileBytes, "Generated-Sample.csv"),
       sampleData.headerRow,
       jsonToTable(sampleData.data).data,
       true,
@@ -372,29 +381,7 @@ export default function Home() {
           setParsingState("parsing")
 
           base64GzippedToString(hash.substring(StartHashContent)).then((p) => {
-            try {
-              const project: ProjectExport = JSON.parse(p)
-              console.log(project)
-              setTransformers(
-                project.transformers.map((t) => ({
-                  ...t,
-                  transformer: compileTransformerCode(t.transformerFunctionCode)
-                    .transformer!,
-                })),
-              )
-              setFilters(project.filters)
-              setSearch(project.search)
-              setHiddenColumns(project.hiddenColumns)
-              parseText(project.data, project.name, false)
-            } catch (error) {
-              // Most probably incomplete/corrupted URL data
-              console.error(error)
-              toast({
-                title: "Invalid data in URL",
-                variant: "error",
-              })
-              setParsingState("initial")
-            }
+            importProject(p)
           })
         }
         history.replaceState(undefined, "", "#")
@@ -574,6 +561,73 @@ export default function Home() {
     )
   }
 
+  const ExportDelimiter = ";"
+  const exportProject = (): ProjectExport => {
+    const project = {
+      v: 1,
+      name: currentFile?.name!,
+      data: stringifyCSV([headerRow, ...allRows], {
+        delimiter: ExportDelimiter,
+        bom: true,
+        cast: { boolean: (v) => String(v) },
+      }),
+      transformers: transformers.map((t) => omit(t, "transformer")),
+      hiddenColumns: hiddenColumns,
+      filters: filters,
+      search: search,
+    }
+    return project
+  }
+
+  const importProject = (p: ProjectExport | string): void => {
+    try {
+      const project: ProjectExport = typeof p === "string" ? JSON.parse(p) : p
+      // console.log(project)
+
+      // parseText(project.data, project.name, false)
+      const data = parse(project.data, {
+        delimiter: ExportDelimiter,
+        bom: true,
+        skip_empty_lines: true,
+        relax_column_count: true,
+      })
+      // Import/export has always header row
+      const _headerRow = data.shift()!
+
+      setDataIncludesHeaderRow(true)
+      setDataFormatAlwaysIncludesHeader(true)
+      setTransformers(
+        project.transformers.map((t) => ({
+          ...t,
+          transformer: compileTransformerCode(t.transformerFunctionCode)
+            .transformer!,
+        })),
+      )
+      setFilters(project.filters)
+      setSearch(project.search)
+      setHiddenColumns(project.hiddenColumns)
+      setData(
+        generateSyntheticFile(project.data, project.name),
+        _headerRow,
+        data,
+        false,
+      )
+      toast({
+        title: project.name + " loaded",
+        description: data.length + " lines",
+        variant: "success",
+      })
+    } catch (error) {
+      // Most probably incomplete/corrupted URL data
+      console.error(error)
+      toast({
+        title: "Import failed",
+        variant: "error",
+      })
+      setParsingState("initial")
+    }
+  }
+
   const getExportData = (): any[][] => {
     // Need to filter columns as they are still part of displayed data for index consistency
     return [displayedHeader, ...displayedDataFiltered].map((row) =>
@@ -583,6 +637,21 @@ export default function Home() {
 
   const exportPopoverEntries = [
     [
+      {
+        text: "Save Project",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: async () => {
+          const fileName = getExportFileName("fg")
+          const dataBlob = await compressString(
+            JSON.stringify(exportProject()),
+          ).then((_) => _.blob())
+          await saveFile(dataBlob, fileName)
+          toast({
+            title: "Project exported",
+            variant: "success",
+          })
+        },
+      },
       {
         text: "Export as CSV",
         icon: <ArchiveBoxArrowDownIconSolid />,
@@ -639,6 +708,7 @@ export default function Home() {
           )
           toast({
             title: "TSV copied to clipboard",
+            variant: "success",
           })
         },
       },
@@ -651,6 +721,7 @@ export default function Home() {
           )
           toast({
             title: "Markdown copied to clipboard",
+            variant: "success",
           })
         },
       },
@@ -660,18 +731,8 @@ export default function Home() {
         text: "Share Link",
         icon: <ShareIcon />,
         onSelect: async () => {
-          const project = {
-            v: 1,
-            name: currentFile?.name,
-            data: stringifyCSV([headerRow, ...allRows], {
-              delimiter: ";",
-              cast: { boolean: (v) => String(v) },
-            }),
-            transformers: transformers.map((t) => omit(t, "transformer")),
-            hiddenColumns: hiddenColumns,
-            filters: filters,
-            search: search,
-          }
+          const project = exportProject()
+
           const urlWithoutHash = window.location.href.split("#")[0]
 
           console.time("Compressing")

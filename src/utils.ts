@@ -508,7 +508,7 @@ export const saveFile = async (blob: Blob, name: string) => {
   a.download = name
   a.href = URL.createObjectURL(blob)
   a.addEventListener("click", (e) => {
-    setTimeout(() => URL.revokeObjectURL(a.href), 30 * 1000)
+    setTimeout(() => URL.revokeObjectURL(a.href), 10 * 1000)
   })
   a.click()
 }
@@ -567,10 +567,10 @@ export function generateHeaderRow(
   )
 }
 
-export async function stringToBase64Gzipped(
+export async function compressString(
   input: string,
   format: CompressionFormat = "gzip",
-): Promise<string> {
+): Promise<Response> {
   const encoder = new TextEncoder()
   const uint8Input = encoder.encode(input)
 
@@ -579,40 +579,56 @@ export async function stringToBase64Gzipped(
   writer.write(uint8Input)
   writer.close()
 
-  const arrayBuffer = await new Response(
-    compressionStream.readable,
-  ).arrayBuffer()
-  const base64String = btoa(
-    new Uint8Array(arrayBuffer).reduce(
-      (data, byte) => data + String.fromCharCode(byte),
-      "",
-    ),
-  )
+  return new Response(compressionStream.readable)
+}
 
-  return base64String
+export async function decompressString(
+  compressedData: ArrayBuffer,
+  format: CompressionFormat = "gzip",
+): Promise<string> {
+  const decompressionStream = new DecompressionStream(format)
+  const stream = new Response(compressedData).body!.pipeThrough(
+    decompressionStream,
+  )
+  const decompressedArrayBuffer = await new Response(stream).arrayBuffer()
+
+  const decoder = new TextDecoder()
+  return decoder.decode(decompressedArrayBuffer)
+}
+
+export async function stringToBase64Gzipped(
+  input: string,
+  format: CompressionFormat = "gzip",
+): Promise<string> {
+  const arrayBuffer = await (await compressString(input, format)).arrayBuffer()
+  return arrayBufferToBase64(arrayBuffer)
 }
 
 export async function base64GzippedToString(
   base64Data: string,
   format: CompressionFormat = "gzip",
 ): Promise<string> {
-  const binaryString = atob(base64Data)
+  const arrayBuffer = base64ToArrayBuffer(base64Data)
+  return await decompressString(arrayBuffer, format)
+}
 
+// Helper functions
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ""
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64)
   const byteArray = new Uint8Array(binaryString.length)
   for (let i = 0; i < binaryString.length; i++) {
     byteArray[i] = binaryString.charCodeAt(i)
   }
-
-  const decompressionStream = new DecompressionStream(format)
-  const compressedStream = new Response(byteArray).body!.pipeThrough(
-    decompressionStream,
-  )
-
-  const decompressedArrayBuffer = await new Response(
-    compressedStream,
-  ).arrayBuffer()
-  const decoder = new TextDecoder()
-  return decoder.decode(decompressedArrayBuffer)
+  return byteArray.buffer
 }
 
 export function compileTransformerCode(code: string): {
@@ -639,4 +655,11 @@ export function compileTransformerCode(code: string): {
     transformer,
     error,
   }
+}
+
+export function generateSyntheticFile(data: string, name: string): File {
+  const blob = new Blob([data], { type: "text/plain" })
+  return new File([blob], name, {
+    lastModified: new Date().getTime(),
+  })
 }
