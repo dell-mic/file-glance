@@ -33,6 +33,7 @@ export const Popover: React.FC<PopoverProps> = ({
   children,
 }) => {
   const popoverRef = useRef<HTMLDivElement>(null)
+  const [adjustedStyles, setAdjustedStyles] = React.useState<any>(null)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,17 +57,43 @@ export const Popover: React.FC<PopoverProps> = ({
     }
   }, [open, onClose])
 
+  React.useLayoutEffect(() => {
+    if (!open || !anchorEl || !popoverRef.current) return
+    const anchorRectangle = anchorEl.getBoundingClientRect()
+    const popover = popoverRef.current
+    const popoverRect = popover.getBoundingClientRect()
+    let top =
+      anchorOrigin.vertical === "bottom"
+        ? anchorRectangle.bottom
+        : anchorRectangle.top
+    let left =
+      anchorOrigin.horizontal === "left"
+        ? anchorRectangle.left
+        : anchorRectangle.right
+
+    // Adjust if out of viewport
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    if (left + popoverRect.width > viewportWidth) {
+      left = Math.max(0, viewportWidth - popoverRect.width - 8)
+    }
+    if (left < 0) left = 8
+    if (top + popoverRect.height > viewportHeight) {
+      top = Math.max(0, viewportHeight - popoverRect.height - 8)
+    }
+    if (top < 0) top = 8
+    setAdjustedStyles({ top, left })
+  }, [open, anchorEl, anchorOrigin])
+
   if (!open || !anchorEl) return null
 
   const anchorRectangle = anchorEl.getBoundingClientRect()
-
-  // TODO: This should not be needed if anchorEl would be nulled correctly?
   const isAnchorElVisible = Object.values(anchorRectangle.toJSON()).every(
     Boolean,
   )
   if (!isAnchorElVisible) return null
 
-  const popoverStyles = {
+  const popoverStyles = adjustedStyles || {
     top:
       anchorOrigin.vertical === "bottom"
         ? anchorRectangle.bottom
@@ -76,13 +103,6 @@ export const Popover: React.FC<PopoverProps> = ({
         ? anchorRectangle.left
         : anchorRectangle.right,
   }
-  //   const popoverStyles = {
-  //     top: top,
-  //     left: left,
-  //   }
-
-  //   console.log("open", open)
-  //   console.log("anchorEl", anchorEl)
 
   return createPortal(
     <div
@@ -102,7 +122,7 @@ export const MenuPopover: React.FC<MenuPopoverProps> = (props) => {
 
   return (
     <Popover {...props}>
-      <div className="" style={{ width: "260px" }}>
+      <div className="" style={{}}>
         {popoverEntries.map((group, gi) => {
           return (
             <div
@@ -115,7 +135,7 @@ export const MenuPopover: React.FC<MenuPopoverProps> = (props) => {
               {group.map((menuEntry, mi) => (
                 <button
                   key={mi}
-                  className="flex items-center w-full text-sm text-left text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950"
+                  className="flex items-center w-full text-sm text-left text-gray-700 py-2 pl-2 pr-4 hover:bg-gray-100 hover:text-gray-950"
                   onPointerDown={() => {
                     menuEntry.onSelect()
                     props.onSelect(menuEntry)

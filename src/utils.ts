@@ -657,6 +657,68 @@ export function compileTransformerCode(code: string): {
   }
 }
 
+export function compileFilterCode(
+  code: string,
+  sampleRow: any[],
+  headerRow: string[],
+): {
+  filter: Function | null
+  error: string | null
+} {
+  let filter = null
+  let error = null
+  try {
+    filter = new Function("row", code)
+  } catch (err: any) {
+    error = err.toString()
+  }
+
+  if (!error && filter) {
+    try {
+      const result = applyFilterFunction(sampleRow, filter, headerRow)
+      if (typeof result !== "boolean") {
+        error = "Filter function must return a boolean value"
+        filter = null
+      }
+    } catch (err: any) {
+      error = err.toString()
+      filter = null
+    }
+  }
+
+  return {
+    filter,
+    error,
+  }
+}
+
+export function expandRow(
+  row: any[],
+  headerRow: string[],
+): Record<string | number, any> {
+  const result: Record<string | number, any> = {}
+  for (let i = 0; i < row.length; i++) {
+    result[i] = row[i]
+    if (headerRow[i]) {
+      result[headerRow[i]] = row[i]
+    }
+  }
+  return result
+}
+
+export function applyFilterFunction(
+  row: any[],
+  filterFunction: Function,
+  headerRow: string[],
+): boolean {
+  try {
+    return filterFunction(expandRow(row, headerRow))
+  } catch (error) {
+    console.error("Error applying filter function:", error)
+    return false // If the filter function throws an error, we assume the row does not match. Can happen if the function passes validation on first row, but errors on others.
+  }
+}
+
 export function generateSyntheticFile(data: string, name: string): File {
   const blob = new Blob([data], { type: "text/plain" })
   return new File([blob], name, {

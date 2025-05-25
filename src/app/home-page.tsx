@@ -10,7 +10,7 @@ import { stringify as stringifyCSV } from "csv-stringify/browser/esm/sync"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
-import { Modal } from "./components/Modal"
+import FilterDialog from "./components/FilterDialog"
 import {
   base64GzippedToString,
   detectDelimiter,
@@ -28,6 +28,8 @@ import {
   compressString,
   decompressString,
   generateSyntheticFile,
+  compileFilterCode,
+  applyFilterFunction,
 } from "@/utils"
 import { title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -43,6 +45,8 @@ import { ShareIcon } from "@heroicons/react/20/solid"
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { FunnelIcon } from "@heroicons/react/24/outline"
+import { FunnelIcon as FunnelIconSolid } from "@heroicons/react/24/solid"
 
 export default function Home() {
   const { toast } = useToast()
@@ -72,6 +76,24 @@ export default function Home() {
     "initial" | "parsing" | "finished"
   >("initial")
   const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
+
+  const [filterDialogOpen, setFilterDialogOpen] = React.useState(false)
+  const [exampleFilterFunctionCode, setExampleFilterFunctionCode] =
+    React.useState("")
+  const [filterFunctionCode, setFilterFunctionCode] = React.useState<string>("")
+  const [appliedFilterFunctionCode, setAppliedFilterFunctionCode] =
+    React.useState<string | null>("")
+  interface FilterValidationResult {
+    error: string | null
+    matchingRowsCount: number
+  }
+
+  const [filterValidationResult, setFilterValidationResult] =
+    React.useState<FilterValidationResult>({
+      error: null,
+      matchingRowsCount: 0,
+    })
+
   // const [columnValueCounts, setcColumnValueCounts] = React.useState<
   //   ColumnInfos[]
   // >([]);
@@ -368,7 +390,7 @@ export default function Home() {
     if (typeof window !== "undefined") {
       const hash = window.location.hash
       const StartHashContent = 3
-      console.log(hash)
+      // console.log(hash)
       if (hash) {
         if (hash.startsWith("#d=")) {
           setParsingState("parsing")
@@ -517,6 +539,20 @@ export default function Home() {
         )
       : filteredData
 
+    // Apply filter function if set
+    if (appliedFilterFunctionCode) {
+      const compilationResult = compileFilterCode(
+        appliedFilterFunctionCode,
+        displayedData[0],
+        displayedHeader,
+      )
+      if (compilationResult.filter && !compilationResult.error) {
+        filteredData = filteredData.filter((row) =>
+          applyFilterFunction(row, compilationResult.filter!, displayedHeader),
+        )
+      }
+    }
+
     if (sortSetting) {
       filteredData = orderBy(
         filteredData,
@@ -527,7 +563,14 @@ export default function Home() {
 
     console.timeEnd("filterAndSorting")
     return filteredData
-  }, [displayedData, filters, search, displayedHeader, sortSetting])
+  }, [
+    displayedData,
+    filters,
+    search,
+    appliedFilterFunctionCode,
+    displayedHeader,
+    sortSetting,
+  ])
 
   const columnValueCounts = useMemo(() => {
     return countValues(displayedHeader, displayedData, displayedDataFiltered)
@@ -535,8 +578,43 @@ export default function Home() {
 
   // console.log("displayedData", displayedData);
 
-  let fileInfos: string[] = [] // TODO
-  const isFiltered = filters.length > 0 || search.length > 0
+  React.useEffect(() => {
+    // Debounce filter function validation
+    const handler = setTimeout(() => {
+      if (!filterFunctionCode) {
+        setFilterValidationResult({
+          error: null,
+          matchingRowsCount: 0,
+        })
+        return
+      }
+      const compiled = compileFilterCode(
+        filterFunctionCode,
+        displayedData[0],
+        displayedHeader,
+      )
+      if (compiled.error) {
+        setFilterValidationResult({
+          error: compiled.error,
+          matchingRowsCount: 0,
+        })
+      } else {
+        const count = displayedData.filter((row) =>
+          applyFilterFunction(row, compiled.filter!, displayedHeader),
+        ).length
+        setFilterValidationResult({
+          error: null,
+          matchingRowsCount: count,
+        })
+      }
+    }, 500)
+
+    return () => clearTimeout(handler)
+  }, [filterFunctionCode, displayedData, displayedHeader])
+
+  let fileInfos: string[] = []
+  const isFiltered =
+    filters.length > 0 || search.length > 0 || !!appliedFilterFunctionCode
 
   if (currentFile) {
     fileInfos.push(formatBytes(currentFile.size))
@@ -547,6 +625,19 @@ export default function Home() {
   if (isFiltered) {
     fileInfos.push(`${displayedDataFiltered.length} filtered`)
   }
+
+  React.useEffect(() => {
+    let exampleFilterFunction = ""
+    if (columnValueCounts[0]) {
+      exampleFilterFunction = `// (row: any[]) => boolean\n`
+      exampleFilterFunction += `// For example: \n`
+      exampleFilterFunction += `return row["${columnValueCounts[0].columnName}"] === ${JSON.stringify(columnValueCounts[0].columnValues[0].value)}`
+    }
+    if (columnValueCounts[1]) {
+      exampleFilterFunction += ` || row["${columnValueCounts[1].columnName}"] === ${JSON.stringify(columnValueCounts[1].columnValues[columnValueCounts[1].columnValues.length - 1].value)}`
+    }
+    setExampleFilterFunctionCode(exampleFilterFunction)
+  }, [headerRow, columnValueCounts])
 
   const getExportFileName = (newEnding: string): string => {
     return (
@@ -574,6 +665,7 @@ export default function Home() {
       transformers: transformers.map((t) => omit(t, "transformer")),
       hiddenColumns: hiddenColumns,
       filters: filters,
+      filterFunction: appliedFilterFunctionCode,
       search: search,
     }
     return project
@@ -603,6 +695,10 @@ export default function Home() {
             .transformer!,
         })),
       )
+      if (project.filterFunction) {
+        setFilterFunctionCode(project.filterFunction)
+        setAppliedFilterFunctionCode(project.filterFunction)
+      }
       setFilters(project.filters)
       setSearch(project.search)
       setHiddenColumns(project.hiddenColumns)
@@ -755,9 +851,12 @@ export default function Home() {
 
   const clearFilterButton = isFiltered ? (
     <button
+      title="Clear all filters"
       onPointerDown={() => {
         setFilters([])
         setSearch("")
+        setFilterFunctionCode("")
+        setAppliedFilterFunctionCode(null)
       }}
       className="bg-transparent align-bottom text-sm text-gray-500 rounded-full p-1 hover:bg-gray-200 transition-colors duration-300"
     >
@@ -877,8 +976,54 @@ export default function Home() {
                     </span>
                   </div>
                   <div className="flex gap-1">
+                    <input
+                      type="search"
+                      data-testid="searchInput"
+                      className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value)
+                      }}
+                      onPaste={(e) => {
+                        e.stopPropagation()
+                      }}
+                      placeholder="Search"
+                    ></input>
+
+                    <button
+                      data-testid={"btnFilter"}
+                      title="Filter rows"
+                      onPointerDown={() => {
+                        setFilterDialogOpen(true)
+                      }}
+                      className="text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950 p-2 rounded-md"
+                    >
+                      {appliedFilterFunctionCode ? (
+                        <FunnelIconSolid className="size-5" />
+                      ) : (
+                        <FunnelIcon className="size-5" />
+                      )}
+                    </button>
+                    <FilterDialog
+                      open={filterDialogOpen}
+                      exampleFilterFunctionCode={exampleFilterFunctionCode}
+                      filterFunctionCode={filterFunctionCode}
+                      matchingRowsCount={
+                        filterValidationResult.matchingRowsCount
+                      }
+                      filterValidationError={filterValidationResult.error}
+                      onClose={() => setFilterDialogOpen(false)}
+                      onFilterCodeChange={(code: string) =>
+                        setFilterFunctionCode(code)
+                      }
+                      onApply={(code) => {
+                        setFilterDialogOpen(false)
+                        setAppliedFilterFunctionCode(code)
+                      }}
+                    />
                     <button
                       data-testid={"btnExport"}
+                      title="Export data"
                       ref={exportButtonRef}
                       onPointerDown={() => {
                         setPopoverAnchorElement(exportButtonRef.current)
@@ -896,25 +1041,6 @@ export default function Home() {
                       onSelect={() => setPopoverAnchorElement(null)}
                       anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
                     ></MenuPopover>
-                    {/* TODO:Implement export dialog */}
-                    <Modal id="exportDialog" open={false} onClose={() => {}}>
-                      <div className="m-auto text-2xl text-gray-700">
-                        <span>Export</span>
-                      </div>
-                    </Modal>
-                    <input
-                      type="search"
-                      data-testid="searchInput"
-                      className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
-                      value={search}
-                      onChange={(e) => {
-                        setSearch(e.target.value)
-                      }}
-                      onPaste={(e) => {
-                        e.stopPropagation()
-                      }}
-                      placeholder="Search"
-                    ></input>
                   </div>
                 </div>
                 <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
@@ -1148,7 +1274,7 @@ function findArray(json: any): any[] | null {
     }
   }
 
-  console.log("arry property used: ", arrayProp)
+  // console.log("array property used: ", arrayProp)
 
   return arrayProp ? json[arrayProp] : null
 }
@@ -1178,5 +1304,6 @@ interface ProjectExport {
   hiddenColumns: number[]
   name: string
   search: string
+  filterFunction: string | null
   transformers: Omit<Transformer, "transformer">[]
 }
