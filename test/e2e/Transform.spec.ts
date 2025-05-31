@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 test(`Transform column`, async ({ page }) => {
   await page.getByTestId("header_1_Name").click()
   await page.getByTestId("headerBtn_1_Name").click()
-  await page.locator('button:text("Transform")').click()
+  await page.getByTestId("menuEntry-Transform").click()
   await page
     .getByTestId("transformCodeInput")
     .locator("textarea")
@@ -29,7 +29,7 @@ test(`Transform column as new column`, async ({ page }) => {
 
   await page.getByTestId("header_1_Name").click()
   await page.getByTestId("headerBtn_1_Name").click()
-  await page.locator('button:text("Transform")').click()
+  await page.getByTestId("menuEntry-Transform").click()
   await page.getByTestId("transform-new").click()
   await page
     .getByTestId("transformCodeInput")

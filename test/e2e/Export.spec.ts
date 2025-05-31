@@ -25,7 +25,7 @@ test(`Share Link`, async ({ page, context, browserName }) => {
   // TODO: Duplicate code from Transformer test
   await page.getByTestId("header_0_Some parameter").click()
   await page.getByTestId("headerBtn_0_Some parameter").click()
-  await page.locator('button:text("Transform")').click()
+  await page.getByTestId("menuEntry-Transform").click()
   await page
     .getByTestId("transformCodeInput")
     .locator("textarea")
@@ -34,7 +34,7 @@ test(`Share Link`, async ({ page, context, browserName }) => {
 
   // Actual export via link
   await page.getByTestId("btnExport").click()
-  await page.locator('button:text("Share Link")').click()
+  await page.getByTestId("menuEntry-Share Link").click()
 
   // Get clipboard text from the page context
   const clipboardText = await page.evaluate(() =>

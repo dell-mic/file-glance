@@ -1,5 +1,5 @@
 import * as jschardet from "jschardet"
-import { maxBy, set } from "lodash"
+import { maxBy, set, uniq } from "lodash"
 
 export function valueAsString(v: any): string {
   // Convert false,0 to string, but null/undefined to empty string
@@ -332,11 +332,14 @@ export function hasHeader(data: any[][]): boolean {
     if (valueAsString(headerValue).length) {
       for (const line of data.slice(1, numRowsToCompare)) {
         const rowValue = line[headerIndex]
-        if (
-          normalizeString(valueAsString(rowValue)) ===
-          normalizeString(headerValue)
-        ) {
+        const headerPattern = normalizeString(headerValue)
+        const valuePattern = normalizeString(valueAsString(rowValue))
+        // pattern > 3 equals meaningful pattern, ie. not just alpha numeric
+        if (uniq(headerPattern).length > 3 && valuePattern === headerPattern) {
           return false
+        }
+        if (rowValue === headerValue) {
+          return false // If the value is exactly the same, it's likely not a header
         }
       }
     }
@@ -724,4 +727,58 @@ export function generateSyntheticFile(data: string, name: string): File {
   return new File([blob], name, {
     lastModified: new Date().getTime(),
   })
+}
+
+export function getMaxStringLength(input: string[]) {
+  if (!input || !input.length) {
+    return 0
+  }
+
+  const maxChecks = 500
+  let maxLength = 0
+  const arrayLength = input.length
+
+  if (arrayLength <= maxChecks) {
+    for (let str of input) {
+      if (str?.length) {
+        maxLength = Math.max(maxLength, str.length)
+      }
+    }
+    return maxLength
+  } else {
+    // Loop over at most _maxChecks_ elements distributed across the array
+    const step = Math.ceil(arrayLength / maxChecks)
+
+    for (let i = 0; i < arrayLength; i += step) {
+      maxLength = Math.max(maxLength, input[i].length)
+    }
+
+    return maxLength
+  }
+}
+/**
+ * Helper function to pick array property from json (if not root is already array)
+ * Heuristic: Take the top level property with the most entries
+ * @param json
+ * @returns
+ */
+export function findArrayProp(json: any): any[] | null {
+  if (Array.isArray(json)) {
+    return json
+  }
+
+  let arrayProp = null
+  for (let key in json) {
+    if (json.hasOwnProperty(key)) {
+      let value = json[key]
+      const existingCandidateLength = arrayProp ? json[arrayProp]?.length : 0
+      if (Array.isArray(value) && value.length > existingCandidateLength) {
+        arrayProp = key
+      }
+    }
+  }
+
+  // console.log("array property used: ", arrayProp)
+
+  return arrayProp ? json[arrayProp] : null
 }

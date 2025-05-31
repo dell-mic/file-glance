@@ -16,6 +16,21 @@ describe("hasHeader", () => {
     const result = hasHeader(data)
     expect(result).toBe(true)
   })
+  it("should return true when the first row is a header (hex colors)", () => {
+    const data = [
+      ["Name", "HEX", "RGB"],
+      ["White", "#FFFFFF", "rgb(100,100,100)"],
+      ["Silver", "#C0C0C0", "rgb(75,75,75)"],
+      ["Gray", "#808080", "rgb(50,50,50)"],
+      ["Black", "#000000", "rgb(0,0,0)"],
+      ["Red", "#FF0000", "rgb(100,0,0)"],
+      ["Maroon", "#800000", "rgb(50,0,0)"],
+      ["Yellow", "#FFFF00", "rgb(100,100,0)"],
+    ]
+
+    const result = hasHeader(data)
+    expect(result).toBe(true)
+  })
 
   it("return false when there are repeating values in first row (as almost always are values then)", () => {
     const data = [
