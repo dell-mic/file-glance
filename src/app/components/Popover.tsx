@@ -135,6 +135,7 @@ export const MenuPopover: React.FC<MenuPopoverProps> = (props) => {
               {group.map((menuEntry, mi) => (
                 <button
                   key={mi}
+                  data-testid={`menuEntry-${menuEntry.text}`}
                   className="flex items-center w-full text-sm text-left text-gray-700 py-2 pl-2 pr-4 hover:bg-gray-100 hover:text-gray-950"
                   onPointerDown={() => {
                     menuEntry.onSelect()
@@ -142,7 +143,7 @@ export const MenuPopover: React.FC<MenuPopoverProps> = (props) => {
                   }}
                 >
                   <span className="mr-3 size-5">{menuEntry.icon}</span>
-                  {menuEntry.text}
+                  <span className="whitespace-nowrap">{menuEntry.text}</span>
                 </button>
               ))}
             </div>
