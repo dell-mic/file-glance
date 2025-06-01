@@ -127,8 +127,19 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
           </SelectContent>
         </Select>
         <Editor
+          data-testid={`transformCodeHints`}
+          className="w-full font-mono text-sm"
+          value={
+            "// (value, columnIndex, rowIndex, headerName, allRows, originalValue) =>"
+          }
+          highlight={(code) => highlight(code, languages.js, "js")}
+          padding={5}
+          disabled={true}
+          onValueChange={() => {}}
+        />
+        <Editor
           data-testid={`transformCodeInput`}
-          className="w-full min-h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm my-2"
+          className="w-full min-h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm mb-2"
           value={transformerFunctionCode}
           highlight={(code) => highlight(code, languages.js, "js")}
           padding={5}

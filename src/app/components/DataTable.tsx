@@ -55,9 +55,6 @@ export const DataTable = (props: {
   onSortingChange: (e: SortEvent) => void
   onTransformerAdded: (e: TransformerAddedEvent) => void
 }) => {
-  const TransformerFunctionComment =
-    "// (value, columnIndex, rowIndex, headerName, allRows, originalValue) =>\n"
-
   const { width: windowWidth } = useWindowDimensions()
 
   const { toast } = useToast()
@@ -100,7 +97,7 @@ export const DataTable = (props: {
   const [transformModalOpen, setTransformModalOpen] =
     React.useState<boolean>(false)
   const [transformerFunctionCode, setTransformerFunctionCode] =
-    React.useState<string>(TransformerFunctionComment)
+    React.useState<string>("")
 
   const [transformerValidation, setTransformerValidation] =
     React.useState<TransformerValidation | null>(null)
@@ -113,7 +110,7 @@ export const DataTable = (props: {
 
   const handleTransformModalClose = () => {
     setTransformModalOpen(false)
-    setTransformerFunctionCode(TransformerFunctionComment)
+    setTransformerFunctionCode("")
     setTransformerValidation(null)
     setTargetType("current")
   }
@@ -128,7 +125,7 @@ export const DataTable = (props: {
   const handleTransformerSelected = (value: string) => {
     switch (value) {
       case "custom":
-        handleTransformerCodeChanged(TransformerFunctionComment)
+        handleTransformerCodeChanged("return value")
         break
       case "uppercase":
         handleTransformerCodeChanged("return value.toUpperCase()")
