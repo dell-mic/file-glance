@@ -14,7 +14,7 @@ export const FileChooser = (props: {
       >
         <div className="flex flex-col items-center justify-center pt-5 pb-6">
           <svg
-            className="w-14 h-14 mb-3 text-gray-400"
+            className="size-16 mb-3 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -25,7 +25,7 @@ export const FileChooser = (props: {
             <line x1="8" y1="14" x2="16" y2="14"></line>
             <line x1="8" y1="18" x2="16" y2="18"></line>
           </svg>
-          <p className="mb-2 text-gray-600 text-3xl">
+          <p className="mb-2 text-gray-600 text-4xl">
             <span className="font-medium">Choose file</span> or{" "}
             <span className="font-medium">drag & drop</span> or{" "}
             <span className="font-medium">paste</span>

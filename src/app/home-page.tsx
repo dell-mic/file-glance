@@ -292,6 +292,13 @@ export default function Home() {
     setDataFormatAlwaysIncludesHeader(true)
   }
 
+  const onClickFeedbackCta = () => {
+    // const path = window.location.pathname.replace(/^\/|\/$/g, "")
+    const host = window.location.hostname.replace(/^www\./, "")
+    const mailtoLink = `mailto:feedback@${host}?subject=Feedback ${host}`
+    window.open(mailtoLink, "_blank")
+  }
+
   const setData = (
     file: File | null,
     headerRow: string[],
@@ -915,22 +922,33 @@ export default function Home() {
               <div>
                 <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
                 <div className="text-2xl text-gray-500 m-4">
-                  Simple, privacy-friendly tool for working with tabular data
+                  Simple, but powerful, privacy-friendly tool for working with
+                  tabular data
                 </div>
                 <div className="flex flex-col items-center">
                   <FileChooser
                     handleFileSelected={handleFileSelected}
                     isDragging={dragging}
                   ></FileChooser>
-                  <span className="text-xl text-gray-500">
+                  <span className="text-3xl text-gray-500">
                     Just want to play around?
                   </span>
 
                   <button
                     onPointerDown={onGenerateSampleData}
-                    className="text-xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
+                    className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
                   >
                     Load sample data
+                  </button>
+                  <span className="text-xl text-gray-500 mt-8">
+                    Found a bug? Feedback? Ideas?
+                  </span>
+
+                  <button
+                    onClick={onClickFeedbackCta}
+                    className="text-lg hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
+                  >
+                    Let me know!
                   </button>
                 </div>
               </div>
