@@ -39,6 +39,7 @@ export default function RootLayout({
             ? `
                 var _paq = window._paq = window._paq || [];
                 /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+                _paq.push(['disableCookies']);
                 _paq.push(['trackPageView']);
                 _paq.push(['enableLinkTracking']);
                 (function() {
