@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react"
 
-import { cloneDeep, maxBy, omit, orderBy } from "lodash"
+import { cloneDeep, maxBy, omit, orderBy } from "lodash-es"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"

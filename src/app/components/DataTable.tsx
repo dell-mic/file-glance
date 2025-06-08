@@ -1,4 +1,4 @@
-import { sum, uniq } from "lodash"
+import { sum, uniq } from "lodash-es"
 import React from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 

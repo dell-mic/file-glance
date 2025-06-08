@@ -1,5 +1,5 @@
 import * as jschardet from "jschardet"
-import { maxBy, set, uniq } from "lodash"
+import { maxBy, set, uniq } from "lodash-es"
 
 export function valueAsString(v: any): string {
   // Convert false,0 to string, but null/undefined to empty string

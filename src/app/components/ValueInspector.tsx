@@ -1,4 +1,4 @@
-import { orderBy } from "lodash"
+import { orderBy } from "lodash-es"
 import Accordion from "./Accordion"
 import { ColumnFilter } from "../home-page"
 import React from "react"
