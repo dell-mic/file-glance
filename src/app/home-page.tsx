@@ -179,16 +179,16 @@ export default function Home() {
     } else if (file.name.toLowerCase().endsWith(".md")) {
       const contentAsText: string = await readFileToString(file)
 
-      const markdownParsinResult = parseMarkdownTable(contentAsText)
-      data = markdownParsinResult.rows
-      _headerRow = markdownParsinResult.headerRow
+      const markdownParsingResult = parseMarkdownTable(contentAsText)
+      data = markdownParsingResult.rows
+      _headerRow = markdownParsingResult.headerRow
       isHeaderSet = true
       setDataFormatAlwaysIncludesHeader(true)
       setDataIncludesHeaderRow(true)
-      console.log(
-        "Parsed as markdown with headers:",
-        markdownParsinResult.headerRow,
-      )
+      // console.log(
+      //   "Parsed as markdown with headers:",
+      //   markdownParsingResult.headerRow,
+      // )
     } else {
       const contentAsText: string = await readFileToString(file)
 
@@ -1112,7 +1112,7 @@ export default function Home() {
                       }
                     }}
                     onTransformerAdded={(e) => {
-                      console.log("onTransformerAdded", e)
+                      // console.log("onTransformerAdded", e)
                       setTransformers([...transformers, e])
                       // Adjust other filters in case affected by newly added column
                       setFilters(
