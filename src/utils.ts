@@ -782,3 +782,32 @@ export function findArrayProp(json: any): any[] | null {
 
   return arrayProp ? json[arrayProp] : null
 }
+
+/**
+ * Toggle item in array, if it exists remove it, otherwise add it
+ */
+export function addOrRemove(arr: any[], item: any): any[] {
+  return arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item]
+}
+
+export function formatBytes(bytes: number, dp = 1): string {
+  const thresh = 1000
+
+  if (Math.abs(bytes) < thresh) {
+    return bytes + " B"
+  }
+
+  const units = ["kB", "MB", "GB", "TB"]
+  let u = -1
+  const r = 10 ** dp
+
+  do {
+    bytes /= thresh
+    ++u
+  } while (
+    Math.round(Math.abs(bytes) * r) / r >= thresh &&
+    u < units.length - 1
+  )
+
+  return bytes.toFixed(dp) + " " + units[u]
+}
