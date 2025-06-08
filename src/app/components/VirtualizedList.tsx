@@ -9,6 +9,7 @@ import {
 
 import { valueAsString } from "@/utils"
 import { SortSetting } from "../home-page"
+import { cva } from "class-variance-authority"
 
 // Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
 // See also: https://github.com/bvaughn/react-window?tab=readme-ov-file
@@ -50,6 +51,22 @@ const ItemWrapper = ({ data, index, style }) => {
   )
 }
 
+const cellClass = cva(
+  "p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis",
+  {
+    variants: {
+      isTypedValue: {
+        true: "font-mono",
+        false: "",
+      },
+      isEmpty: {
+        true: "text-gray-500 font-mono",
+        false: "",
+      },
+    },
+  },
+)
+
 export const Row = (
   // @ts-ignore
   // prettier-ignore
@@ -66,17 +83,29 @@ export const Row = (
           return null
         } else {
           const _valueAsString = valueAsString(v)
+          let isEmpty = false
           let valueCell
+          const isTypedValue = typeof v !== "string"
           if (_valueAsString) {
             valueCell = _valueAsString
           } else {
-            valueCell = <span className="text-gray-500 font-mono">empty</span>
+            // valueCell = <span className="text-gray-500 font-mono">empty</span>
+            valueCell = "empty"
+            isEmpty = true
           }
+          let title =
+            isTypedValue && !isEmpty
+              ? `${_valueAsString} [${v.constructor.name}]`
+              : _valueAsString
+
           return (
             <span
               key={vi}
-              title={_valueAsString.length > 5 ? _valueAsString : undefined}
-              className="p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis"
+              title={title}
+              className={cellClass({
+                isTypedValue: isTypedValue,
+                isEmpty: isEmpty,
+              })}
               style={{
                 width: columnsWidths[vi],
               }}

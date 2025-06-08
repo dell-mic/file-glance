@@ -51,6 +51,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { FunnelIcon } from "@heroicons/react/24/outline"
 import { FunnelIcon as FunnelIconSolid } from "@heroicons/react/24/solid"
+import { CellObject } from "xlsx"
 
 export default function Home() {
   const { toast } = useToast()
@@ -148,15 +149,38 @@ export default function Home() {
     // Parse data/content from file (including some postprocessing)
     if (file.name.toLowerCase().endsWith(".xlsx")) {
       const fileAsArrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(fileAsArrayBuffer)
-      // console.log("workbook.SheetNames", workbook.SheetNames)
+      const workbook = XLSX.read(fileAsArrayBuffer, { cellDates: true })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      // console.log("firstSheet", firstSheet)
-      data = XLSX.utils.sheet_to_json(firstSheet, {
-        header: 1,
-        blankrows: false,
-        defval: "",
-      })
+      // Get the range of the sheet
+      const ref = firstSheet["!ref"]
+      if (!ref) {
+        data = []
+      } else {
+        const range = XLSX.utils.decode_range(ref)
+        const rows: any[][] = []
+        for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
+          const row: any[] = []
+          for (let colIdx = range.s.c; colIdx <= range.e.c; colIdx++) {
+            const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx })
+            const cell: CellObject = firstSheet[cellRef]
+            if (!cell) {
+              row.push("")
+            } else if (cell.t === "d" && cell.v instanceof Date) {
+              row.push(cell.v)
+            } else if (cell.t === "n") {
+              row.push(cell.v)
+            } else if (cell.t === "b") {
+              row.push(!!cell.v)
+            } else if (cell.t === "e") {
+              row.push(null)
+            } else {
+              row.push(cell.v)
+            }
+          }
+          rows.push(row)
+        }
+        data = rows
+      }
     } else if (file.name.toLowerCase().endsWith(".json")) {
       const contentAsText: string = await readFileToString(file)
 

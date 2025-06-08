@@ -5,6 +5,8 @@ export function valueAsString(v: any): string {
   // Convert false,0 to string, but null/undefined to empty string
   if (v === "" || v === null || v === undefined) {
     return ""
+  } else if (v instanceof Date) {
+    return v.toISOString()
   } else {
     return "" + v
   }
