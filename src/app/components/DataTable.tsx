@@ -122,40 +122,6 @@ export const DataTable = (props: {
 
   // console.log("Datatable - anchorEl", anchorEl)
 
-  const handleTransformerSelected = (value: string) => {
-    switch (value) {
-      case "custom":
-        handleTransformerCodeChanged("return value")
-        break
-      case "uppercase":
-        handleTransformerCodeChanged("return value.toUpperCase()")
-        break
-      case "lowercase":
-        handleTransformerCodeChanged("return value.toLowerCase()")
-        break
-      case "trim":
-        handleTransformerCodeChanged("return value.trim()")
-        break
-      case "emaildomain":
-        handleTransformerCodeChanged("return value.split('@')[1] || ''")
-        break
-      case "parseint":
-        handleTransformerCodeChanged("return parseInt(value, 10)")
-        break
-      case "parsefloat":
-        handleTransformerCodeChanged("return parseFloat(value)")
-        break
-      case "parse_unix_ts":
-        handleTransformerCodeChanged(
-          "return new Date(Number(value) * 1000).toISOString()",
-        )
-        break
-      default:
-        console.error("Unexpected select option value: " + value)
-        break
-    }
-  }
-
   const handleTransformerCodeChanged = (code: string) => {
     // TODO: Could be debounced?
     // console.log("code", code)
@@ -323,7 +289,6 @@ export const DataTable = (props: {
         onClose={handleTransformModalClose}
         onTargetTypeChange={setTargetType}
         onNewColNameChange={setNewColName}
-        onTransformerSelected={handleTransformerSelected}
         onTransformerCodeChange={handleTransformerCodeChanged}
         onApply={() => {
           const { transformer } = compileTransformerCode(

@@ -673,14 +673,14 @@ export function compileFilterCode(
   let filter = null
   let error = null
   try {
-    filter = new Function("row", code)
+    filter = new Function("row", "rowIndex", "cache", code)
   } catch (err: any) {
     error = err.toString()
   }
 
   if (!error && filter) {
     try {
-      const result = applyFilterFunction(sampleRow, filter, headerRow)
+      const result = applyFilterFunction(sampleRow, 0, filter, headerRow, {})
       if (typeof result !== "boolean") {
         error = "Filter function must return a boolean value"
         filter = null
@@ -713,11 +713,13 @@ export function expandRow(
 
 export function applyFilterFunction(
   row: any[],
+  rowIndex: number,
   filterFunction: Function,
   headerRow: string[],
+  cache: Record<string, any>,
 ): boolean {
   try {
-    return filterFunction(expandRow(row, headerRow))
+    return filterFunction(expandRow(row, headerRow), rowIndex, cache)
   } catch (error) {
     console.error("Error applying filter function:", error)
     return false // If the filter function throws an error, we assume the row does not match. Can happen if the function passes validation on first row, but errors on others.

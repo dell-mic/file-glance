@@ -83,25 +83,9 @@ export default function Home() {
   const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
 
   const [filterDialogOpen, setFilterDialogOpen] = React.useState(false)
-  const [exampleFilterFunctionCode, setExampleFilterFunctionCode] =
-    React.useState("")
   const [filterFunctionCode, setFilterFunctionCode] = React.useState<string>("")
   const [appliedFilterFunctionCode, setAppliedFilterFunctionCode] =
     React.useState<string | null>("")
-  interface FilterValidationResult {
-    error: string | null
-    matchingRowsCount: number
-  }
-
-  const [filterValidationResult, setFilterValidationResult] =
-    React.useState<FilterValidationResult>({
-      error: null,
-      matchingRowsCount: 0,
-    })
-
-  // const [columnValueCounts, setcColumnValueCounts] = React.useState<
-  //   ColumnInfos[]
-  // >([]);
 
   const handlePopoverClose = () => {
     setPopoverAnchorElement(null)
@@ -127,7 +111,6 @@ export default function Home() {
     setDataIncludesHeaderRow(false)
     setDataFormatAlwaysIncludesHeader(false)
     setAppliedFilterFunctionCode(null)
-    setFilterValidationResult({ error: null, matchingRowsCount: 0 })
     setSortSetting(null)
     setPopoverAnchorElement(null)
 
@@ -590,6 +573,15 @@ export default function Home() {
         )
       : filteredData
 
+    // Apply sorting before filter function as might impact results
+    if (sortSetting) {
+      filteredData = orderBy(
+        filteredData,
+        (e) => e[sortSetting?.columnIndex],
+        sortSetting.sortOrder,
+      )
+    }
+
     // Apply filter function if set
     if (appliedFilterFunctionCode) {
       const compilationResult = compileFilterCode(
@@ -597,19 +589,18 @@ export default function Home() {
         displayedData[0],
         displayedHeader,
       )
+      const cache = {}
       if (compilationResult.filter && !compilationResult.error) {
-        filteredData = filteredData.filter((row) =>
-          applyFilterFunction(row, compilationResult.filter!, displayedHeader),
+        filteredData = filteredData.filter((row, i) =>
+          applyFilterFunction(
+            row,
+            i,
+            compilationResult.filter!,
+            displayedHeader,
+            cache,
+          ),
         )
       }
-    }
-
-    if (sortSetting) {
-      filteredData = orderBy(
-        filteredData,
-        (e) => e[sortSetting?.columnIndex],
-        sortSetting.sortOrder,
-      )
     }
 
     console.timeEnd("filterAndSorting")
@@ -627,42 +618,6 @@ export default function Home() {
     return countValues(displayedHeader, displayedData, displayedDataFiltered)
   }, [displayedHeader, displayedData, displayedDataFiltered])
 
-  // console.log("displayedData", displayedData);
-
-  React.useEffect(() => {
-    // Debounce filter function validation
-    const handler = setTimeout(() => {
-      if (!filterFunctionCode) {
-        setFilterValidationResult({
-          error: null,
-          matchingRowsCount: 0,
-        })
-        return
-      }
-      const compiled = compileFilterCode(
-        filterFunctionCode,
-        displayedData[0],
-        displayedHeader,
-      )
-      if (compiled.error) {
-        setFilterValidationResult({
-          error: compiled.error,
-          matchingRowsCount: 0,
-        })
-      } else {
-        const count = displayedData.filter((row) =>
-          applyFilterFunction(row, compiled.filter!, displayedHeader),
-        ).length
-        setFilterValidationResult({
-          error: null,
-          matchingRowsCount: count,
-        })
-      }
-    }, 500)
-
-    return () => clearTimeout(handler)
-  }, [filterFunctionCode, displayedData, displayedHeader])
-
   let fileInfos: string[] = []
   const isFiltered =
     filters.length > 0 || search.length > 0 || !!appliedFilterFunctionCode
@@ -676,19 +631,6 @@ export default function Home() {
   if (isFiltered) {
     fileInfos.push(`${displayedDataFiltered.length} filtered`)
   }
-
-  React.useEffect(() => {
-    let exampleFilterFunction = ""
-    if (columnValueCounts[0]) {
-      exampleFilterFunction = `// (row: any[]) => boolean\n`
-      exampleFilterFunction += `// For example: \n`
-      exampleFilterFunction += `return row["${columnValueCounts[0].columnName}"] === ${JSON.stringify(columnValueCounts[0].columnValues[0].value)}`
-    }
-    if (columnValueCounts[1]) {
-      exampleFilterFunction += ` || row["${columnValueCounts[1].columnName}"] === ${JSON.stringify(columnValueCounts[1].columnValues[columnValueCounts[1].columnValues.length - 1].value)}`
-    }
-    setExampleFilterFunctionCode(exampleFilterFunction)
-  }, [headerRow, columnValueCounts])
 
   const getExportFileName = (newEnding: string): string => {
     return (
@@ -1068,12 +1010,10 @@ export default function Home() {
                     </button>
                     <FilterDialog
                       open={filterDialogOpen}
-                      exampleFilterFunctionCode={exampleFilterFunctionCode}
                       filterFunctionCode={filterFunctionCode}
-                      matchingRowsCount={
-                        filterValidationResult.matchingRowsCount
-                      }
-                      filterValidationError={filterValidationResult.error}
+                      columnValueCounts={columnValueCounts}
+                      headerRow={displayedHeader}
+                      displayedData={displayedData}
                       onClose={() => setFilterDialogOpen(false)}
                       onFilterCodeChange={(code: string) =>
                         setFilterFunctionCode(code)

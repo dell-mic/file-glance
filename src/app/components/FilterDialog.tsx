@@ -6,13 +6,27 @@ import "prismjs/components/prism-javascript"
 import "prismjs/themes/prism.css"
 import { Button } from "./button"
 import { Modal } from "./Modal"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./select"
+import { applyFilterFunction, compileFilterCode } from "@/utils"
+
+interface ColumnInfos {
+  columnName: string
+  columnValues: { value: any }[]
+}
 
 interface FilterDialogProps {
   open: boolean
-  exampleFilterFunctionCode: string
   filterFunctionCode: string
-  matchingRowsCount: number
-  filterValidationError?: string | null
+  columnValueCounts: ColumnInfos[]
+  headerRow: string[]
+  displayedData: any[][]
   onClose: () => void
   onFilterCodeChange: (code: string) => void
   onApply: (code: string) => void
@@ -20,14 +34,106 @@ interface FilterDialogProps {
 
 const FilterDialog: React.FC<FilterDialogProps> = ({
   open,
-  exampleFilterFunctionCode,
   filterFunctionCode,
-  matchingRowsCount,
-  filterValidationError,
+  columnValueCounts,
+  headerRow,
+  displayedData,
   onClose,
   onFilterCodeChange,
   onApply,
 }) => {
+  // Generate example filter code based on columnValueCounts
+  let exampleFilterFunctionCode = ""
+  if (columnValueCounts[0]) {
+    exampleFilterFunctionCode = `// (row: any[], rowIndex: number, cache = {}) => boolean\n`
+    exampleFilterFunctionCode += `// For example: \n`
+    exampleFilterFunctionCode += `return row[\"${columnValueCounts[0].columnName}\"] === ${JSON.stringify(columnValueCounts[0].columnValues[0]?.value)}`
+  }
+  if (columnValueCounts[1]) {
+    exampleFilterFunctionCode += ` || row[\"${columnValueCounts[1].columnName}\"] === ${JSON.stringify(columnValueCounts[1].columnValues[columnValueCounts[1].columnValues.length - 1]?.value)}`
+  }
+
+  // Calculate topX based on displayedData length
+  let topX = 5
+  if (displayedData.length > 100) {
+    const magnitude = Math.pow(
+      10,
+      Math.max(0, Math.floor(Math.log10(displayedData.length)) - 1),
+    )
+    topX = magnitude
+  }
+
+  const handleFilterSelected = (value: string) => {
+    switch (value) {
+      case "custom":
+        onFilterCodeChange("return true")
+        break
+      case "remove_duplicates":
+        onFilterCodeChange(`// Which columns to take into account
+const compareCols = ${JSON.stringify(headerRow)};
+
+cache.seen = cache.seen ?? new Set();
+const key = JSON.stringify(compareCols.map(col => row[col]));
+if (cache.seen.has(key)) {
+  return false;
+} else {
+  cache.seen.add(key);
+  return true;
+}`)
+        break
+      case "top_x":
+        onFilterCodeChange(`// Keep only the first TOP ${topX} rows
+return rowIndex < ${topX}`)
+        break
+      default:
+        console.error("Unexpected select option value: " + value)
+        break
+    }
+  }
+
+  const [filterValidationResult, setFilterValidationResult] = React.useState<{
+    error: string | null
+    matchingRowsCount: number
+  }>({
+    error: null,
+    matchingRowsCount: 0,
+  })
+
+  React.useEffect(() => {
+    // Debounce filter function validation
+    const handler = setTimeout(() => {
+      if (!filterFunctionCode) {
+        setFilterValidationResult({
+          error: null,
+          matchingRowsCount: 0,
+        })
+        return
+      }
+      const compiled = compileFilterCode(
+        filterFunctionCode,
+        displayedData[0],
+        headerRow,
+      )
+      if (compiled.error) {
+        setFilterValidationResult({
+          error: compiled.error,
+          matchingRowsCount: 0,
+        })
+      } else {
+        const cache = {}
+        const count = displayedData.filter((row, i) =>
+          applyFilterFunction(row, i, compiled.filter!, headerRow, cache),
+        ).length
+        setFilterValidationResult({
+          error: null,
+          matchingRowsCount: count,
+        })
+      }
+    }, 500)
+
+    return () => clearTimeout(handler)
+  }, [filterFunctionCode, displayedData, headerRow])
+
   return (
     <Modal
       id="filterDialog"
@@ -37,6 +143,17 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
     >
       <div>
         <h2 className="m-auto text-2xl text-gray-700 mb-4">Filter Rows</h2>
+        <Select onValueChange={handleFilterSelected}>
+          <SelectTrigger className="w-[180px] mb-2">
+            <SelectValue placeholder="Filter function" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="remove_duplicates">Remove Duplicates</SelectItem>
+            <SelectItem value="top_x">Top {topX}</SelectItem>
+            <SelectSeparator />
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
         <Editor
           data-testid={`exampleFilterCode`}
           className="w-full font-mono text-sm my-2"
@@ -54,14 +171,16 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
           padding={5}
           onValueChange={onFilterCodeChange}
         />
-        {filterValidationError ? (
+        {filterValidationResult.error ? (
           <div className="text-red-600 font-medium">
-            {filterValidationError}
+            {filterValidationResult.error}
           </div>
         ) : (
           <div className="">
             <span className="">Matching rows: </span>
-            <span className="font-bold">{matchingRowsCount}</span>
+            <span className="font-bold">
+              {filterValidationResult.matchingRowsCount}
+            </span>
           </div>
         )}
         <div className="flex justify-end gap-4 mt-4">
@@ -75,7 +194,10 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
           <Button
             data-testid="btnFilterApply"
             onPointerDown={() => onApply(filterFunctionCode)}
-            disabled={!!filterValidationError || matchingRowsCount === 0}
+            disabled={
+              !!filterValidationResult.error ||
+              filterValidationResult.matchingRowsCount === 0
+            }
           >
             Apply
           </Button>

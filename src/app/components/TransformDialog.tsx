@@ -38,7 +38,6 @@ interface TransformDialogProps {
   onClose: () => void
   onTargetTypeChange: (value: "current" | "new") => void
   onNewColNameChange: (value: string) => void
-  onTransformerSelected: (value: string) => void
   onTransformerCodeChange: (code: string) => void
   onApply: () => void
 }
@@ -53,10 +52,43 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
   onClose,
   onTargetTypeChange,
   onNewColNameChange,
-  onTransformerSelected,
   onTransformerCodeChange,
   onApply,
 }) => {
+  const handleTransformerSelected = (value: string) => {
+    switch (value) {
+      case "custom":
+        onTransformerCodeChange("return value")
+        break
+      case "uppercase":
+        onTransformerCodeChange("return value.toUpperCase()")
+        break
+      case "lowercase":
+        onTransformerCodeChange("return value.toLowerCase()")
+        break
+      case "trim":
+        onTransformerCodeChange("return value.trim()")
+        break
+      case "emaildomain":
+        onTransformerCodeChange("return value.split('@')[1] || ''")
+        break
+      case "parseint":
+        onTransformerCodeChange("return parseInt(value, 10)")
+        break
+      case "parsefloat":
+        onTransformerCodeChange("return parseFloat(value)")
+        break
+      case "parse_unix_ts":
+        onTransformerCodeChange(
+          "return new Date(Number(value) * 1000).toISOString()",
+        )
+        break
+      default:
+        console.error("Unexpected select option value: " + value)
+        break
+    }
+  }
+
   return (
     <Modal
       id="columnTransformDialog"
@@ -109,7 +141,7 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
           </RadioGroup>
         </div>
 
-        <Select onValueChange={onTransformerSelected}>
+        <Select onValueChange={handleTransformerSelected}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Transformer" />
           </SelectTrigger>
