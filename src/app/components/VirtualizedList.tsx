@@ -56,7 +56,7 @@ const cellClass = cva(
   {
     variants: {
       isTypedValue: {
-        true: "font-mono",
+        true: "text-blue-900 font-mono",
         false: "",
       },
       isEmpty: {
