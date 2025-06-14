@@ -35,7 +35,7 @@ import {
   addOrRemove,
   formatBytes,
 } from "@/utils"
-import { title } from "@/constants"
+import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
 import { MenuPopover } from "./components/Popover"
 import { useToast } from "@/hooks/use-toast"
@@ -889,10 +889,7 @@ export default function Home() {
             return (
               <div>
                 <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
-                <div className="text-2xl text-gray-500 m-4">
-                  Simple, but powerful, privacy-friendly tool for working with
-                  tabular data
-                </div>
+                <div className="text-2xl text-gray-500 m-4">{description}</div>
                 <div className="flex flex-col items-center">
                   <FileChooser
                     handleFileSelected={handleFileSelected}
@@ -906,7 +903,7 @@ export default function Home() {
                     onPointerDown={onGenerateSampleData}
                     className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
                   >
-                    Load sample data
+                    📂 Load sample data
                   </button>
                   <span className="text-xl text-gray-500 mt-8">
                     Found a bug? Feedback? Ideas?
@@ -916,7 +913,7 @@ export default function Home() {
                     onClick={onClickFeedbackCta}
                     className="text-lg hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
                   >
-                    Let me know!
+                    ✉️ Let me know!
                   </button>
                 </div>
               </div>
