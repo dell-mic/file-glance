@@ -52,6 +52,9 @@ import { Label } from "@/components/ui/label"
 import { FunnelIcon } from "@heroicons/react/24/outline"
 import { FunnelIcon as FunnelIconSolid } from "@heroicons/react/24/solid"
 import { CellObject } from "xlsx"
+import { DataCharts } from "./components/DataCharts"
+import { BarChart2, Table as TableIcon } from "lucide-react"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 export default function Home() {
   const { toast } = useToast()
@@ -86,6 +89,10 @@ export default function Home() {
   const [filterFunctionCode, setFilterFunctionCode] = React.useState<string>("")
   const [appliedFilterFunctionCode, setAppliedFilterFunctionCode] =
     React.useState<string | null>("")
+
+  const [viewMode, setViewMode] = React.useState<"datatable" | "visual">(
+    "datatable",
+  )
 
   const handlePopoverClose = () => {
     setPopoverAnchorElement(null)
@@ -976,6 +983,21 @@ export default function Home() {
                       ></Switch>
                     </span>
                   </div>
+                  <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    value={viewMode}
+                    onValueChange={(val) => {
+                      if (val) setViewMode(val as "visual" | "datatable")
+                    }}
+                  >
+                    <ToggleGroupItem value="datatable" title="Data Table View">
+                      <TableIcon className="inline-block mr-2 w-4 h-4" />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="visual" title="Visual View">
+                      <BarChart2 className="inline-block mr-2 w-4 h-4" />
+                    </ToggleGroupItem>
+                  </ToggleGroup>
                   <div className="flex gap-1">
                     <input
                       type="search"
@@ -1058,60 +1080,64 @@ export default function Home() {
                       setHiddenColumns(addOrRemove(hiddenColumns, columnIndex))
                     }}
                   ></ValuesInspector>
-                  <DataTable
-                    key={currentFile?.name}
-                    headerRow={displayedHeader}
-                    rows={displayedDataFiltered}
-                    columnValueCounts={columnValueCounts}
-                    hiddenColumns={hiddenColumns}
-                    sortSetting={sortSetting}
-                    onSortingChange={(e) => {
-                      if (e.sortOrder !== "unsorted") {
-                        setSortSetting(e as SortSetting)
-                      } else {
-                        setSortSetting(null)
-                      }
-                    }}
-                    onTransformerAdded={(e) => {
-                      // console.log("onTransformerAdded", e)
-                      setTransformers([...transformers, e])
-                      // Adjust other filters in case affected by newly added column
-                      setFilters(
-                        filters
-                          .map((f) => {
-                            if (
-                              e.asNewColumn &&
-                              f.columnIndex > e.columnIndex
-                            ) {
-                              return {
-                                ...f,
-                                columnIndex: f.columnIndex + 1,
+                  {viewMode === "visual" ? (
+                    <DataCharts
+                      columnValueCounts={columnValueCounts}
+                      hiddenColumns={hiddenColumns}
+                    />
+                  ) : (
+                    <DataTable
+                      key={currentFile?.name}
+                      headerRow={displayedHeader}
+                      rows={displayedDataFiltered}
+                      columnValueCounts={columnValueCounts}
+                      hiddenColumns={hiddenColumns}
+                      sortSetting={sortSetting}
+                      onSortingChange={(e) => {
+                        if (e.sortOrder !== "unsorted") {
+                          setSortSetting(e as SortSetting)
+                        } else {
+                          setSortSetting(null)
+                        }
+                      }}
+                      onTransformerAdded={(e) => {
+                        setTransformers([...transformers, e])
+                        setFilters(
+                          filters
+                            .map((f) => {
+                              if (
+                                e.asNewColumn &&
+                                f.columnIndex > e.columnIndex
+                              ) {
+                                return {
+                                  ...f,
+                                  columnIndex: f.columnIndex + 1,
+                                }
+                              } else {
+                                return f
                               }
-                            } else {
-                              return f
-                            }
-                          })
-                          // Remove column filters  if present as they might conflict with new values
-                          .filter(
-                            (f) =>
-                              !e.asNewColumn || f.columnIndex !== e.columnIndex,
-                          ),
-                      )
-                      // Adjust hidden column indexes if necessary
-                      if (e.asNewColumn) {
-                        setHiddenColumns(
-                          hiddenColumns.map((i) =>
-                            i > e.columnIndex ? i + 1 : i,
-                          ),
+                            })
+                            .filter(
+                              (f) =>
+                                !e.asNewColumn ||
+                                f.columnIndex !== e.columnIndex,
+                            ),
                         )
-                        setOpenAccordions(
-                          openAccordions.map((i) =>
-                            i > e.columnIndex ? i + 1 : i,
-                          ),
-                        )
-                      }
-                    }}
-                  ></DataTable>
+                        if (e.asNewColumn) {
+                          setHiddenColumns(
+                            hiddenColumns.map((i) =>
+                              i > e.columnIndex ? i + 1 : i,
+                            ),
+                          )
+                          setOpenAccordions(
+                            openAccordions.map((i) =>
+                              i > e.columnIndex ? i + 1 : i,
+                            ),
+                          )
+                        }
+                      }}
+                    ></DataTable>
+                  )}
                 </div>
               </React.Fragment>
             )

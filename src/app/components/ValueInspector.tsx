@@ -26,7 +26,10 @@ export const ValuesInspector = (props: {
   )
 
   return (
-    <div className="w-96 flex shrink-0 flex-col gap-2 mb-2 pr-1 overflow-y-auto">
+    <div
+      className="w-96 flex shrink-0 flex-col gap-2 mb-2 pr-1 overflow-y-auto"
+      style={{ scrollbarWidth: "thin" }}
+    >
       {props.columnValueCounts.map((column) => {
         const columnValues = orderBy(
           column.columnValues,
