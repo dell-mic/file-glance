@@ -815,3 +815,59 @@ export function formatBytes(bytes: number, dp = 1): string {
 
   return bytes.toFixed(dp) + " " + units[u]
 }
+
+/**
+ * Clean and shorten a string to be a valid Excel worksheet name.
+ * - Max 31 characters
+ * - Cannot contain: / \ ? * : [ ]
+ * - Removes other special characters except space, _, -, ()
+ * - Trims whitespace
+ */
+export function cleanWorksheetName(name: string): string {
+  const MaxLength = 31
+
+  let cleaned = name
+    .replace(/[\/\?\*:\[\]]/g, "") // Remove Excel-forbidden chars
+    .replace(/[^\w\s\-\(\)_]/g, "") // Remove all except word, space, -, _, ()
+    .replace(/\s+/g, " ") // Collapse multiple spaces
+    .trim()
+  // Truncate to 31 chars
+  if (cleaned.length > MaxLength) {
+    cleaned = cleaned.slice(0, MaxLength)
+  }
+  // If empty, use default
+  if (!cleaned) {
+    cleaned = "Sheet1"
+  }
+  return cleaned
+}
+
+/**
+ * Clean and shorten a string to be a valid filename for Windows, macOS, and Linux.
+ * - Removes forbidden characters: \\ / : * ? " < > | (Windows), and : (macOS)
+ * - Removes other special characters except space, _, -, . ()
+ * - Trims whitespace
+ * - Max length: 255 bytes (safe for all major OSes)
+ */
+export function cleanForFileName(name: string): string {
+  // Remove forbidden characters for Windows and macOS
+  let cleaned = name
+    .replace(/[\\/:*?"<>|]/g, "") // Windows forbidden
+    .replace(/:/g, "") // macOS forbidden (already included above, but explicit)
+    .replace(/[^\w\s\-\.\(\)_]/g, "") // Remove all except word, space, -, _, ., ()
+    .replace(/\s+/g, " ") // Collapse multiple spaces
+    .trim()
+  // Truncate to 255 bytes (not chars)
+  let encoder = new TextEncoder()
+  while (encoder.encode(cleaned).length > 255) {
+    cleaned = cleaned.slice(0, -1)
+  }
+  if (!cleaned) {
+    const now = new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, "0")
+    const dd = String(now.getDate()).padStart(2, "0")
+    cleaned = `fileglance_export_${yyyy}${mm}${dd}`
+  }
+  return cleaned
+}

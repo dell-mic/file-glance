@@ -34,6 +34,8 @@ import {
   findArrayProp,
   addOrRemove,
   formatBytes,
+  cleanWorksheetName,
+  cleanForFileName,
 } from "@/utils"
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -122,7 +124,6 @@ export default function Home() {
     setPopoverAnchorElement(null)
 
     setParsingState("parsing")
-    setData(file, [], [], hideEmptyColumns)
     let data: any[][] = []
     let _headerRow: string[] = []
     let isHeaderSet = false
@@ -321,7 +322,7 @@ export default function Home() {
     data: string[][],
     hideEmptyColumns: boolean,
   ) => {
-    if (!file) {
+    if (!file || !headerRow?.length) {
       document.title = title
       setCurrentFile(null)
       setHeaderRow([])
@@ -640,16 +641,13 @@ export default function Home() {
   }
 
   const getExportFileName = (newEnding: string): string => {
-    return (
-      currentFile!.name.substring(
-        0,
-        currentFile!.name.lastIndexOf(".") > 0
-          ? currentFile!.name.lastIndexOf(".")
-          : currentFile!.name.length,
-      ) +
-      "." +
-      newEnding
+    const currentFileName = currentFile!.name.substring(
+      0,
+      currentFile!.name.lastIndexOf(".") > 0
+        ? currentFile!.name.lastIndexOf(".")
+        : currentFile!.name.length,
     )
+    return cleanForFileName(currentFileName) + "." + newEnding
   }
 
   const ExportDelimiter = ";"
@@ -770,7 +768,11 @@ export default function Home() {
           const fileName = getExportFileName("xlsx")
           const workbook = XLSX.utils.book_new()
           const worksheet = XLSX.utils.aoa_to_sheet(getExportData())
-          XLSX.utils.book_append_sheet(workbook, worksheet, fileName)
+          XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            cleanWorksheetName(fileName),
+          )
           XLSX.writeFile(workbook, fileName, {
             bookType: "xlsx",
             compression: true,
