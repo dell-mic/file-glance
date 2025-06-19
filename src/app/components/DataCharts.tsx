@@ -108,13 +108,7 @@ export const DataCharts: React.FC<DataChartsProps> = ({
         )
         // console.log(chartConfig)
         return (
-          <Card
-            key={col.columnName}
-            className="flex flex-col"
-            style={{
-              height: "612px",
-            }}
-          >
+          <Card key={col.columnName} className="flex flex-col h-full">
             <CardHeader className="items-center pb-0">
               <CardTitle>{col.columnName}</CardTitle>
               <CardDescription>
@@ -124,8 +118,11 @@ export const DataCharts: React.FC<DataChartsProps> = ({
                 )}
               </CardDescription>
             </CardHeader>
-            <CardContent className="pb-0">
-              <ChartContainer config={chartConfig} className="aspect-square">
+            <CardContent className="flex-1 w-full pb-0">
+              <ChartContainer
+                config={chartConfig}
+                className="w-full aspect-square"
+              >
                 <PieChart>
                   <Pie
                     data={data}
