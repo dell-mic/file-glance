@@ -45,3 +45,7 @@
     --chart-10: oklch(0.6 0.17 80);
   }
 }
+
+@theme {
+  --breakpoint-3xl: 124rem;
+}
