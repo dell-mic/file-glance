@@ -14,14 +14,14 @@ import { BookmarkSlashIcon } from "@heroicons/react/24/outline"
 
 import "./DataTable.css"
 
-import { ColumnInfos } from "./ValueInspector"
-import { MenuPopover } from "./Popover"
-import useWindowDimensions from "../hooks/useWindowDimensions"
-import { SortSetting } from "../home-page"
-import { innerElementType, Row, StickyList } from "./VirtualizedList"
+import { ColumnInfos } from "../ValueInspector"
+import { MenuPopover } from "../../../components/ui/Popover"
+import useWindowDimensions from "../../hooks/useWindowDimensions"
+import { SortSetting } from "../../home-page"
+import { innerElementType, Row, StickyList } from "../VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
 import { compileTransformerCode } from "@/utils"
-import TransformDialog from "./TransformDialog"
+import TransformDialog from "../TransformDialog"
 
 export interface SortEvent {
   columnIndex: number

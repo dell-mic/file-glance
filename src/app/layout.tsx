@@ -4,7 +4,7 @@ import { Roboto, Roboto_Mono } from "next/font/google"
 import "./globals.css"
 import Script from "next/script"
 import { title } from "@/constants"
-import { Toaster } from "./components/toaster"
+import { Toaster } from "../components/ui/toaster"
 
 const roboto_mono = Roboto_Mono({
   subsets: ["latin"],

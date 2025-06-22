@@ -12,12 +12,12 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from "./select"
-import { Button } from "./button"
+} from "../../components/ui/select"
+import { Button } from "../../components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
-import { Modal } from "./Modal"
+import { Modal } from "../../components/ui/Modal"
 
 interface TransformerValidation {
   compilationError: string | null

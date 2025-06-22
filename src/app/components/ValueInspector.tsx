@@ -1,8 +1,8 @@
 import { orderBy } from "lodash-es"
-import Accordion from "./Accordion"
+import Accordion from "../../components/ui/Accordion"
 import { ColumnFilter } from "../home-page"
 import React from "react"
-import MiddleEllipsis from "./MiddleEllipsis"
+import MiddleEllipsis from "../../components/ui/MiddleEllipsis"
 
 export const ValuesInspector = (props: {
   filters: ColumnFilter[]
@@ -141,6 +141,7 @@ export interface ColumnInfos {
   columnValues: ColumnValues[]
   valuesMaxLength: number
   isEmptyColumn: boolean
+  columnType: string // Return value of: constructor.name (if same for all columns values)
 }
 
 export interface ColumnValues {

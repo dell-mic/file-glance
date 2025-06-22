@@ -1,0 +1,4 @@
+.recharts-wrapper svg {
+  /* Let labels overflow to use space more efficient */
+  overflow: inherit !important;
+}

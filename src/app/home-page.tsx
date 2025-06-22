@@ -2,13 +2,12 @@
 
 import React, { useMemo } from "react"
 
-import { cloneDeep, maxBy, omit, orderBy } from "lodash-es"
+import { cloneDeep, isNil, maxBy, omit, orderBy } from "lodash-es"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
 import { stringify as stringifyCSV } from "csv-stringify/browser/esm/sync"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
-import { DataTable } from "./components/DataTable"
 import { FileChooser } from "./components/FileChooser"
 import FilterDialog from "./components/FilterDialog"
 import {
@@ -39,7 +38,7 @@ import {
 } from "@/utils"
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
-import { MenuPopover } from "./components/Popover"
+import { MenuPopover } from "../components/ui/Popover"
 import { useToast } from "@/hooks/use-toast"
 import {
   isMarkdownTable,
@@ -54,9 +53,10 @@ import { Label } from "@/components/ui/label"
 import { FunnelIcon } from "@heroicons/react/24/outline"
 import { FunnelIcon as FunnelIconSolid } from "@heroicons/react/24/solid"
 import { CellObject } from "xlsx"
-import { DataCharts } from "./components/DataCharts"
+import { DataCharts } from "./components/DataChart/DataCharts"
 import { BarChart2, Table as TableIcon } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { DataTable } from "./components/DataTable/DataTable"
 
 export default function Home() {
   const { toast } = useToast()
@@ -993,10 +993,18 @@ export default function Home() {
                       if (val) setViewMode(val as "visual" | "datatable")
                     }}
                   >
-                    <ToggleGroupItem value="datatable" title="Data Table View">
+                    <ToggleGroupItem
+                      value="datatable"
+                      title="Data Table View"
+                      data-testid={"btnTableView"}
+                    >
                       <TableIcon className="inline-block mr-2 w-4 h-4" />
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="visual" title="Visual View">
+                    <ToggleGroupItem
+                      value="visual"
+                      title="Visual View"
+                      data-testid={"btnVisualView"}
+                    >
                       <BarChart2 className="inline-block mr-2 w-4 h-4" />
                     </ToggleGroupItem>
                   </ToggleGroup>
@@ -1084,7 +1092,7 @@ export default function Home() {
                   ></ValuesInspector>
                   {viewMode === "visual" ? (
                     <DataCharts
-                      columnValueCounts={columnValueCounts}
+                      columnInfos={columnValueCounts}
                       hiddenColumns={hiddenColumns}
                     />
                   ) : (
@@ -1164,10 +1172,11 @@ function countValues(
 ): ColumnInfos[] {
   console.time("countValues")
   const countsPerColumn: CountMap[] = headers.map((v, i) => ({}))
+  const typesPerColumn: Set<string>[] = headers.map((v, i) => new Set())
 
-  input.forEach((row, rowIndex) => {
+  for (const row of input.values()) {
     // console.log(row);
-    row.forEach((value, valueIndex) => {
+    for (const [valueIndex, value] of row.entries()) {
       // const currentColumn = headers[valueIndex];
 
       // Do not crash on oversized rows which do not have a header
@@ -1179,20 +1188,24 @@ function countValues(
           value: value, // Preserve original value (w/o converting to string)
         }
       }
-    })
-  })
+    }
+  }
 
-  inputFiltered.forEach((row, rowIndex) => {
+  for (const row of inputFiltered.values()) {
     // console.log(row);
-    row.forEach((value, valueIndex) => {
+    for (const [valueIndex, value] of row.entries()) {
       // const currentColumn = headers[valueIndex];
       // Do not crash on oversized rows which do not have a header
       if (countsPerColumn[valueIndex]) {
         countsPerColumn[valueIndex][value].valueCountFiltered =
           countsPerColumn[valueIndex][value]?.valueCountFiltered + 1
       }
-    })
-  })
+      if (typesPerColumn[valueIndex] && !isNil(value) && !(value === "")) {
+        // console.log(value, value.constructor.name)
+        typesPerColumn[valueIndex].add(value.constructor.name)
+      }
+    }
+  }
 
   const columnInfos = countsPerColumn.map((v, i) => {
     const columnIndex = i
@@ -1210,17 +1223,23 @@ function countValues(
 
     const isEmptyColumn = valuesMaxLength === 0
 
+    const columnType =
+      typesPerColumn[columnIndex].size === 1
+        ? typesPerColumn[columnIndex].values().next().value
+        : "any"
     return {
       columnIndex,
       columnName,
       columnValues,
       valuesMaxLength,
       isEmptyColumn,
+      columnType: columnType!,
     }
   })
 
   console.timeEnd("countValues")
 
+  console.log("typesPerColumn", typesPerColumn)
   // console.log("columnInfos", columnInfos)
 
   return columnInfos

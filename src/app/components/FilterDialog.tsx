@@ -4,8 +4,8 @@ import Editor from "react-simple-code-editor"
 import "prismjs/components/prism-clike"
 import "prismjs/components/prism-javascript"
 import "prismjs/themes/prism.css"
-import { Button } from "./button"
-import { Modal } from "./Modal"
+import { Button } from "../../components/ui/button"
+import { Modal } from "../../components/ui/Modal"
 import {
   Select,
   SelectContent,
@@ -13,7 +13,7 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from "./select"
+} from "../../components/ui/select"
 import { applyFilterFunction, compileFilterCode } from "@/utils"
 
 interface ColumnInfos {
