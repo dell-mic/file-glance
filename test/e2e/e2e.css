@@ -1,0 +1,5 @@
+/* Injected in e2e tests before taking screenshots */
+.tost {
+    /* Hide all toasts because depends on timing whether they are still visible  */
+    display: none !important;
+}
