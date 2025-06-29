@@ -81,6 +81,13 @@ if (cache.seen.has(key)) {
   return true;
 }`)
         break
+      case "complete_rows_only":
+        onFilterCodeChange(
+          `// Which columns to take into account\nconst requiredCols = ${JSON.stringify(
+            headerRow,
+          )};\n\nreturn requiredCols.every(col => {\n  const v = row[col];\n  return v !== undefined && v !== null && String(v).trim() !== "";\n});`,
+        )
+        break
       case "top_x":
         onFilterCodeChange(`// Keep only the first TOP ${topX} rows
 return rowIndex < ${topX}`)
@@ -149,6 +156,9 @@ return rowIndex < ${topX}`)
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="remove_duplicates">Remove Duplicates</SelectItem>
+            <SelectItem value="complete_rows_only">
+              Complete Rows Only
+            </SelectItem>
             <SelectItem value="top_x">Top {topX}</SelectItem>
             <SelectSeparator />
             <SelectItem value="custom">Custom</SelectItem>
