@@ -6,7 +6,7 @@ export const FileChooser = (props: {
     <div className="w-4/6 mx-auto my-24">
       <label
         data-testid="fileInput"
-        className="flex flex-col items-center justify-center w-full h-96 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-transform select-none"
+        className="flex flex-col items-center justify-center w-full h-96 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all select-none"
         style={{
           transitionDuration: "200ms",
           transform: props.isDragging ? "scale(1.2)" : undefined,

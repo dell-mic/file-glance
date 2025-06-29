@@ -34,7 +34,7 @@ export default defineConfig({
 
   expect: {
     toHaveScreenshot: {
-      stylePath: './test/e2e/e2e.css',
+      stylePath: "./test/e2e/e2e.css",
       maxDiffPixels: 100, // Should ignore e.g. whether horizontal scrollbar is rendered or not
     },
     toMatchSnapshot: {

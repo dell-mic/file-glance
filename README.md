@@ -19,20 +19,20 @@ Try the live version at [FileGlance.info](https://www.fileglance.info/)
 - Simple filtering with value facets for exact matches
 - Full-text search across data
 - Basic sorting functionality
-- Advanced value transformation using custom JavaScript
+- Advanced row filtering using own JavaScript
+- Advanced value transformation using own JavaScript
 - One-click export to CSV, XLSX, or JSON
 - Supports larger files through virtualized list rendering
+- Visual representation of value counts (histogram for numeric data)
+- Progressive Web App (PWA) support
 - Privacy-focused: Your data never leaves your device
 
 ## Roadmap
 
-- Enhanced handling of numeric values
-- Visual representation of value counts (especially for numeric data)
 - Support for additional file formats
 - Advanced data manipulation, including column renaming and custom transformations
 - Options to override detected encoding and delimiters
-- Expanded export settings
-- Progressive Web App (PWA) support
+- More export settings
 
 ## Out of Scope
 

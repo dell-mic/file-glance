@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Headings */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-family: inherit;
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-700);
+      line-height: 1.2;
+    }
+
+    h1,
+    h2 {
+      margin-top: calc(var(--spacing) * 8);
+      margin-bottom: calc(var(--spacing) * 4);
+    }
+
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin-top: calc(var(--spacing) * 4);
+      margin-bottom: calc(var(--spacing) * 2);
+    }
+
+    h1 {
+      font-size: var(--text-4xl);
+      /* border-bottom: 1px solid var(--color-gray-200); */
+      padding-bottom: calc(var(--spacing) * 2);
+    }
+    h2 {
+      font-size: var(--text-3xl);
+      /* border-bottom: 1px solid var(--color-gray-200); */
+      padding-bottom: calc(var(--spacing) * 1.5);
+    }
+    h3 {
+      font-size: var(--text-2xl);
+    }
+    h4 {
+      font-size: var(--text-xl);
+    }
+    h5 {
+      font-size: var(--text-lg);
+    }
+    h6 {
+      font-size: var(--text-base);
+    }
+
+    /* Paragraphs */
+    p {
+      margin-top: calc(var(--spacing) * 3);
+      margin-bottom: calc(var(--spacing) * 3);
+      font-size: var(--text-base);
+      line-height: var(--text-base--line-height);
+    }
+
+    strong,
+    b {
+      font-weight: 500;
+    }
+
+    /* Lists */
+    ol,
+    ul {
+      padding-left: calc(var(--spacing) * 8);
+      margin-bottom: calc(var(--spacing) * 4);
+    }
+    li {
+      margin-bottom: calc(var(--spacing) * 1.5);
+      line-height: 1.7;
+    }
+    ol {
+      list-style-type: decimal;
+    }
+    ul {
+      list-style-type: disc;
+    }
+
+    /* Links */
+    a {
+      color: var(--color-blue-500);
+      text-decoration: underline;
+      transition: color var(--default-transition-duration)
+        var(--default-transition-timing-function);
+    }
+    a:hover {
+      color: var(--color-blue-900);
+    }
+  }
+}

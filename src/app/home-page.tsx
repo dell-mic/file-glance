@@ -57,6 +57,7 @@ import { DataCharts } from "./components/DataChart/DataCharts"
 import { BarChart2, Table as TableIcon } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { DataTable } from "./components/DataTable/DataTable"
+import Link from "next/link"
 
 export default function Home() {
   const { toast } = useToast()
@@ -102,7 +103,7 @@ export default function Home() {
 
   const drop = React.useRef(null)
 
-  const handleDragOver = (e: DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
   }
@@ -350,7 +351,7 @@ export default function Home() {
     }
   }
 
-  const handleDrop = async (e: DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -378,7 +379,7 @@ export default function Home() {
     }
   }
 
-  const handleDragEnter = (e: DragEvent) => {
+  const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     // console.log("handleDragEnter", e);
@@ -398,22 +399,24 @@ export default function Home() {
   }
 
   React.useEffect(() => {
+    const dropRef = drop.current
+
     // @ts-ignore
-    drop.current.addEventListener("dragover", handleDragOver)
+    dropRef.addEventListener("dragover", handleDragOver)
     // @ts-ignore
-    drop.current.addEventListener("drop", handleDrop)
+    dropRef.addEventListener("drop", handleDrop)
     // @ts-ignore
-    drop.current.addEventListener("dragenter", handleDragEnter)
+    dropRef.addEventListener("dragenter", handleDragEnter)
     // @ts-ignore
     // drop.current.addEventListener("dragleave", handleDragLeave)
 
     return () => {
       // @ts-ignore
-      drop.current.removeEventListener("dragover", handleDragOver)
+      dropRef.removeEventListener("dragover", handleDragOver)
       // @ts-ignore
-      drop.current.removeEventListener("drop", handleDrop)
+      dropRef.removeEventListener("drop", handleDrop)
       // @ts-ignore
-      drop.current.removeEventListener("dragenter", handleDragEnter)
+      dropRef.removeEventListener("dragenter", handleDragEnter)
       // @ts-ignore
       // drop.current.removeEventListener("dragleave", handleDragLeave)
     }
@@ -883,6 +886,9 @@ export default function Home() {
     <div
       ref={drop}
       className="h-screen p-2"
+      // onDragEnter={handleDragEnter}
+      // onDragOver={handleDragOver}
+      // onDrop={handleDrop}
       onPaste={(e) => {
         // Do not want to replace current data in case of accidental paste
         if (!currentFile) {
@@ -899,6 +905,12 @@ export default function Home() {
               <div>
                 <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
                 <div className="text-2xl text-gray-500 m-4">{description}</div>
+                <Link
+                  href="/about"
+                  className="text-lg text-gray-500 font-medium py-2 px-4 rounded-sm transition-colors duration-200 no-underline hover:text-blue-900 hover:underline"
+                >
+                  📖 Learn more ...
+                </Link>
                 <div className="flex flex-col items-center">
                   <FileChooser
                     handleFileSelected={handleFileSelected}
@@ -910,7 +922,7 @@ export default function Home() {
 
                   <button
                     onPointerDown={onGenerateSampleData}
-                    className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
+                    className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer"
                   >
                     📂 Load sample data
                   </button>
@@ -920,7 +932,7 @@ export default function Home() {
 
                   <button
                     onClick={onClickFeedbackCta}
-                    className="text-lg hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm"
+                    className="text-lg hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer"
                   >
                     ✉️ Let me know!
                   </button>
