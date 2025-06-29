@@ -11,14 +11,21 @@ import {
   CardFooter,
 } from "../../../components/ui/card"
 import { ColumnInfos } from "../ValueInspector"
-import { CHART_SERIES_COLORS, ChartAnimationDuration } from "./chartUtils"
+import {
+  CHART_LABELS_COLORS,
+  CHART_SERIES_COLORS,
+  ChartAnimationDuration,
+  darkenHexColor,
+  EMPTY_LABEL,
+} from "./chartUtils"
 
 interface CategoryColumnChartProps {
   columnInfo: ColumnInfos
 }
 
 const MAX_CHART_VALUES = 10
-const OTHERS_COLOR = "#e5e7eb"
+const OTHERS_COLOR = "#E5E7EB"
+const OTHERS_LABEL_COLOR = darkenHexColor(OTHERS_COLOR, 0.3) // Slight darker for better readability
 const groupOtherValues = true
 const MinSharePctForLabel = 2.5
 
@@ -61,9 +68,11 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
     ...d,
     percentage: total > 0 ? (d.value / total) * 100 : 0,
   }))
-  const showLabelFor = data
-    .map((_) => _.percentage)
-    .map((p) => p >= MinSharePctForLabel)
+
+  // Show only for bigger values to avoid label overlap, at always at least one
+  const showLabelFor = data.map((_, i) =>
+    i === 0 ? true : _.percentage >= MinSharePctForLabel,
+  )
   const chartConfig = Object.fromEntries(
     data.map((d, i) => [
       d.name,
@@ -144,17 +153,17 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
                 const y = cy + radius * Math.sin(-midAngle * RADIAN)
                 const color =
                   data[index].name === "Other"
-                    ? OTHERS_COLOR
-                    : CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length]
+                    ? OTHERS_LABEL_COLOR
+                    : CHART_LABELS_COLORS[index % CHART_LABELS_COLORS.length]
                 return (
                   <text
                     x={x}
                     y={y}
                     textAnchor={x > cx ? "start" : "end"}
                     dominantBaseline="central"
-                    style={{ fill: color, filter: "brightness(0.8)" }}
+                    style={{ fill: color, fontWeight: "" }}
                   >
-                    {name || "empty"}
+                    {name || EMPTY_LABEL}
                   </text>
                 )
               }}
@@ -180,9 +189,10 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
               ) => {
                 // console.log(props)
                 const percent = props[0].payload?.payload?.percentage || 0
+
                 return [
-                  `${value.toLocaleString() || "empty"} (${percent.toFixed(1)}%)`,
-                  name,
+                  `${value} (${percent.toFixed(1)}%)`,
+                  name || EMPTY_LABEL,
                 ]
               }}
             />

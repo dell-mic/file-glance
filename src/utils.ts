@@ -82,6 +82,20 @@ function getRandomElement(arr: any[]) {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
+function getRandomIntNormal(min: number, max: number) {
+  // Box-Muller transform for normal distribution
+  let u = 0,
+    v = 0
+  while (u === 0) u = Math.random() // Converting [0,1) to (0,1)
+  while (v === 0) v = Math.random()
+  let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
+  // Normalize to 0..1, then scale to min..max
+  let mean = (min + max) / 2
+  let stddev = (max - min) / 6 // 99.7% within min..max
+  let value = Math.round(num * stddev + mean)
+  return Math.max(min, Math.min(max, value))
+}
+
 export function generateSampleData(numRows: number): {
   data: any[]
   headerRow: string[]
@@ -258,21 +272,27 @@ export function generateSampleData(numRows: number): {
     const id = i
     const name =
       getRandomElement(firstNames) + " " + getRandomElement(lastNames)
-    const age = getRandomInt(20, 50)
+    let age = getRandomIntNormal(20, 50)
     const email = name.split(" ").join("").toLowerCase() + "@example.com"
     const phoneNumber = "555-" + getRandomInt(1000, 9999)
     const country = getRandomElement(countries)
     const city = getRandomElement(cities)
     const jobTitle = getRandomElement(jobTitles)
-    const salary = getRandomInt(50000, 150000)
-    const happinessScore = getRandomInt(1, 5)
+    const salary = getRandomIntNormal(50000, 150000)
+    let happinessScore = getRandomInt(1, 5)
+    if (happinessScore < 4) {
+      happinessScore = getRandomInt(2, 5) // Slightly shifted
+    }
     const favoriteEmoji = getRandomElement(emojis)
     const dateJoined = `${getRandomInt(2017, new Date().getFullYear() - 1)}-${getRandomInt(1, 12).toString().padStart(2, "0")}-${getRandomInt(1, 28).toString().padStart(2, "0")}`
     const lastPurchaseAmount = getRandomInt(0, 1000).toFixed(2)
     const favoriteColor = getRandomElement(colors)
     const hasPet = getRandomElement([true, false])
     const petType = "" // Simluate empty column
-    const numberOfSiblings = getRandomInt(0, 4)
+    let numberOfSiblings = getRandomInt(0, 4)
+    if (numberOfSiblings > 2) {
+      numberOfSiblings = getRandomInt(0, 4) // Slightly shifted
+    }
     const favoriteCuisine = getRandomElement(cuisines)
     const note = getRandomElement([
       "",

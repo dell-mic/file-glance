@@ -1239,7 +1239,7 @@ function countValues(
 
   console.timeEnd("countValues")
 
-  console.log("typesPerColumn", typesPerColumn)
+  // console.log("typesPerColumn", typesPerColumn)
   // console.log("columnInfos", columnInfos)
 
   return columnInfos

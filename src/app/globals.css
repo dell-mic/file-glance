@@ -2,50 +2,7 @@
 
 @config '../../tailwind.config.ts';
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
-  }
-
-  :root {
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --chart-6: oklch(0.7 0.2 300);
-    --chart-7: oklch(0.55 0.18 20);
-    --chart-8: oklch(0.8 0.15 140);
-    --chart-9: oklch(0.5 0.22 250);
-    --chart-10: oklch(0.9 0.13 60);
-  }
-
-  .dark {
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --chart-6: oklch(0.6 0.19 200);
-    --chart-7: oklch(0.7 0.15 100);
-    --chart-8: oklch(0.5 0.18 40);
-    --chart-9: oklch(0.8 0.13 320);
-    --chart-10: oklch(0.6 0.17 80);
-  }
-}
-
 @theme {
   --breakpoint-3xl: 124rem;
+  --breakpoint-4xl: 190rem;
 }

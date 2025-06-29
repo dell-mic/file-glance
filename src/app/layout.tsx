@@ -13,7 +13,7 @@ const roboto_mono = Roboto_Mono({
 })
 
 const roboto = Roboto({
-  weight: ["400", "500"],
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
   display: "swap",
   variable: "--font-roboto",
