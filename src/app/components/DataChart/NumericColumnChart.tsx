@@ -22,17 +22,24 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
   const displayedValues = col.columnValues.filter(
     (v) => v.valueCountFiltered > 0,
   )
-  let min: number = 0,
-    max: number = 0
   let barChartData: { name: string; count: number }[] = []
+
+  let min = Infinity,
+    max = -Infinity
+  for (const cv of displayedValues) {
+    const n = cv.value
+    if (!isNaN(n)) {
+      if (n < min) min = n
+      if (n > max) max = n
+    }
+  }
+
   const allNumbers: number[] = col.columnValues.flatMap((cv) => {
-    const n = Number(cv.value)
+    const n = cv.value
     if (isNaN(n)) return []
     return Array(cv.valueCountFiltered).fill(n)
   })
   if (allNumbers.length > 0) {
-    min = Math.min(...allNumbers)
-    max = Math.max(...allNumbers)
     const bucketCount = Math.min(displayedValues.length, 10)
     const bucketSize = (max - min) / bucketCount || 1
     barChartData = Array.from({ length: bucketCount }, (_, i) => ({
@@ -50,9 +57,9 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
       <CardHeader className="items-center pb-0">
         <CardTitle>{col.columnName}</CardTitle>
         <CardDescription>
-          {col.columnValues.length} distinct values
+          {col.columnValues.length.toLocaleString()} distinct values
           {displayedValues.length !== col.columnValues.length && (
-            <>, {displayedValues.length} filtered</>
+            <>, {displayedValues.length.toLocaleString()} filtered</>
           )}
           <div className="flex gap-3 mt-2 justify-center items-center">
             <span>

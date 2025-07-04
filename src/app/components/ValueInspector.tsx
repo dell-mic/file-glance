@@ -39,7 +39,7 @@ export const ValuesInspector = (props: {
         return (
           <Accordion
             header={column.columnName}
-            subHeader={`${columnValues.length}`}
+            subHeader={`${columnValues.length.toLocaleString()}`}
             open={props.openAccordions.includes(column.columnIndex)}
             columnVisible={!props.hiddenColumns.includes(column.columnIndex)}
             onToggleColumnVisibility={props.onToggleColumnVisibility.bind(
@@ -71,9 +71,9 @@ export const ValuesInspector = (props: {
                       (fValue) => fValue === columnValue.valueName,
                     )
 
-                  const displayedValueCounts = isEffectivlyFiltered
-                    ? `${columnValue.valueCountFiltered}\u2009/\u2009${columnValue.valueCountTotal}`
-                    : `${columnValue.valueCountTotal}`
+                  const displayedValueCounts: string = isEffectivlyFiltered
+                    ? `${columnValue.valueCountFiltered.toLocaleString()}\u2009/\u2009${columnValue.valueCountTotal.toLocaleString()}`
+                    : `${columnValue.valueCountTotal.toLocaleString()}`
 
                   return (
                     <div

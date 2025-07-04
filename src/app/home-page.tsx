@@ -58,6 +58,7 @@ import { BarChart2, Table as TableIcon } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { DataTable } from "./components/DataTable/DataTable"
 import Link from "next/link"
+import MiddleEllipsis from "@/components/ui/MiddleEllipsis"
 
 export default function Home() {
   const { toast } = useToast()
@@ -293,8 +294,7 @@ export default function Home() {
     parseFile(syntheticFile, hideEmptyColumns)
   }
 
-  const onGenerateSampleData = () => {
-    const rowsAmount = 1337
+  const onGenerateSampleData = (rowsAmount = 1337) => {
     const simulatedFileBytes = Array.from(
       { length: rowsAmount * 50 },
       () => "1",
@@ -637,10 +637,10 @@ export default function Home() {
     fileInfos.push(formatBytes(currentFile.size))
   }
   if (allRows.length) {
-    fileInfos.push(`${allRows.length} rows`)
+    fileInfos.push(`${allRows.length.toLocaleString()} rows`)
   }
   if (isFiltered) {
-    fileInfos.push(`${displayedDataFiltered.length} filtered`)
+    fileInfos.push(`${displayedDataFiltered.length.toLocaleString()} filtered`)
   }
 
   const getExportFileName = (newEnding: string): string => {
@@ -921,7 +921,12 @@ export default function Home() {
                   </span>
 
                   <button
-                    onPointerDown={onGenerateSampleData}
+                    onClick={(e) => {
+                      setParsingState("parsing")
+                      setTimeout(() => {
+                        onGenerateSampleData(e.metaKey ? 133_700 : 1337)
+                      }, 50)
+                    }}
                     className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer"
                   >
                     📂 Load sample data
@@ -954,7 +959,13 @@ export default function Home() {
               <React.Fragment>
                 <div className="mb-2 flex flex-row items-center justify-between">
                   <div className="flex flex-row items-baseline">
-                    <span className="text-2xl">{currentFile?.name || ""} </span>
+                    <div className="max-w-prose">
+                      <MiddleEllipsis>
+                        <span className="text-2xl" title={currentFile?.name}>
+                          {currentFile?.name || ""}{" "}
+                        </span>
+                      </MiddleEllipsis>
+                    </div>
                     <span className="text-gray-500 text-sm ml-1.5">
                       {fileInfos.join(", ")}
                     </span>

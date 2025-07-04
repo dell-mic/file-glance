@@ -90,9 +90,9 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
       <CardHeader className="items-center pb-0">
         <CardTitle>{col.columnName}</CardTitle>
         <CardDescription>
-          {col.columnValues.length} distinct values
+          {col.columnValues.length.toLocaleString()} distinct values
           {displayedValues.length !== col.columnValues.length && (
-            <>, {displayedValues.length} filtered</>
+            <>, {displayedValues.length.toLocaleString()} filtered</>
           )}
         </CardDescription>
       </CardHeader>
@@ -203,7 +203,7 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
         <div className="text-muted-foreground leading-none">
           {groupOtherValues && otherValues.length > 1 && (
             <span>
-              Note: grouped {otherValues.length} more values as{" "}
+              Note: grouped {otherValues.length.toLocaleString()} more values as{" "}
               <span className="italic">Other</span>
             </span>
           )}
