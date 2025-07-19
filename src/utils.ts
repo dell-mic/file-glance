@@ -1,10 +1,15 @@
 import * as jschardet from "jschardet"
 import { maxBy, set, uniq } from "lodash-es"
 
-export function valueAsString(v: any): string {
+// Cache a default NumberFormat instance for repeated use instead of using toLocaleString(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
+const defaultNumberFormatter = new Intl.NumberFormat()
+
+export function valueAsStringFormatted(v: any): string {
   // Convert false,0 to string, but null/undefined to empty string
   if (v === "" || v === null || v === undefined) {
     return ""
+  } else if (typeof v === "number") {
+    return defaultNumberFormatter.format(v)
   } else if (v instanceof Date) {
     return v.toISOString()
   } else {
@@ -351,11 +356,11 @@ export function hasHeader(data: any[][]): boolean {
 
   // Check if value patterns from first row also occur in other rows (probably not header values then)
   for (const [headerIndex, headerValue] of data[0].entries()) {
-    if (valueAsString(headerValue).length) {
+    if (valueAsStringFormatted(headerValue).length) {
       for (const line of data.slice(1, numRowsToCompare)) {
         const rowValue = line[headerIndex]
         const headerPattern = normalizeString(headerValue)
-        const valuePattern = normalizeString(valueAsString(rowValue))
+        const valuePattern = normalizeString(valueAsStringFormatted(rowValue))
         // pattern > 3 equals meaningful pattern, ie. not just alpha numeric
         if (uniq(headerPattern).length > 3 && valuePattern === headerPattern) {
           return false

@@ -22,7 +22,7 @@ import {
   saveFile,
   tableToJson,
   tryParseJSONObject,
-  valueAsString,
+  valueAsStringFormatted,
   compileTransformerCode,
   compressString,
   decompressString,
@@ -561,7 +561,7 @@ export default function Home() {
           filters.every((filter) =>
             filter.includedValues.some(
               (filterValue) =>
-                filterValue === valueAsString(row[filter.columnIndex]),
+                filterValue === valueAsStringFormatted(row[filter.columnIndex]),
             ),
           ),
         )
@@ -579,8 +579,12 @@ export default function Home() {
     filteredData = search.length
       ? filteredData.filter((row) =>
           isColumnSearch
-            ? valueAsString(row[searchColumnIndex]).includes(searchValue)
-            : row.some((value) => valueAsString(value).includes(searchValue)),
+            ? valueAsStringFormatted(row[searchColumnIndex]).includes(
+                searchValue,
+              )
+            : row.some((value) =>
+                valueAsStringFormatted(value).includes(searchValue),
+              ),
         )
       : filteredData
 

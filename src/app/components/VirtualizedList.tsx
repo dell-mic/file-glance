@@ -7,7 +7,7 @@ import {
   ArrowDownIcon as ArrowDownIconMicro,
 } from "@heroicons/react/16/solid"
 
-import { valueAsString } from "@/utils"
+import { valueAsStringFormatted } from "@/utils"
 import { SortSetting } from "../home-page"
 import { cva } from "class-variance-authority"
 
@@ -56,7 +56,7 @@ const cellClass = cva(
   {
     variants: {
       isTypedValue: {
-        true: "text-blue-900 font-mono",
+        true: "text-blue-900",
         false: "",
       },
       isEmpty: {
@@ -82,21 +82,21 @@ export const Row = (
         if (hiddenColumns.includes(vi)) {
           return null
         } else {
-          const _valueAsString = valueAsString(v)
+          const _valueAsStringFormatted = valueAsStringFormatted(v)
+          const _valueAsStringRow = "" + v
           let isEmpty = false
           let valueCell
           const isTypedValue = typeof v !== "string"
-          if (_valueAsString) {
-            valueCell = _valueAsString
+          if (_valueAsStringFormatted) {
+            valueCell = _valueAsStringFormatted
           } else {
-            // valueCell = <span className="text-gray-500 font-mono">empty</span>
             valueCell = "empty"
             isEmpty = true
           }
           let title =
             isTypedValue && !isEmpty
-              ? `${_valueAsString} [${v.constructor.name}]`
-              : _valueAsString
+              ? `${_valueAsStringRow} [${v.constructor.name}]`
+              : _valueAsStringRow
 
           return (
             <span
@@ -110,7 +110,10 @@ export const Row = (
                 width: columnsWidths[vi],
               }}
               onClick={() => {
-                onValueCellPressed({ value: v, valueAsString: _valueAsString })
+                onValueCellPressed({
+                  value: v,
+                  valueAsString: _valueAsStringFormatted,
+                })
               }}
             >
               {valueCell}

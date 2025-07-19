@@ -348,8 +348,9 @@ export const DataTable = (props: {
               setPopoverAnchorElement(headerElement)
               setPopoverColumnIndex(columnIndex)
             }}
-            onValueCellPressed={({ valueAsString }) => {
-              navigator.clipboard.writeText(valueAsString)
+            onValueCellPressed={({ value }) => {
+              //console.log(`'${value}'`)
+              navigator.clipboard.writeText("" + value)
               toast({
                 title: "Value copied to clipboard",
               })
