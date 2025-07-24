@@ -58,6 +58,7 @@
       margin-bottom: calc(var(--spacing) * 3);
       font-size: var(--text-base);
       line-height: var(--text-base--line-height);
+      hyphens: auto;
     }
 
     strong,
