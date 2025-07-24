@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import path from "path"
+import { waitForClipboard } from "./utils"
 
 test.beforeEach(async ({ page }) => {
   await page.goto("http://localhost:3000/")
@@ -36,11 +37,14 @@ test(`Share Link`, async ({ page, context, browserName }) => {
   await page.getByTestId("btnExport").click()
   await page.getByTestId("menuEntry-Share Link").click()
 
+  await waitForClipboard(page)
   // Get clipboard text from the page context
-  const clipboardText = await page.evaluate(() =>
-    navigator.clipboard.readText(),
+  const clipboardText = await page.evaluate(
+    async () => await navigator.clipboard.readText(),
   )
   // console.log("Clipboard text:", clipboardText)
+
+  expect(clipboardText, "Clipboard text should not be empty").toBeTruthy()
 
   const page2 = await context.newPage()
   await page2.goto(clipboardText)

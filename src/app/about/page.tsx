@@ -33,7 +33,7 @@ export default function Page() {
         </svg>
         Back
       </Link>
-      <div className="max-w-2xl mx-auto px-4">
+      <div className="max-w-2xl mx-auto px-4 mb-6">
         <h1 className="mt-4">About FileGlance</h1>
         <p>{description}</p>
         <h2>Why FileGlance?</h2>
@@ -48,7 +48,7 @@ export default function Page() {
           Tailwind.
         </p>
         <p>Maybe it will help others, too.</p>
-        <p className="mt-6">It aims to be both:</p>
+        <p className="mt-6 mb-1">It aims to be both:</p>
         <ul>
           <li>
             <strong>Simple:</strong> Just drag and drop a file; it automatically
@@ -86,23 +86,56 @@ export default function Page() {
 
         <h2>Use Cases</h2>
         <h4>Data Viewing & Exploration</h4>
-        <p>
+        <p className="mb-1">
           View raw data and column types. Get visualizations for categorical and
           continuous data (histograms). For numeric values, see statistics like
-          average, median, min, and max.
+          average, median, min, and max.{" "}
+          <span style={{ whiteSpace: "nowrap" }}>Use it as:</span>
         </p>
+        <ul>
+          <li>Online CSV / TSV / Excel viewer</li>
+          <li>
+            See column stats like average, median, min, and max for numeric
+            columns (e.g., &quot;Find the average order value in a sales
+            CSV&quot;)
+          </li>
+          <li>
+            Data type inspector (e.g., &quot;Quickly validate which columns are
+            text, numbers, or dates&quot;)
+          </li>
+          <li>
+            File converter (e.g., &quot;Convert an Excel file to CSV or JSON in
+            one click&quot;)
+          </li>
+        </ul>
         <h4>Data Filtering & Cleaning</h4>
-        <p>
+        <p className="mb-1">
           Apply quick filters with one click or use complex filter functions
-          with custom JavaScript. Remove duplicates, incomplete, or corrupted
-          data.
+          with custom JavaScript. For example:
         </p>
+        <ul>
+          <li>Remove empty rows or columns</li>
+          <li>Trim whitespace from values</li>
+          <li>Deduplicate based on specific columns</li>
+          <li>Find unique values</li>
+          <li>Replace missing values with defaults</li>
+          <li>Detect and handle outliers</li>
+        </ul>
         <h4>Data Transformation</h4>
-        <p>
-          Transform data using custom JavaScript functions. For example, split
-          the domain from an email or format Unix timestamps to readable dates.
+        <p className="mb-1">
+          Transform data using custom JavaScript functions. For example:
         </p>
-
+        <ul>
+          <li>Parse numbers from text</li>
+          <li>Normalize text case (e.g., all lowercase)</li>
+          <li>Split the domain from an email</li>
+          <li>Format Unix timestamps to readable dates</li>
+          <li>
+            Merge similar categories (e.g., &quot;NY&quot; and &quot;New
+            York&quot;)
+          </li>
+          <li>Export to CSV, JSON, Markdown etc.</li>
+        </ul>
         <h2>Tech Stack & Code</h2>
 
         <p className="mt-2">

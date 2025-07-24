@@ -14,6 +14,10 @@ const testData = {
 }
 
 test.describe("Pasting data test", () => {
+  test.skip(
+    ({ browserName }) => browserName === "webkit",
+    "https://bugs.webkit.org/show_bug.cgi?id=75891",
+  )
   // Avoid interference with other tests when manipulating clipboard
   test.describe.configure({ mode: "serial" })
 
