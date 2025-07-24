@@ -8,4 +8,9 @@
     <FilesMatch "\.(js|css|woff2)$">
         Header set Cache-Control "max-age=31536000"
     </FilesMatch>
+
+    # NEVER CACHE HTML
+    <FilesMatch "\.(html)$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate"
+    </FilesMatch>
 </IfModule>
