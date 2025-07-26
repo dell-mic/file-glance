@@ -315,6 +315,7 @@ export default function Home() {
     const host = window.location.hostname.replace(/^www\./, "")
     const mailtoLink = `mailto:feedback@${host}?subject=Feedback ${host}`
     window.open(mailtoLink, "_blank")
+    window._paq.push(["trackEvent", "Button", "FeedbackCta"])
   }
 
   const setData = (
@@ -363,6 +364,7 @@ export default function Home() {
     if (files.length) {
       const firstFile = files[0]
       parseFile(firstFile, true)
+      window._paq.push(["trackEvent", "File", "Drop"])
     }
   }
 
@@ -377,6 +379,8 @@ export default function Home() {
       const firstFile = files[0]
       parseFile(firstFile, true)
     }
+
+    window._paq.push(["trackEvent", "File", "Select"])
   }
 
   const handleDragEnter = (e: React.DragEvent) => {
@@ -899,6 +903,7 @@ export default function Home() {
           const contentAsText = e.clipboardData.getData("text")
           // console.log(contentAsText)
           parseText(contentAsText, "CLIPBOARD", true)
+          window._paq.push(["trackEvent", "File", "Paste"])
         }
       }}
     >
@@ -930,6 +935,11 @@ export default function Home() {
                       setTimeout(() => {
                         onGenerateSampleData(e.metaKey ? 133_700 : 1337)
                       }, 50)
+                      window._paq.push([
+                        "trackEvent",
+                        "Button",
+                        "GenerateSampleData",
+                      ])
                     }}
                     className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer"
                   >
