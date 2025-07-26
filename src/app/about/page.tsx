@@ -142,11 +142,7 @@ export default function Page() {
           FileGlance is built with TypeScript, Next.js/React, Tailwind CSS, and
           Recharts. It is open source under the AGPL license. Interested
           developers can find the full source code on GitHub:{" "}
-          <a
-            href="https://github.com/dell-mic/file-glance"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href="https://github.com/dell-mic/file-glance" target="_blank">
             https://github.com/dell-mic/file-glance
           </a>
         </p>
