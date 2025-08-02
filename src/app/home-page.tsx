@@ -916,7 +916,7 @@ export default function Home() {
                 <div className="text-2xl text-gray-500 m-4">{description}</div>
                 <Link
                   href="/about"
-                  className="text-lg text-gray-500 font-medium py-2 px-4 rounded-sm transition-colors duration-200 no-underline hover:text-blue-900 hover:underline"
+                  className="text-xl text-gray-500 font-medium py-2 px-4 rounded-sm transition-colors duration-200 no-underline hover:text-blue-900 hover:underline"
                 >
                   📖 Learn more ...
                 </Link>
@@ -925,7 +925,8 @@ export default function Home() {
                     handleFileSelected={handleFileSelected}
                     isDragging={dragging}
                   ></FileChooser>
-                  <span className="text-3xl text-gray-500">
+
+                  <span className="text-3xl text-gray-500 hidden sm:block">
                     Just want to play around?
                   </span>
 
@@ -941,10 +942,11 @@ export default function Home() {
                         "GenerateSampleData",
                       ])
                     }}
-                    className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer"
+                    className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer hidden sm:inline-block"
                   >
                     📂 Load sample data
                   </button>
+
                   <span className="text-xl text-gray-500 mt-8">
                     Found a bug? Feedback? Ideas?
                   </span>

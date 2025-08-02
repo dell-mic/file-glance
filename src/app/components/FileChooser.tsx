@@ -3,7 +3,7 @@ export const FileChooser = (props: {
   isDragging: boolean
 }) => {
   return (
-    <div className="w-4/6 mx-auto my-24">
+    <div className="w-4/6 min-w-80 mx-auto my-14 md:my-24">
       <label
         data-testid="fileInput"
         className="flex flex-col items-center justify-center w-full h-96 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all select-none"
@@ -31,7 +31,7 @@ export const FileChooser = (props: {
             <span className="font-medium whitespace-nowrap">drag & drop</span>{" "}
             or <span className="font-medium whitespace-nowrap">paste</span>
           </p>
-          <p className=" text-gray-500">CSV, TSV, XLSX, JSON, TXT</p>
+          <p className=" text-gray-500">CSV, TSV, XLSX, JSON</p>
         </div>
         <input
           type="file"
