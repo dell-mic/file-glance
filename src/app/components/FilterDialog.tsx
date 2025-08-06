@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select"
-import { applyFilterFunction, compileFilterCode } from "@/utils"
+import { applyFilterFunction, compileFilterCode, createRowProxy } from "@/utils"
 
 interface ColumnInfos {
   columnName: string
@@ -118,8 +118,7 @@ return rowIndex < ${topX}`)
       }
       const compiled = compileFilterCode(
         filterFunctionCode,
-        displayedData[0],
-        headerRow,
+        createRowProxy(displayedData[0], headerRow),
       )
       if (compiled.error) {
         setFilterValidationResult({
@@ -129,7 +128,7 @@ return rowIndex < ${topX}`)
       } else {
         const cache = {}
         const count = displayedData.filter((row, i) =>
-          applyFilterFunction(row, i, compiled.filter!, headerRow, cache),
+          applyFilterFunction(row, i, compiled.filter!, cache),
         ).length
         setFilterValidationResult({
           error: null,

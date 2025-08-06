@@ -160,7 +160,7 @@ export const DataTable = (props: {
         }
       })
 
-      console.log("sampleResults", sampleResults)
+      // console.log("sampleResults", sampleResults)
       setTransformerValidation({
         compilationError: null,
         sampleResults: sampleResults,

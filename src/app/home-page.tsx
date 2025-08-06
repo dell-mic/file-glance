@@ -35,6 +35,8 @@ import {
   formatBytes,
   cleanWorksheetName,
   cleanForFileName,
+  trackEvent,
+  createRowProxy,
 } from "@/utils"
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -54,9 +56,10 @@ import { FunnelIcon } from "@heroicons/react/24/outline"
 import { FunnelIcon as FunnelIconSolid } from "@heroicons/react/24/solid"
 import { CellObject } from "xlsx"
 import { DataCharts } from "./components/DataChart/DataCharts"
-import { BarChart2, Table as TableIcon } from "lucide-react"
+import { BarChart2, Table as TableIcon, Code2 } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { DataTable } from "./components/DataTable/DataTable"
+import { FreeQuery } from "./components/FreeQuery/FreeQuery"
 import Link from "next/link"
 import MiddleEllipsis from "@/components/ui/MiddleEllipsis"
 
@@ -94,9 +97,9 @@ export default function Home() {
   const [appliedFilterFunctionCode, setAppliedFilterFunctionCode] =
     React.useState<string | null>("")
 
-  const [viewMode, setViewMode] = React.useState<"datatable" | "visual">(
-    "datatable",
-  )
+  const [viewMode, setViewMode] = React.useState<
+    "datatable" | "visual" | "freeQuery"
+  >("datatable")
 
   const handlePopoverClose = () => {
     setPopoverAnchorElement(null)
@@ -315,7 +318,7 @@ export default function Home() {
     const host = window.location.hostname.replace(/^www\./, "")
     const mailtoLink = `mailto:feedback@${host}?subject=Feedback ${host}`
     window.open(mailtoLink, "_blank")
-    window._paq.push(["trackEvent", "Button", "FeedbackCta"])
+    trackEvent("Button", "FeedbackCta")
   }
 
   const setData = (
@@ -364,7 +367,7 @@ export default function Home() {
     if (files.length) {
       const firstFile = files[0]
       parseFile(firstFile, true)
-      window._paq.push(["trackEvent", "File", "Drop"])
+      trackEvent("File", "Drop")
     }
   }
 
@@ -380,7 +383,7 @@ export default function Home() {
       parseFile(firstFile, true)
     }
 
-    window._paq.push(["trackEvent", "File", "Select"])
+    trackEvent("File", "Select")
   }
 
   const handleDragEnter = (e: React.DragEvent) => {
@@ -518,12 +521,15 @@ export default function Home() {
   const displayedData = useMemo(() => {
     console.time("applyTransfomer")
 
+    // Allow access via headerName in subsequent code (esp. user functions)
+    let transformedData = allRows.map((row) =>
+      createRowProxy(cloneDeep(row), displayedHeader),
+    )
+
     if (!transformers.length) {
       console.timeEnd("applyTransfomer")
-      return cloneDeep(allRows)
+      return transformedData
     }
-
-    let transformedData = cloneDeep(allRows)
 
     for (const [rowIndex, row] of transformedData.entries()) {
       for (const columnIndex of row.keys()) {
@@ -606,23 +612,17 @@ export default function Home() {
       const compilationResult = compileFilterCode(
         appliedFilterFunctionCode,
         displayedData[0],
-        displayedHeader,
       )
       const cache = {}
       if (compilationResult.filter && !compilationResult.error) {
         filteredData = filteredData.filter((row, i) =>
-          applyFilterFunction(
-            row,
-            i,
-            compilationResult.filter!,
-            displayedHeader,
-            cache,
-          ),
+          applyFilterFunction(row, i, compilationResult.filter!, cache),
         )
       }
     }
 
     console.timeEnd("filterAndSorting")
+
     return filteredData
   }, [
     displayedData,
@@ -903,7 +903,7 @@ export default function Home() {
           const contentAsText = e.clipboardData.getData("text")
           // console.log(contentAsText)
           parseText(contentAsText, "CLIPBOARD", true)
-          window._paq.push(["trackEvent", "File", "Paste"])
+          trackEvent("File", "Paste")
         }
       }}
     >
@@ -936,11 +936,7 @@ export default function Home() {
                       setTimeout(() => {
                         onGenerateSampleData(e.metaKey ? 133_700 : 1337)
                       }, 50)
-                      window._paq.push([
-                        "trackEvent",
-                        "Button",
-                        "GenerateSampleData",
-                      ])
+                      trackEvent("Button", "GenerateSampleData")
                     }}
                     className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer hidden sm:inline-block"
                   >
@@ -1029,7 +1025,8 @@ export default function Home() {
                     variant="outline"
                     value={viewMode}
                     onValueChange={(val) => {
-                      if (val) setViewMode(val as "visual" | "datatable")
+                      if (val)
+                        setViewMode(val as "visual" | "datatable" | "freeQuery")
                     }}
                   >
                     <ToggleGroupItem
@@ -1037,14 +1034,21 @@ export default function Home() {
                       title="Data Table View"
                       data-testid={"btnTableView"}
                     >
-                      <TableIcon className="inline-block mr-2 w-4 h-4" />
+                      <TableIcon className="inline-block mx-1 w-4 h-4" />
                     </ToggleGroupItem>
                     <ToggleGroupItem
                       value="visual"
                       title="Visual View"
                       data-testid={"btnVisualView"}
                     >
-                      <BarChart2 className="inline-block mr-2 w-4 h-4" />
+                      <BarChart2 className="inline-block mx-1 w-4 h-4" />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="freeQuery"
+                      title="Free Query View"
+                      data-testid={"btnFreeQueryView"}
+                    >
+                      <Code2 className="inline-block mx-1 w-4 h-4" />
                     </ToggleGroupItem>
                   </ToggleGroup>
                   <div className="flex gap-1">
@@ -1133,6 +1137,11 @@ export default function Home() {
                     <DataCharts
                       columnInfos={columnValueCounts}
                       hiddenColumns={hiddenColumns}
+                    />
+                  ) : viewMode === "freeQuery" ? (
+                    <FreeQuery
+                      data={displayedDataFiltered}
+                      headerRow={displayedHeader}
                     />
                   ) : (
                     <DataTable

@@ -17,6 +17,26 @@ export function valueAsStringFormatted(v: any): string {
   }
 }
 
+// Proxy wrapper for each row to allow access by header name
+export function createRowProxy(row: any[], headers: string[]) {
+  return new Proxy(row, {
+    get(target, prop) {
+      // console.log(target, prop)
+      if (typeof prop === "string") {
+        const idx = headers.indexOf(prop)
+        if (idx !== -1) return target[idx]
+      }
+      return target[prop as any]
+    },
+  })
+}
+
+export function trackEvent(category: string, event: string) {
+  if (window?._paq) {
+    window._paq.push(["trackEvent", category, event])
+  }
+}
+
 export function jsonToTable(jsonArray: Array<any>): {
   data: any[][]
   headerRow: string[]
@@ -543,6 +563,43 @@ export const saveFile = async (blob: Blob, name: string) => {
   a.click()
 }
 
+/**
+ * Simple post processing to allow code snippets without explicit return statement.
+ * Simulates behavior of language like scala where the last expression is the return value (in a very naively implemented manner, though)
+ * @param inputCode
+ * @returns
+ */
+export function postProcessCode(inputCode: string): string {
+  let outputCode
+
+  // Split into lines, trim each line
+  let lines = inputCode.split("\n").map((line) => line.trim())
+
+  // Remove empty lines at the start
+  while (lines.length > 0 && lines[0] === "") {
+    lines.shift()
+  }
+  // Remove empty lines at the end
+  while (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop()
+  }
+
+  outputCode = lines.join("\n")
+
+  // Check if the query contains a return statement (not in a comment)
+  const codeWithoutComments = lines
+    .filter((line) => !line.trim().startsWith("//"))
+    .join("\n")
+  const hasReturn = /(^|[^\w])return\b/.test(codeWithoutComments)
+  if (!hasReturn && lines.length > 0) {
+    // Add 'return ' to the last line if missing
+    lines[lines.length - 1] = "return " + lines[lines.length - 1]
+    outputCode = lines.join("\n")
+  }
+
+  return outputCode
+}
+
 export function detectDelimiter(input: string): string | null {
   const supportedDelimiters = [",", "\t", ";", "|"] // Note: Order matters in case of equal occurence count!
   const counts: Record<string, number> = {}
@@ -675,7 +732,7 @@ export function compileTransformerCode(code: string): {
       "headerName",
       "allRows",
       "originalValue",
-      code,
+      postProcessCode(code),
     )
   } catch (err: any) {
     error = err.toString()
@@ -690,7 +747,6 @@ export function compileTransformerCode(code: string): {
 export function compileFilterCode(
   code: string,
   sampleRow: any[],
-  headerRow: string[],
 ): {
   filter: Function | null
   error: string | null
@@ -698,14 +754,14 @@ export function compileFilterCode(
   let filter = null
   let error = null
   try {
-    filter = new Function("row", "rowIndex", "cache", code)
+    filter = new Function("row", "rowIndex", "cache", postProcessCode(code))
   } catch (err: any) {
     error = err.toString()
   }
 
   if (!error && filter) {
     try {
-      const result = applyFilterFunction(sampleRow, 0, filter, headerRow, {})
+      const result = applyFilterFunction(sampleRow, 0, filter, {})
       if (typeof result !== "boolean") {
         error = "Filter function must return a boolean value"
         filter = null
@@ -722,29 +778,14 @@ export function compileFilterCode(
   }
 }
 
-export function expandRow(
-  row: any[],
-  headerRow: string[],
-): Record<string | number, any> {
-  const result: Record<string | number, any> = {}
-  for (let i = 0; i < row.length; i++) {
-    result[i] = row[i]
-    if (headerRow[i]) {
-      result[headerRow[i]] = row[i]
-    }
-  }
-  return result
-}
-
 export function applyFilterFunction(
   row: any[],
   rowIndex: number,
   filterFunction: Function,
-  headerRow: string[],
   cache: Record<string, any>,
 ): boolean {
   try {
-    return filterFunction(expandRow(row, headerRow), rowIndex, cache)
+    return filterFunction(row, rowIndex, cache)
   } catch (error) {
     console.error("Error applying filter function:", error)
     return false // If the filter function throws an error, we assume the row does not match. Can happen if the function passes validation on first row, but errors on others.
