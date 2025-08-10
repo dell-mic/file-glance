@@ -55,13 +55,13 @@ import { Label } from "@/components/ui/label"
 import { FunnelIcon } from "@heroicons/react/24/outline"
 import { FunnelIcon as FunnelIconSolid } from "@heroicons/react/24/solid"
 import { CellObject } from "xlsx"
-import { DataCharts } from "./components/DataChart/DataCharts"
 import { BarChart2, Table as TableIcon, Code2 } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { DataTable } from "./components/DataTable/DataTable"
 import { FreeQuery } from "./components/FreeQuery/FreeQuery"
 import Link from "next/link"
 import MiddleEllipsis from "@/components/ui/MiddleEllipsis"
+import VisualView from "./components/VisualView"
 
 export default function Home() {
   const { toast } = useToast()
@@ -1134,9 +1134,10 @@ export default function Home() {
                     }}
                   ></ValuesInspector>
                   {viewMode === "visual" ? (
-                    <DataCharts
+                    <VisualView
                       columnInfos={columnValueCounts}
                       hiddenColumns={hiddenColumns}
+                      data={displayedDataFiltered}
                     />
                   ) : viewMode === "freeQuery" ? (
                     <FreeQuery

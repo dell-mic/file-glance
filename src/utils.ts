@@ -294,7 +294,7 @@ export function generateSampleData(numRows: number): {
 
   const data = []
   for (let i = 1; i <= numRows; i++) {
-    const id = i
+    const id = "" + i
     const name =
       getRandomElement(firstNames) + " " + getRandomElement(lastNames)
     let age = getRandomIntNormal(20, 50)

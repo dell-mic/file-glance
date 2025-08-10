@@ -19,9 +19,8 @@ interface NumericColumnChartProps {
 export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
   columnInfo: col,
 }) => {
-  const displayedValues = col.columnValues.filter(
-    (v) => v.valueCountFiltered > 0,
-  )
+  const allValues = col.columnValues.filter((v) => v.value !== null)
+  const displayedValues = allValues.filter((v) => v.valueCountFiltered > 0)
   let barChartData: { name: string; count: number }[] = []
 
   let min = Infinity,
@@ -34,7 +33,7 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
     }
   }
 
-  const allNumbers: number[] = col.columnValues.flatMap((cv) => {
+  const allNumbers: number[] = displayedValues.flatMap((cv) => {
     const n = cv.value
     if (isNaN(n)) return []
     return Array(cv.valueCountFiltered).fill(n)
@@ -57,8 +56,8 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
       <CardHeader className="items-center pb-0">
         <CardTitle>{col.columnName}</CardTitle>
         <CardDescription>
-          {col.columnValues.length.toLocaleString()} distinct values
-          {displayedValues.length !== col.columnValues.length && (
+          {allValues.length.toLocaleString()} distinct values
+          {displayedValues.length !== allValues.length && (
             <>, {displayedValues.length.toLocaleString()} filtered</>
           )}
           <div className="flex gap-3 mt-2 justify-center items-center">
