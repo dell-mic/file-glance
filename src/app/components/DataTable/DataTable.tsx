@@ -266,7 +266,10 @@ export const DataTable = (props: {
   ]
 
   return (
-    <div className="h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-xs">
+    <div
+      className="h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-xs"
+      data-testid="DataTable"
+    >
       <MenuPopover
         id={"columnPopover"}
         menuItems={popoverEntries}

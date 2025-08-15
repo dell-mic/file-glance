@@ -15,7 +15,7 @@ export const DataCharts: React.FC<DataChartsProps> = ({
   if (!Array.isArray(columnValueCounts)) return null
   return (
     <div
-      className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5 gap-3 pl-2 w-full overflow-y-scroll items-start"
+      className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5 gap-3 w-full overflow-y-scroll items-start"
       style={{ scrollbarWidth: "thin", gridAutoRows: "max-content" }}
     >
       {columnValueCounts.map((col) => {

@@ -23,7 +23,7 @@ const VisualView: React.FC<VisualViewProps> = ({
       className="w-full overflow-y-auto"
       style={{ scrollbarWidth: "thin" }}
     >
-      <TabsList className="mb-2 ml-2">
+      <TabsList className="ml-2">
         <TabsTrigger className="p-4" value="charts">
           Column Statistics
         </TabsTrigger>
@@ -31,10 +31,10 @@ const VisualView: React.FC<VisualViewProps> = ({
           Pivot Chart
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="charts">
+      <TabsContent value="charts" className="pl-2">
         <DataCharts columnInfos={columnInfos} hiddenColumns={hiddenColumns} />
       </TabsContent>
-      <TabsContent value="pivot">
+      <TabsContent value="pivot" className="pl-2">
         <PivotChart columnInfos={columnInfos} data={data} />
       </TabsContent>
     </Tabs>
