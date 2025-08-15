@@ -77,9 +77,65 @@ Transform data using custom JavaScript functions. For example:
 - Merge similar categories (e.g., "NY" and "New York")
 - Export to CSV, JSON, Markdown etc.
 
+## Integration
+
+Other applications and tools can seamlessly integrate with FileGlance by deep linking complete data sets (CSV or JSON) using the URL hash parameter. This ensures that all data remains on the client and is never transmitted to the server.
+
+Privacy notice: Please be aware that data embedded in the URL is currently not encrypted. If you share the URL (e.g., via email), your data may leave your device and become accessible to others.
+
+### Example: Uncompressed
+
+```js
+const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+const url = "https://www.fileglance.info/#d=" + encodeURI(csv)
+window.open(url, "_blank")
+```
+
+### Example: ZIP compressed
+
+**Browser**
+
+```js
+const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+
+const byteArray = new TextEncoder().encode(csv)
+const cs = new CompressionStream("gzip")
+const writer = cs.writable.getWriter()
+writer.write(byteArray) && writer.close()
+const gzipped = await new Response(cs.readable).arrayBuffer()
+
+const base64Gzipped = btoa(String.fromCharCode(...new Uint8Array(gzipped)))
+const url = "https://www.fileglance.info/#c=" + base64Gzipped
+console.log(url)
+window.open(url, "_blank")
+```
+
+**Node**
+
+```js
+// import open from "open" // npm install open
+
+const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+
+const byteArray = new TextEncoder().encode(csv)
+const cs = new CompressionStream("gzip")
+const writer = cs.writable.getWriter()
+await writer.write(byteArray)
+await writer.close()
+const gzipped = await new Response(cs.readable).arrayBuffer()
+
+const base64Gzipped = Buffer.from(gzipped).toString("base64")
+
+const url = "https://www.fileglance.info/#c=" + base64Gzipped
+console.log(url)
+// Optional: open in default browser
+// await open(url)
+```
+
 ## Roadmap
 
 - Support for additional file formats
+- Encrypt URL and exported data
 - Advanced data manipulation, including column renaming, splitting and merging
 - Options to override detected encoding and delimiters
 - More export settings

@@ -451,6 +451,13 @@ export default function Home() {
             "URL Data",
             true,
           )
+        } else if (hash.startsWith("#c=")) {
+          setParsingState("parsing")
+          base64GzippedToString(hash.substring(StartHashContent)).then(
+            (decompressed) => {
+              parseText(decompressed, "URL Data", true)
+            },
+          )
         } else if (hash.startsWith("#p=")) {
           setParsingState("parsing")
 
@@ -1117,7 +1124,10 @@ export default function Home() {
                     ></MenuPopover>
                   </div>
                 </div>
-                <div className="flex flex-row h-[calc(100vh-60px)] overflow-clip">
+                <div
+                  className="flex flex-row h-[calc(100vh-60px)] overflow-clip"
+                  data-testid="DataContentWrapper"
+                >
                   <ValuesInspector
                     columnValueCounts={columnValueCounts}
                     filters={filters}
