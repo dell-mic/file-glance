@@ -56,7 +56,29 @@ export const PivotChart: React.FC<PivotChartProps> = ({
 
   // Helper to pick a good initial xField value
   function pickInitialXField(cols: ColumnInfos[]): string {
-    const preferredNames = ["country", "region", "city"]
+    const preferredNames = [
+      "country",
+      "region",
+      "city",
+      "state",
+      "province",
+      "department",
+      "category",
+      "type",
+      "group",
+      "sector",
+      "year",
+      "month",
+      "quarter",
+      "product",
+      "item",
+      "sku",
+      "customer",
+      "user",
+      "client",
+      "status",
+      "stage",
+    ]
     for (const name of preferredNames) {
       const found = cols.find((c) => c.columnName.toLowerCase() === name)
       if (found) return found.columnName
