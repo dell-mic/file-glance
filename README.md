@@ -79,7 +79,13 @@ Transform data using custom JavaScript functions. For example:
 
 ## Integration
 
-Other applications and tools can seamlessly integrate with FileGlance by deep linking complete data sets (CSV or JSON) using the URL hash parameter. This ensures that all data remains on the client and is never transmitted to the server.
+Other applications and tools can seamlessly integrate with FileGlance by deep linking complete data sets (CSV or JSON) using the URL hash parameter like so:
+
+```
+https://www.fileglance.info/#d=ID,Name,Age%0A1,Alice,30%0A2,Bob,25
+```
+
+This ensures that all data remains on the client and is never transmitted to the server.
 
 Privacy notice: Please be aware that data embedded in the URL is currently not encrypted. If you share the URL (e.g., via email), your data may leave your device and become accessible to others.
 
@@ -89,6 +95,15 @@ Privacy notice: Please be aware that data embedded in the URL is currently not e
 const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
 const url = "https://www.fileglance.info/#d=" + encodeURI(csv)
 window.open(url, "_blank")
+```
+
+```python
+import webbrowser
+import urllib.parse
+
+csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+url = "https://www.fileglance.info/#d=" + urllib.parse.quote(csv, safe='/;,?&#')
+webbrowser.open_new_tab(url)
 ```
 
 ### Example: ZIP compressed
