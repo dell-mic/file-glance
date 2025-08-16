@@ -24,7 +24,7 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: title,
   description:
-    "Simple, but powerful, privacy-friendly tool for working with tabular data. Supports CSV, TSV, XLSX, JSON",
+    "Simple, but powerful, privacy-friendly tool for working with tabular data using JavaScript. Supports CSV, TSV, XLSX, JSON",
 }
 
 export default function RootLayout({
