@@ -8,12 +8,15 @@ import {
   SelectValue,
 } from "../../components/ui/select"
 import { ChartContainer } from "@/components/ui/chart"
-import React, { useMemo, useState } from "react"
+import React, { useMemo, useState, useRef } from "react"
+import orderBy from "lodash-es/orderBy"
 import {
   BarChart as BarIcon,
   LineChart as LineIcon,
   PieChart as PieIcon,
 } from "lucide-react"
+import { ArrowUpNarrowWide, ArrowDownNarrowWide, Download } from "lucide-react"
+import domtoimage from "dom-to-image"
 import {
   BarChart,
   Bar,
@@ -25,7 +28,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
 } from "recharts"
 import {
   CHART_SERIES_COLORS,
@@ -33,8 +35,10 @@ import {
   EMPTY_LABEL,
 } from "./DataChart/chartUtils"
 
-// Types for props
 import { ColumnInfos } from "./ValueInspector"
+import { saveFile, cleanForFileName } from "../../utils"
+import { MenuPopover } from "../../components/ui/Popover"
+import { Button } from "../../components/ui/button"
 
 interface PivotChartProps {
   columnInfos: ColumnInfos[]
@@ -43,11 +47,18 @@ interface PivotChartProps {
 
 const AGGREGATIONS = ["Sum", "Average", "Max", "Min", "Count"] as const
 const CHART_TYPES = ["Bar", "Line", "Pie"] as const
+const SORT_FIELDS = ["None", "X-Value", "Y-Value"] as const
+const SORT_ORDERS = ["asc", "desc"] as const
+
+const ChartElementId = "pivotChartArea"
 
 export const PivotChart: React.FC<PivotChartProps> = ({
   columnInfos,
   data,
 }) => {
+  const exportButtonRef = useRef<HTMLButtonElement>(null)
+  const [popoverAnchorElement, setPopoverAnchorElement] =
+    useState<HTMLElement | null>(null)
   const numericColumns = useMemo(
     () => columnInfos.filter((c) => c.columnType === "Number"),
     [columnInfos],
@@ -94,6 +105,10 @@ export const PivotChart: React.FC<PivotChartProps> = ({
     useState<(typeof AGGREGATIONS)[number]>("Sum")
   const [chartType, setChartType] =
     useState<(typeof CHART_TYPES)[number]>("Bar")
+  const [sortField, setSortField] =
+    useState<(typeof SORT_FIELDS)[number]>("Y-Value")
+  const [sortOrder, setSortOrder] =
+    useState<(typeof SORT_ORDERS)[number]>("desc")
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -111,7 +126,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
       groups[x].push(y)
     }
     // Aggregate
-    return Object.entries(groups).map(([key, values]) => {
+    let result = Object.entries(groups).map(([key, values]) => {
       let val = 0
       switch (aggregation) {
         case "Sum":
@@ -132,7 +147,13 @@ export const PivotChart: React.FC<PivotChartProps> = ({
       }
       return { [xField]: key, [yField]: val }
     })
-  }, [data, xField, yField, aggregation])
+
+    if (sortField !== "None") {
+      const key = sortField === "X-Value" ? xField : yField
+      result = orderBy(result, [key], [sortOrder])
+    }
+    return result
+  }, [data, xField, yField, aggregation, sortField, sortOrder])
 
   const pieData = useMemo(() => {
     if (!xField || !yField) return []
@@ -151,6 +172,51 @@ export const PivotChart: React.FC<PivotChartProps> = ({
     )
   }, [pieData])
 
+  const chartTitle = `${aggregation} of ${yField} by ${xField}`
+
+  const handleExport = async (type: "png" | "svg") => {
+    const chartNode = document.getElementById(ChartElementId)
+    if (!chartNode) return
+    try {
+      if (type === "png") {
+        const dataUrl = await domtoimage.toPng(chartNode)
+        if (typeof dataUrl === "string") {
+          const blob = await (await fetch(dataUrl)).blob()
+          const fileName = cleanForFileName(chartTitle) + ".png"
+          await saveFile(blob, fileName)
+        }
+      } else if (type === "svg") {
+        // XMLSerializer for SVG export reduced much smaller (6kb vs 1.5 MB) results than domtoimage, however, e.g. does not embedd font, thus results are not the same as what is rendered in browser
+        const chartSVG = chartNode.querySelector("svg")
+        if (chartSVG) {
+          const svgURL = new XMLSerializer().serializeToString(chartSVG)
+          const svgBlob = new Blob([svgURL], {
+            type: "image/svg+xml;charset=utf-8",
+          })
+          const fileName = cleanForFileName(chartTitle) + ".svg"
+          await saveFile(svgBlob, fileName)
+        }
+      }
+    } catch (err) {
+      alert("Failed to export chart: " + err)
+    }
+  }
+
+  const exportPopoverEntries = [
+    [
+      {
+        text: "Export as PNG",
+        icon: <Download className="size-5" />,
+        onSelect: () => handleExport("png"),
+      },
+      {
+        text: "Export as SVG",
+        icon: <Download className="size-5" />,
+        onSelect: () => handleExport("svg"),
+      },
+    ],
+  ]
+
   return (
     <Card className="flex flex-row gap-0 py-0 overflow-hidden">
       {/* Left controls column */}
@@ -158,7 +224,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
         <CardHeader className="flex justify-center items-center">
           <CardTitle>Chart Settings</CardTitle>
         </CardHeader>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           <div>
             <Label className="font-medium text-xs mb-1">X-Axis Field</Label>
             <Select
@@ -206,7 +272,9 @@ export const PivotChart: React.FC<PivotChartProps> = ({
             </Select>
           </div>
           <div>
-            <Label className="font-medium text-xs mb-1">Aggregation</Label>
+            <Label className="font-medium text-xs mb-1">
+              Aggregation Method
+            </Label>
             <Select
               value={aggregation}
               onValueChange={(val) =>
@@ -252,10 +320,92 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               </SelectContent>
             </Select>
           </div>
+          <div className="w-full">
+            <Label className="font-medium text-xs mb-1">Sort Settings</Label>
+            <div className="flex flex-row gap-2">
+              <Select
+                value={sortField}
+                onValueChange={(val) =>
+                  setSortField(val as (typeof SORT_FIELDS)[number])
+                }
+              >
+                <SelectTrigger className="w-1/2">
+                  <SelectValue placeholder="Sort Field" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_FIELDS.map((field) => {
+                    let label = field
+                    if (field === "X-Value") label += ` (${xField})`
+                    if (field === "Y-Value") label += ` (${yField})`
+                    return (
+                      <SelectItem key={field} value={field}>
+                        {label}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+              <Select
+                value={sortOrder}
+                onValueChange={(val) =>
+                  setSortOrder(val as (typeof SORT_ORDERS)[number])
+                }
+                disabled={sortField === "None"}
+              >
+                <SelectTrigger className="w-1/2">
+                  <SelectValue placeholder="Sort Order" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">
+                    <span className="flex items-center gap-2">
+                      <ArrowUpNarrowWide size={20} />
+                      <span>Ascending</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="desc">
+                    <span className="flex items-center gap-2">
+                      <ArrowDownNarrowWide size={20} />
+                      <span>Descending</span>
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </CardContent>
       {/* Right chart area */}
-      <CardContent className="flex-1 flex items-center justify-center p-4">
+      <CardContent className="flex-1 flex flex-col items-center justify-center px-2 relative">
+        <div className="absolute top-2 right-2 z-10">
+          <Button
+            ref={exportButtonRef}
+            variant="ghost"
+            size="sm"
+            title="Download chart"
+            disabled={noNumericColumns}
+            onPointerDown={() =>
+              setPopoverAnchorElement(exportButtonRef.current)
+            }
+          >
+            <Download className="size-5 mr-2" />
+            Download chart
+          </Button>
+          <MenuPopover
+            id="exportChartPopover"
+            menuItems={exportPopoverEntries}
+            open={Boolean(popoverAnchorElement)}
+            anchorEl={popoverAnchorElement}
+            onClose={() => setPopoverAnchorElement(null)}
+            onSelect={() => setPopoverAnchorElement(null)}
+            anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+          />
+        </div>
+        {/* Chart Title */}
+        {!noNumericColumns && (
+          <div className="w-full text-center my-4">
+            <span className="text-xl">{chartTitle}</span>
+          </div>
+        )}
         {noNumericColumns ? (
           <div className="w-full h-full flex flex-col items-center justify-center text-center text-gray-500">
             <div className="text-lg font-semibold mb-2">
@@ -271,124 +421,133 @@ export const PivotChart: React.FC<PivotChartProps> = ({
             </div>
           </div>
         ) : (
-          <ChartContainer config={chartConfig} className="w-full">
-            {chartType === "Bar" ? (
-              <BarChart
-                data={chartData}
-                margin={{ top: 16, right: 24, left: 24, bottom: 16 }}
-              >
-                <XAxis dataKey={xField} />
-                <YAxis />
-                <Tooltip
-                  formatter={(value) => [
-                    value.toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    }),
-                    `${aggregation} of ${yField}`,
-                  ]}
-                />
-                <Legend formatter={() => `${aggregation} of ${yField}`} />
-                <Bar dataKey={yField}>
-                  {chartData.map((entry, i) => (
-                    <Cell
-                      key={`cell-${i}`}
-                      fill={CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            ) : chartType === "Line" ? (
-              <LineChart
-                data={chartData}
-                margin={{ top: 16, right: 24, left: 24, bottom: 16 }}
-              >
-                <XAxis dataKey={xField} />
-                <YAxis />
-                <Tooltip
-                  formatter={(value) => [
-                    value.toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    }),
-                    `${aggregation} of ${yField}`,
-                  ]}
-                />
-                <Legend formatter={() => `${aggregation} of ${yField}`} />
-                <Line
-                  type="monotone"
-                  dataKey={yField}
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot
-                />
-              </LineChart>
-            ) : chartType === "Pie" ? (
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={120}
-                  labelLine={(props: any) => {
-                    // TODO: Duplicate code froM CategoryColumnChart
-                    const { index, points } = props
-                    if (points && points.length === 2) {
-                      const color =
-                        CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length]
-                      const [start, end] = points
-                      const dx = end.x - start.x
-                      const dy = end.y - start.y
-                      const shorten = 8
-                      const length = Math.sqrt(dx * dx + dy * dy)
-                      const ratio = (length - shorten) / length
-                      const shortEnd = {
-                        x: start.x + dx * ratio,
-                        y: start.y + dy * ratio,
-                      }
-                      return (
-                        <path
-                          d={`M${start.x},${start.y}L${shortEnd.x},${shortEnd.y}`}
-                          stroke={color}
-                          fill="none"
-                        />
-                      )
-                    }
-                    return <g style={{ display: "none" }} />
-                  }}
-                  label={(props: any) => {
-                    // TODO: Duplicate code froM CategoryColumnChart
-                    const { name, index, cx, cy, midAngle, outerRadius } = props
-                    const RADIAN = Math.PI / 180
-                    const radius = outerRadius + 18
-                    const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                    const y = cy + radius * Math.sin(-midAngle * RADIAN)
-                    const color =
-                      CHART_LABELS_COLORS[index % CHART_LABELS_COLORS.length]
-                    return (
-                      <text
-                        x={x}
-                        y={y}
-                        textAnchor={x > cx ? "start" : "end"}
-                        dominantBaseline="central"
-                        style={{ fill: color }}
-                      >
-                        {name || EMPTY_LABEL}
-                      </text>
-                    )
-                  }}
+          <div id={ChartElementId} className="w-full">
+            <ChartContainer config={chartConfig} className="w-full">
+              {chartType === "Bar" ? (
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 16, right: 16, left: 16, bottom: 16 }}
                 >
-                  {pieData.map((entry, i) => (
-                    <Cell
-                      key={`cell-${i}`}
-                      fill={CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            ) : (
-              <div />
-            )}
-          </ChartContainer>
+                  <XAxis dataKey={xField} />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value) => [
+                      value.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      }),
+                      `${aggregation} of ${yField}`,
+                    ]}
+                  />
+                  {/* <Legend formatter={() => `${aggregation} of ${yField}`} /> */}
+                  <Bar dataKey={yField}>
+                    {chartData.map((entry, i) => (
+                      <Cell
+                        key={`cell-${i}`}
+                        fill={
+                          CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              ) : chartType === "Line" ? (
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 16, right: 24, left: 16, bottom: 16 }}
+                >
+                  <XAxis dataKey={xField} />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value) => [
+                      value.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      }),
+                      `${aggregation} of ${yField}`,
+                    ]}
+                  />
+                  {/* <Legend formatter={() => `${aggregation} of ${yField}`} /> */}
+                  <Line
+                    type="monotone"
+                    dataKey={yField}
+                    stroke={CHART_SERIES_COLORS[0]}
+                    strokeWidth={3}
+                    dot
+                  />
+                </LineChart>
+              ) : chartType === "Pie" ? (
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={"75%"}
+                    labelLine={(props: any) => {
+                      // TODO: Duplicate code froM CategoryColumnChart
+                      const { index, points } = props
+                      if (points && points.length === 2) {
+                        const color =
+                          CHART_SERIES_COLORS[
+                            index % CHART_SERIES_COLORS.length
+                          ]
+                        const [start, end] = points
+                        const dx = end.x - start.x
+                        const dy = end.y - start.y
+                        const shorten = 8
+                        const length = Math.sqrt(dx * dx + dy * dy)
+                        const ratio = (length - shorten) / length
+                        const shortEnd = {
+                          x: start.x + dx * ratio,
+                          y: start.y + dy * ratio,
+                        }
+                        return (
+                          <path
+                            d={`M${start.x},${start.y}L${shortEnd.x},${shortEnd.y}`}
+                            stroke={color}
+                            fill="none"
+                          />
+                        )
+                      }
+                      return <g style={{ display: "none" }} />
+                    }}
+                    label={(props: any) => {
+                      // TODO: Duplicate code froM CategoryColumnChart
+                      const { name, index, cx, cy, midAngle, outerRadius } =
+                        props
+                      const RADIAN = Math.PI / 180
+                      const radius = outerRadius + 18
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN)
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN)
+                      const color =
+                        CHART_LABELS_COLORS[index % CHART_LABELS_COLORS.length]
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          textAnchor={x > cx ? "start" : "end"}
+                          dominantBaseline="central"
+                          style={{ fill: color }}
+                        >
+                          {name || EMPTY_LABEL}
+                        </text>
+                      )
+                    }}
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell
+                        key={`cell-${i}`}
+                        fill={
+                          CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]
+                        }
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              ) : (
+                <div />
+              )}
+            </ChartContainer>
+          </div>
         )}
       </CardContent>
     </Card>

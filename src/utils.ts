@@ -215,33 +215,22 @@ export function generateSampleData(numRows: number): {
     "Harris",
   ]
   const countries = ["USA", "UK", "Canada", "Australia"]
-  const cities = [
-    "New York",
-    "London",
-    "Toronto",
-    "Sydney",
-    "Chicago",
-    "Los Angeles",
-    "San Francisco",
-    "Manchester",
-    "Vancouver",
-    "Melbourne",
-    "Miami",
-    "Calgary",
-    "Edinburgh",
-    "Boston",
-    "Ottawa",
-    "Adelaide",
-    "Seattle",
-    "Liverpool",
-    "Hamilton",
-    "Brisbane",
-    "Denver",
-    "Quebec",
-    "Leeds",
-    "Canberra",
-    "Houston",
-  ]
+  const countryCities: Record<string, string[]> = {
+    USA: [
+      "New York",
+      "Chicago",
+      "Los Angeles",
+      "San Francisco",
+      "Miami",
+      "Boston",
+      "Seattle",
+      "Denver",
+      "Houston",
+    ],
+    UK: ["London", "Manchester", "Edinburgh", "Liverpool", "Leeds"],
+    Canada: ["Toronto", "Vancouver", "Calgary", "Ottawa", "Hamilton", "Quebec"],
+    Australia: ["Sydney", "Melbourne", "Adelaide", "Brisbane", "Canberra"],
+  }
   const jobTitles = [
     "Software Engineer",
     "Marketing Manager",
@@ -301,9 +290,17 @@ export function generateSampleData(numRows: number): {
     const email = name.split(" ").join("").toLowerCase() + "@example.com"
     const phoneNumber = "555-" + getRandomInt(1000, 9999)
     const country = getRandomElement(countries)
-    const city = getRandomElement(cities)
+    const city = getRandomElement(countryCities[country])
     const jobTitle = getRandomElement(jobTitles)
-    const salary = getRandomIntNormal(50000, 150000)
+    let baseSalary = getRandomIntNormal(50000, 150000)
+    // Adjust salary by country factor for some variance in charts
+    const countrySalaryFactor: Record<string, number> = {
+      USA: 1.4,
+      UK: 0.8,
+      Canada: 1.1,
+      Australia: 1.2,
+    }
+    const salary = Math.round(baseSalary * (countrySalaryFactor[country] || 1))
     let happinessScore = getRandomInt(1, 5)
     if (happinessScore < 4) {
       happinessScore = getRandomInt(2, 5) // Slightly shifted
