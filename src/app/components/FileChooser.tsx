@@ -1,15 +1,26 @@
+import { generateSVG } from "@/utils"
+import { useMemo } from "react"
+
 export const FileChooser = (props: {
   handleFileSelected: React.ChangeEventHandler<HTMLInputElement> | undefined
   isDragging: boolean
 }) => {
+  const svgBg = useMemo(
+    () => generateSVG(["#5135FF", "#FF5828", "#F69CFF", "#FFA50F"], 0.3),
+    [],
+  )
+
   return (
     <div className="w-4/6 min-w-80 mx-auto my-14 md:my-24">
       <label
         data-testid="fileInput"
-        className="flex flex-col items-center justify-center w-full h-96 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all select-none"
+        className="flex flex-col items-center justify-center w-full h-96 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer transition-all select-none"
         style={{
           transitionDuration: "200ms",
           transform: props.isDragging ? "scale(1.2)" : undefined,
+          background: props.isDragging
+            ? `url('data:image/svg+xml;utf8,${encodeURIComponent(svgBg)}') center/cover no-repeat`
+            : "var(--color-gray-300)",
         }}
       >
         <div className="flex flex-col items-center justify-center pt-5 pb-6">

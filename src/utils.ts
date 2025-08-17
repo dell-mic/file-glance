@@ -937,3 +937,52 @@ export function cleanForFileName(name: string): string {
   }
   return cleaned
 }
+
+interface EllipseConfig {
+  color: string
+  fx: number
+  scale: [number, number]
+  skew: number
+  rotation: number
+  translation: [number, number]
+}
+
+function generateRandomEllipse(palette: string[]): EllipseConfig {
+  return {
+    color: palette[Math.floor(Math.random() * palette.length)],
+    fx: 0.1 + Math.random() * 0.3,
+    scale: [0.7 + Math.random() * 0.8, 0.7 + Math.random() * 0.8],
+    skew: -10 + Math.random() * 20,
+    rotation: Math.random() * 360,
+    translation: [-250 + Math.random() * 500, -250 + Math.random() * 500],
+  }
+}
+
+export function generateSVG(palette: string[], opacity: number = 1): string {
+  const ellipses = Array.from({ length: 12 }, () =>
+    generateRandomEllipse(palette),
+  )
+
+  const gradients = ellipses
+    .map((ellipse, index) => {
+      return `<radialGradient id="grad${index}" fx="${ellipse.fx}" fy="0.5">
+    <stop offset="0%" stop-color="${ellipse.color}"/>
+    <stop offset="100%" stop-color="${ellipse.color}" stop-opacity="0"/>
+  </radialGradient>`
+    })
+    .join("")
+
+  const rects = ellipses
+    .map((ellipse, index) => {
+      return `<rect x="0" y="0" width="100%" height="100%" fill="url(#grad${index})" transform="translate(300 300) scale(${ellipse.scale[0]} ${ellipse.scale[1]}) skewX(${ellipse.skew}) rotate(${ellipse.rotation}) translate(${ellipse.translation[0]} ${ellipse.translation[1]}) translate(-300 -300)"/>`
+    })
+    .join("")
+
+  return `<svg width="600" height="400" viewBox="0 0 600 600" style="opacity:${opacity};width:100%;max-width:600px;height:auto;filter:saturate(125%);-webkit-filter:saturate(125%)" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    ${gradients}
+  </defs>
+  <rect x="0" y="0" width="100%" height="100%" fill="#5135FF"/>
+  ${rects}
+</svg>`
+}
