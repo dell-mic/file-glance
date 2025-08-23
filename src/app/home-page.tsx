@@ -927,7 +927,7 @@ export default function Home() {
         text: "Save Transformer File",
         icon: <ArchiveBoxArrowDownIconSolid />,
         onSelect: async () => {
-          const fileName = getExportFileName("fg.json")
+          const fileName = "Transformer - " + getExportFileName("fg.json")
           saveFile(
             new Blob([JSON.stringify(exportTransformer(), null, "\t")]),
             fileName,
