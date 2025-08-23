@@ -668,16 +668,12 @@ export default function Home() {
     return cleanForFileName(currentFileName) + "." + newEnding
   }
 
-  const ExportDelimiter = ";"
+  const ExportDelimiter_v1 = ";"
   const exportProject = (): ProjectExport => {
     const project = {
-      v: 1,
+      v: 2,
       name: currentFile?.name!,
-      data: stringifyCSV([headerRow, ...allRows], {
-        delimiter: ExportDelimiter,
-        bom: true,
-        cast: { boolean: (v) => String(v) },
-      }),
+      data: JSON.stringify(tableToJson([headerRow, ...allRows])),
       transformers: transformers.map((t) => omit(t, "transformer")),
       hiddenColumns: hiddenColumns,
       filters: filters,
@@ -693,14 +689,21 @@ export default function Home() {
       // console.log(project)
 
       // parseText(project.data, project.name, false)
-      const data = parse(project.data, {
-        delimiter: ExportDelimiter,
-        bom: true,
-        skip_empty_lines: true,
-        relax_column_count: true,
-      })
-      // Import/export has always header row
-      const _headerRow = data.shift()!
+      let data, _headerRow: string[]
+
+      if (project.v === 1) {
+        data = parse(project.data, {
+          delimiter: ExportDelimiter_v1,
+          bom: true,
+          skip_empty_lines: true,
+          relax_column_count: true,
+        })
+        _headerRow = data.shift()!
+      } else {
+        const parsed = jsonToTable(JSON.parse(project.data))
+        data = parsed.data
+        _headerRow = parsed.headerRow
+      }
 
       setDataIncludesHeaderRow(true)
       setDataFormatAlwaysIncludesHeader(true)
