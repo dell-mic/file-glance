@@ -100,9 +100,11 @@ export const PivotChart: React.FC<PivotChartProps> = ({
   }
 
   const [xField, setXField] = useState(() => pickInitialXField(columnInfos))
-  const [yField, setYField] = useState(numericColumns[0]?.columnName || "")
+  const [yField, setYField] = useState(
+    numericColumns[0]?.columnName || columnInfos[0].columnName || "",
+  )
   const [aggregation, setAggregation] =
-    useState<(typeof AGGREGATIONS)[number]>("Sum")
+    useState<(typeof AGGREGATIONS)[number]>("Count")
   const [chartType, setChartType] =
     useState<(typeof CHART_TYPES)[number]>("Bar")
   const [sortField, setSortField] =
@@ -114,21 +116,34 @@ export const PivotChart: React.FC<PivotChartProps> = ({
   const chartData = useMemo(() => {
     if (!xField || !yField) return []
     // Group by xField
-    const groups: Record<string, number[]> = {}
+    const groups: Record<string, any[]> = {}
     for (const row of data) {
       const x = row[xField as keyof typeof row]
       const yRaw = row[yField as keyof typeof row]
-      if (x == null || x === undefined || yRaw == null || yRaw === undefined)
+      if (
+        x == null ||
+        x === undefined ||
+        yRaw == null ||
+        yRaw === undefined ||
+        yRaw === ""
+      ) {
         continue
-      const y = Number(yRaw)
-      if (isNaN(y)) continue
+      }
+
+      // const y = Number(yRaw)
+      // if (isNaN(y)) continue
       if (!groups[x]) groups[x] = []
-      groups[x].push(y)
+      groups[x].push(yRaw)
     }
-    // Aggregate
+
+    // console.log("groups", groups)
+
     let result = Object.entries(groups).map(([key, values]) => {
       let val = 0
       switch (aggregation) {
+        case "Count":
+          val = values.length
+          break
         case "Sum":
           val = values.reduce((a, b) => a + b, 0)
           break
@@ -141,12 +156,11 @@ export const PivotChart: React.FC<PivotChartProps> = ({
         case "Min":
           val = Math.min(...values)
           break
-        case "Count":
-          val = values.length
-          break
       }
       return { [xField]: key, [yField]: val }
     })
+
+    // console.log("result", result)
 
     if (sortField !== "None") {
       const key = sortField === "X-Value" ? xField : yField
@@ -227,11 +241,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
         <div className="flex flex-col gap-4">
           <div>
             <Label className="font-medium text-xs mb-1">X-Axis Field</Label>
-            <Select
-              value={xField}
-              onValueChange={setXField}
-              disabled={noNumericColumns}
-            >
+            <Select value={xField} onValueChange={setXField}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="X-Axis Field" />
               </SelectTrigger>
@@ -253,14 +263,21 @@ export const PivotChart: React.FC<PivotChartProps> = ({
             <Label className="font-medium text-xs mb-1">Y-Axis Field</Label>
             <Select
               value={yField}
-              onValueChange={setYField}
-              disabled={noNumericColumns}
+              onValueChange={(newVal) => {
+                if (
+                  columnInfos.find((ci) => ci.columnName === newVal)
+                    ?.columnType !== "Number"
+                ) {
+                  setAggregation("Count")
+                }
+                setYField(newVal)
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Y-Axis Field" />
               </SelectTrigger>
               <SelectContent>
-                {numericColumns.map((col) => (
+                {columnInfos.map((col) => (
                   <SelectItem key={col.columnName} value={col.columnName}>
                     {col.columnName}{" "}
                     <span className="text-gray-500 text-xs">
@@ -280,7 +297,10 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               onValueChange={(val) =>
                 setAggregation(val as (typeof AGGREGATIONS)[number])
               }
-              disabled={noNumericColumns}
+              disabled={
+                columnInfos.find((ci) => ci.columnName === yField)
+                  ?.columnType !== "Number"
+              }
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Aggregation" />
@@ -400,24 +420,17 @@ export const PivotChart: React.FC<PivotChartProps> = ({
             anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
           />
         </div>
-        {/* Chart Title */}
-        {!noNumericColumns && (
-          <div className="w-full text-center my-4">
-            <span className="text-xl">{chartTitle}</span>
-          </div>
-        )}
-        {noNumericColumns ? (
+
+        <div className="w-full text-center my-4">
+          <span className="text-xl">{chartTitle}</span>
+        </div>
+        {columnInfos.length < 2 ? (
           <div className="w-full h-full flex flex-col items-center justify-center text-center text-gray-500">
             <div className="text-lg font-semibold mb-2">
-              No numeric columns found
+              Not enough columns found
             </div>
             <div className="max-w-md">
-              At least one numeric column is required to render a chart.
-              <br />
-              <br />
-              If your import format does not contain type information, you can
-              use a transformer like <code>parseInt()</code> to convert values
-              to numbers.
+              At least two columns is required to render a chart.
             </div>
           </div>
         ) : (
