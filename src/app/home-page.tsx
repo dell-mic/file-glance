@@ -366,8 +366,15 @@ export default function Home() {
     console.log("dropped files:", files)
     if (files.length) {
       const firstFile = files[0]
-      parseFile(firstFile, true)
-      trackEvent("File", "Drop")
+      if (firstFile.name.endsWith(".fg.json")) {
+        const contentAsText: string = await readFileToString(firstFile)
+
+        importTransformer(contentAsText)
+        trackEvent("Transformer", "Drop")
+      } else {
+        parseFile(firstFile, true)
+        trackEvent("File", "Drop")
+      }
     }
   }
 
@@ -679,6 +686,7 @@ export default function Home() {
       filters: filters,
       filterFunction: appliedFilterFunctionCode,
       search: search,
+      sortSetting: sortSetting,
     }
     return project
   }
@@ -721,6 +729,7 @@ export default function Home() {
       setFilters(project.filters)
       setSearch(project.search)
       setHiddenColumns(project.hiddenColumns)
+      setSortSetting(project.sortSetting)
       setData(
         generateSyntheticFile(project.data, project.name),
         _headerRow,
@@ -750,23 +759,58 @@ export default function Home() {
     )
   }
 
+  const exportTransformer = (): TransformerExport => {
+    const transformerExport = {
+      v: 1,
+      transformers: transformers.map((t) => omit(t, "transformer")),
+      hiddenColumns: hiddenColumns,
+      filters: filters,
+      filterFunction: appliedFilterFunctionCode,
+      search: search,
+      sortSetting: sortSetting,
+    }
+    return transformerExport
+  }
+
+  const importTransformer = (p: TransformerExport | string): void => {
+    try {
+      const transformerImport: TransformerExport =
+        typeof p === "string" ? JSON.parse(p) : p
+      // console.log(transformerExport)
+
+      setTransformers(
+        transformerImport.transformers.map((t) => ({
+          ...t,
+          transformer: compileTransformerCode(t.transformerFunctionCode)
+            .transformer!,
+        })),
+      )
+      if (transformerImport.filterFunction) {
+        setFilterFunctionCode(transformerImport.filterFunction)
+        setAppliedFilterFunctionCode(transformerImport.filterFunction)
+      }
+      setFilters(transformerImport.filters)
+      setSearch(transformerImport.search)
+      setHiddenColumns(transformerImport.hiddenColumns)
+      setSortSetting(transformerImport.sortSetting)
+
+      toast({
+        title: "Transformer applied",
+        // description: data.length + " lines",
+        variant: "success",
+      })
+    } catch (error) {
+      // Most probably incomplete/corrupted URL data
+      console.error(error)
+      toast({
+        title: "Transformer import failed",
+        variant: "error",
+      })
+    }
+  }
+
   const exportPopoverEntries = [
     [
-      {
-        text: "Save Project",
-        icon: <ArchiveBoxArrowDownIconSolid />,
-        onSelect: async () => {
-          const fileName = getExportFileName("fg")
-          const dataBlob = await compressString(
-            JSON.stringify(exportProject()),
-          ).then((_) => _.blob())
-          await saveFile(dataBlob, fileName)
-          toast({
-            title: "Project exported",
-            variant: "success",
-          })
-        },
-      },
       {
         text: "Export as CSV",
         icon: <ArchiveBoxArrowDownIconSolid />,
@@ -780,6 +824,11 @@ export default function Home() {
             ]),
             fileName,
           )
+          toast({
+            title: "CSV exported",
+            variant: "success",
+          })
+          trackEvent("Export", "CSV")
         },
       },
       {
@@ -798,6 +847,11 @@ export default function Home() {
             bookType: "xlsx",
             compression: true,
           })
+          toast({
+            title: "XLSX exported",
+            variant: "success",
+          })
+          trackEvent("Export", "XLSX")
         },
       },
       {
@@ -811,6 +865,11 @@ export default function Home() {
             ]),
             fileName,
           )
+          toast({
+            title: "JSON exported",
+            variant: "success",
+          })
+          trackEvent("Export", "JSON")
         },
       },
     ],
@@ -829,6 +888,7 @@ export default function Home() {
             title: "TSV copied to clipboard",
             variant: "success",
           })
+          trackEvent("Export", "TSV")
         },
       },
       {
@@ -842,10 +902,43 @@ export default function Home() {
             title: "Markdown copied to clipboard",
             variant: "success",
           })
+          trackEvent("Export", "Markdown")
         },
       },
     ],
     [
+      {
+        text: "Save Project (Data + Transformer)",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: async () => {
+          const fileName = getExportFileName("fg")
+          const dataBlob = await compressString(
+            JSON.stringify(exportProject()),
+          ).then((_) => _.blob())
+          await saveFile(dataBlob, fileName)
+          toast({
+            title: "Project exported",
+            variant: "success",
+          })
+          trackEvent("Export", "Project")
+        },
+      },
+      {
+        text: "Save Transformer File",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: async () => {
+          const fileName = getExportFileName("fg.json")
+          saveFile(
+            new Blob([JSON.stringify(exportTransformer(), null, "\t")]),
+            fileName,
+          )
+          toast({
+            title: "Transformer file exported",
+            variant: "success",
+          })
+          trackEvent("Export", "Transformer")
+        },
+      },
       {
         text: "Share Link",
         icon: <ShareIcon />,
@@ -1334,4 +1427,7 @@ interface ProjectExport {
   search: string
   filterFunction: string | null
   transformers: Omit<Transformer, "transformer">[]
+  sortSetting: SortSetting | null
 }
+
+interface TransformerExport extends Omit<ProjectExport, "data" | "name"> {}
