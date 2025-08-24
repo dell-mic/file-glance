@@ -23,7 +23,7 @@ export function darkenHexColor(hex: string, percent: number): string {
   // Remove hash if present
   hex = hex.replace(/^#/, "")
   // Parse r, g, b
-  let num = parseInt(hex, 16)
+  const num = parseInt(hex, 16)
   let r = (num >> 16) & 0xff
   let g = (num >> 8) & 0xff
   let b = num & 0xff

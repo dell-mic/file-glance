@@ -8,7 +8,7 @@
     "build": "next build",
     "buildAndStart": "next build && serve out",
     "check": "npm run format && npm run typeCheck && npm run lint && bun test test/unit && npm run test:e2e",
-    "lint": "next lint",
+    "lint": "eslint src",
     "typeCheck": "tsc --noEmit ",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
@@ -51,6 +51,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@playwright/test": "1.55.0",
     "@tailwindcss/postcss": "4.1.12",
     "@types/bun": "latest",

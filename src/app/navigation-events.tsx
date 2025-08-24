@@ -12,7 +12,7 @@ export function NavigationEvents() {
     const url = `${pathname}${
       searchParams.size ? "?" + searchParams.toString() : ""
     }`
-    // eslint-disable-next-line no-console
+
     // console.log('Naviation triggered:', url)
 
     if (window && window._paq) {

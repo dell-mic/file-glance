@@ -85,7 +85,7 @@ export function tableToJson(data: any[][]) {
 
 export const tryParseJSONObject = (jsonString: string): any => {
   try {
-    var o = JSON.parse(jsonString)
+    const o = JSON.parse(jsonString)
 
     // Handle non-exception-throwing cases:
     // Neither JSON.parse(false) or JSON.parse(1234) throw errors, hence the type-checking,
@@ -113,11 +113,11 @@ function getRandomIntNormal(min: number, max: number) {
     v = 0
   while (u === 0) u = Math.random() // Converting [0,1) to (0,1)
   while (v === 0) v = Math.random()
-  let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
+  const num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
   // Normalize to 0..1, then scale to min..max
-  let mean = (min + max) / 2
-  let stddev = (max - min) / 6 // 99.7% within min..max
-  let value = Math.round(num * stddev + mean)
+  const mean = (min + max) / 2
+  const stddev = (max - min) / 6 // 99.7% within min..max
+  const value = Math.round(num * stddev + mean)
   return Math.max(min, Math.min(max, value))
 }
 
@@ -286,13 +286,13 @@ export function generateSampleData(numRows: number): {
     const id = "" + i
     const name =
       getRandomElement(firstNames) + " " + getRandomElement(lastNames)
-    let age = getRandomIntNormal(20, 50)
+    const age = getRandomIntNormal(20, 50)
     const email = name.split(" ").join("").toLowerCase() + "@example.com"
     const phoneNumber = "555-" + getRandomInt(1000, 9999)
     const country = getRandomElement(countries)
     const city = getRandomElement(countryCities[country])
     const jobTitle = getRandomElement(jobTitles)
-    let baseSalary = getRandomIntNormal(50000, 150000)
+    const baseSalary = getRandomIntNormal(50000, 150000)
     // Adjust salary by country factor for some variance in charts
     const countrySalaryFactor: Record<string, number> = {
       USA: 1.4,
@@ -359,7 +359,7 @@ export async function readFileToString(file: File): Promise<string> {
     // @ts-ignore: ts does not know about Buffer coming from next.js polyfill
     const fileEncoding = jschardet.detect(Buffer.from(new Uint8Array(v)))
     console.log("file encoding: ", fileEncoding)
-    var enc = new TextDecoder(fileEncoding?.encoding || "utf-8")
+    const enc = new TextDecoder(fileEncoding?.encoding || "utf-8")
     return enc.decode(v)
   })
 }
@@ -460,20 +460,20 @@ function stringDistance(a: string, b: string): number {
   }
 
   if (a.length > b.length) {
-    var tmp = a
+    const tmp = a
     a = b
     b = tmp
   }
 
-  var la = a.length
-  var lb = b.length
+  let la = a.length
+  let lb = b.length
 
   while (la > 0 && a.charCodeAt(la - 1) === b.charCodeAt(lb - 1)) {
     la--
     lb--
   }
 
-  var offset = 0
+  let offset = 0
 
   while (offset < la && a.charCodeAt(offset) === b.charCodeAt(offset)) {
     offset++
@@ -486,28 +486,28 @@ function stringDistance(a: string, b: string): number {
     return lb
   }
 
-  var x = 0
-  var y
-  var d0
-  var d1
-  var d2
-  var d3
-  var dd
-  var dy
-  var ay
-  var bx0
-  var bx1
-  var bx2
-  var bx3
+  let x = 0
+  let y
+  let d0
+  let d1
+  let d2
+  let d3
+  let dd
+  let dy
+  let ay
+  let bx0
+  let bx1
+  let bx2
+  let bx3
 
-  var vector = []
+  const vector = []
 
   for (y = 0; y < la; y++) {
     vector.push(y + 1)
     vector.push(a.charCodeAt(offset + y))
   }
 
-  var len = vector.length - 1
+  const len = vector.length - 1
 
   for (; x < lb - 3; ) {
     bx0 = b.charCodeAt(offset + (d0 = x))
@@ -554,7 +554,7 @@ export const saveFile = async (blob: Blob, name: string) => {
   const a = document.createElement("a")
   a.download = name
   a.href = URL.createObjectURL(blob)
-  a.addEventListener("click", (e) => {
+  a.addEventListener("click", () => {
     setTimeout(() => URL.revokeObjectURL(a.href), 10 * 1000)
   })
   a.click()
@@ -570,7 +570,7 @@ export function postProcessCode(inputCode: string): string {
   let outputCode
 
   // Split into lines, trim each line
-  let lines = inputCode.split("\n").map((line) => line.trim())
+  const lines = inputCode.split("\n").map((line) => line.trim())
 
   // Remove empty lines at the start
   while (lines.length > 0 && lines[0] === "") {
@@ -806,7 +806,7 @@ export function getMaxStringLength(input: string[]) {
   const arrayLength = input.length
 
   if (arrayLength <= maxChecks) {
-    for (let str of input) {
+    for (const str of input) {
       if (str?.length) {
         maxLength = Math.max(maxLength, str.length)
       }
@@ -835,9 +835,9 @@ export function findArrayProp(json: any): any[] | null {
   }
 
   let arrayProp = null
-  for (let key in json) {
+  for (const key in json) {
     if (json.hasOwnProperty(key)) {
-      let value = json[key]
+      const value = json[key]
       const existingCandidateLength = arrayProp ? json[arrayProp]?.length : 0
       if (Array.isArray(value) && value.length > existingCandidateLength) {
         arrayProp = key
@@ -921,7 +921,7 @@ export function cleanForFileName(name: string): string {
     .replace(/\s+/g, " ") // Collapse multiple spaces
     .trim()
   // Truncate to 255 bytes (not chars)
-  let encoder = new TextEncoder()
+  const encoder = new TextEncoder()
   while (encoder.encode(cleaned).length > 255) {
     cleaned = cleaned.slice(0, -1)
   }

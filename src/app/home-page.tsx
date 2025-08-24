@@ -519,7 +519,7 @@ export default function Home() {
 
   // Update headerRow based on transformers
   const displayedHeader = useMemo(() => {
-    let transformedHeaderRow = cloneDeep(headerRow)
+    const transformedHeaderRow = cloneDeep(headerRow)
     for (const transformer of transformers) {
       if (transformer.asNewColumn) {
         transformedHeaderRow.splice(
@@ -537,7 +537,7 @@ export default function Home() {
     console.time("applyTransfomer")
 
     // Allow access via headerName in subsequent code (esp. user functions)
-    let transformedData = allRows.map((row) =>
+    const transformedData = allRows.map((row) =>
       createRowProxy(cloneDeep(row), displayedHeader),
     )
 
@@ -652,7 +652,7 @@ export default function Home() {
     return countValues(displayedHeader, displayedData, displayedDataFiltered)
   }, [displayedHeader, displayedData, displayedDataFiltered])
 
-  let fileInfos: string[] = []
+  const fileInfos: string[] = []
   const isFiltered =
     filters.length > 0 || search.length > 0 || !!appliedFilterFunctionCode
 
@@ -680,7 +680,7 @@ export default function Home() {
   const exportProject = (): ProjectExport => {
     const project = {
       v: 2,
-      name: currentFile?.name!,
+      name: currentFile!.name!,
       data: JSON.stringify(tableToJson([headerRow, ...allRows])),
       transformers: transformers.map((t) => omit(t, "transformer")),
       hiddenColumns: hiddenColumns,

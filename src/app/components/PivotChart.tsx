@@ -48,7 +48,7 @@ interface PivotChartProps {
 const AGGREGATIONS = ["Sum", "Average", "Max", "Min", "Count"] as const
 const CHART_TYPES = ["Bar", "Line", "Pie"] as const
 const SORT_FIELDS = ["None", "X-Value", "Y-Value"] as const
-const SORT_ORDERS = ["asc", "desc"] as const
+type SORT_ORDERS = "asc" | "desc"
 
 const ChartElementId = "pivotChartArea"
 
@@ -110,7 +110,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
   const [sortField, setSortField] =
     useState<(typeof SORT_FIELDS)[number]>("Y-Value")
   const [sortOrder, setSortOrder] =
-    useState<(typeof SORT_ORDERS)[number]>("desc")
+    useState<SORT_ORDERS>("desc")
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -368,7 +368,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               <Select
                 value={sortOrder}
                 onValueChange={(val) =>
-                  setSortOrder(val as (typeof SORT_ORDERS)[number])
+                  setSortOrder(val as SORT_ORDERS)
                 }
                 disabled={sortField === "None"}
               >

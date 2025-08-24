@@ -93,7 +93,7 @@ export const Row = (
             valueCell = "empty"
             isEmpty = true
           }
-          let title =
+          const title =
             isTypedValue && !isEmpty
               ? `${_valueAsStringRow} [${v.constructor.name}]`
               : _valueAsStringRow
