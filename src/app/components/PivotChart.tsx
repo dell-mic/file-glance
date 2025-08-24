@@ -109,8 +109,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
     useState<(typeof CHART_TYPES)[number]>("Bar")
   const [sortField, setSortField] =
     useState<(typeof SORT_FIELDS)[number]>("Y-Value")
-  const [sortOrder, setSortOrder] =
-    useState<SORT_ORDERS>("desc")
+  const [sortOrder, setSortOrder] = useState<SORT_ORDERS>("desc")
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -367,9 +366,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               </Select>
               <Select
                 value={sortOrder}
-                onValueChange={(val) =>
-                  setSortOrder(val as SORT_ORDERS)
-                }
+                onValueChange={(val) => setSortOrder(val as SORT_ORDERS)}
                 disabled={sortField === "None"}
               >
                 <SelectTrigger className="w-1/2">
