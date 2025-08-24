@@ -38,12 +38,21 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, onPointerDown, ...props },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        onPointerDown={(e) => {
+          // Do not react to secondary buttons
+          if (!e.button && onPointerDown) {
+            onPointerDown(e)
+          }
+        }}
         {...props}
       />
     )

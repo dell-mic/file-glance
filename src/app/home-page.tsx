@@ -62,6 +62,7 @@ import { FreeQuery } from "./components/FreeQuery/FreeQuery"
 import Link from "next/link"
 import MiddleEllipsis from "@/components/ui/MiddleEllipsis"
 import VisualView from "./components/VisualView"
+import { Button } from "@/components/ui/button"
 
 export default function Home() {
   const { toast } = useToast()
@@ -1137,21 +1138,30 @@ export default function Home() {
                       title="Data Table View"
                       data-testid={"btnTableView"}
                     >
-                      <TableIcon className="inline-block mx-1 w-4 h-4" />
+                      <div className="flex items-center justify-center px-2">
+                        <TableIcon className="inline-block w-4 h-4" />
+                        <span className="hidden 2xl:inline ml-2">Table</span>
+                      </div>
                     </ToggleGroupItem>
                     <ToggleGroupItem
                       value="visual"
                       title="Visual View"
                       data-testid={"btnVisualView"}
                     >
-                      <BarChart2 className="inline-block mx-1 w-4 h-4" />
+                      <div className="flex items-center justify-center px-2">
+                        <BarChart2 className="inline-block mx-1 w-4 h-4" />
+                        <span className="hidden 2xl:inline ml-2">Visual</span>
+                      </div>
                     </ToggleGroupItem>
                     <ToggleGroupItem
                       value="freeQuery"
-                      title="Free Query View"
+                      title="Code Query View"
                       data-testid={"btnFreeQueryView"}
                     >
-                      <Code2 className="inline-block mx-1 w-4 h-4" />
+                      <div className="flex items-center justify-center px-2">
+                        <Code2 className="inline-block mx-1 w-4 h-4" />
+                        <span className="hidden 2xl:inline ml-2">Code</span>
+                      </div>
                     </ToggleGroupItem>
                   </ToggleGroup>
                   <div className="flex gap-1">
@@ -1169,20 +1179,25 @@ export default function Home() {
                       placeholder="Search"
                     ></input>
 
-                    <button
+                    <Button
                       data-testid={"btnFilter"}
                       title="Filter rows"
+                      variant="ghost"
+                      className="py-1 px-2"
+                      style={{
+                        height: "unset",
+                      }}
                       onPointerDown={() => {
                         setFilterDialogOpen(true)
                       }}
-                      className="text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950 p-2 rounded-md"
                     >
                       {appliedFilterFunctionCode ? (
                         <FunnelIconSolid className="size-5" />
                       ) : (
                         <FunnelIcon className="size-5" />
                       )}
-                    </button>
+                      <span className="ml-1 hidden 2xl:inline">Filter</span>
+                    </Button>
                     <FilterDialog
                       open={filterDialogOpen}
                       filterFunctionCode={filterFunctionCode}
@@ -1198,17 +1213,22 @@ export default function Home() {
                         setAppliedFilterFunctionCode(code)
                       }}
                     />
-                    <button
+                    <Button
                       data-testid={"btnExport"}
                       title="Export data"
+                      variant="ghost"
+                      className="py-1 px-2"
+                      style={{
+                        height: "unset",
+                      }}
                       ref={exportButtonRef}
                       onPointerDown={() => {
                         setPopoverAnchorElement(exportButtonRef.current)
                       }}
-                      className="text-gray-700 py-2 px-2 hover:bg-gray-100 hover:text-gray-950 p-2 rounded-md"
                     >
                       <ArrowTopRightOnSquareIcon className="size-5" />
-                    </button>
+                      <span className="ml-1 hidden 2xl:inline">Export</span>
+                    </Button>
                     <MenuPopover
                       id={"exportPopover"}
                       menuItems={exportPopoverEntries}
