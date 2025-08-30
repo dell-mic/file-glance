@@ -59,6 +59,14 @@ const cellClass = cva(
         true: "text-blue-900",
         false: "",
       },
+      booleanTrue: {
+        true: "text-green-900",
+        false: "",
+      },
+      booleanFalse: {
+        true: "text-red-900",
+        false: "",
+      },
       isEmpty: {
         true: "text-gray-500 font-mono",
         false: "",
@@ -86,7 +94,9 @@ export const Row = (
           const _valueAsStringRow = "" + v
           let isEmpty = false
           let valueCell
-          const isTypedValue = typeof v !== "string"
+          const isTypedValue = typeof v !== "string" && typeof v !== "boolean"
+          const booleanTrue = v === true
+          const booleanFalse = v === false
           if (_valueAsStringFormatted) {
             valueCell = _valueAsStringFormatted
           } else {
@@ -103,8 +113,10 @@ export const Row = (
               key={vi}
               title={title}
               className={cellClass({
-                isTypedValue: isTypedValue,
-                isEmpty: isEmpty,
+                isTypedValue,
+                booleanTrue,
+                booleanFalse,
+                isEmpty,
               })}
               style={{
                 width: columnsWidths[vi],
