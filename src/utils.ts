@@ -715,6 +715,30 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return byteArray.buffer
 }
 
+export function tryBase64Decode(str: string): string | null {
+  // Quick regex check for valid Base64 characters and length multiple of 4
+  const notBase64 = /[^A-Z0-9+/=]/i
+  if (!str || str.length % 4 !== 0 || notBase64.test(str)) {
+    return null
+  }
+
+  try {
+    const decoded = fromBase64(str)
+    return decoded
+  } catch (_) {
+    return null
+  }
+}
+
+function fromBase64(base64: string): string {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return new TextDecoder().decode(bytes) // UTF-8 decode
+}
+
 export function compileTransformerCode(code: string): {
   transformer: Function | null
   error: string | null

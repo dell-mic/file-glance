@@ -91,11 +91,26 @@ Privacy notice: Please be aware that data embedded in the URL is currently not e
 
 ### Example: Uncompressed
 
+Using `d` param: Accepting either CSV or JSON string. Base64 encoded would also work.
+
+**Browser**
+
 ```js
+// Using CSV
 const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
 const url = "https://www.fileglance.info/#d=" + encodeURI(csv)
+
+// Using JSON
+const json = JSON.stringify([
+  { id: 1, name: "Alice", age: 30 },
+  { id: 2, name: "Bob", age: 25 },
+])
+const url = "https://www.fileglance.info/#d=" + encodeURI(json)
+
 window.open(url, "_blank")
 ```
+
+**Python**
 
 ```python
 import webbrowser
@@ -107,6 +122,8 @@ webbrowser.open_new_tab(url)
 ```
 
 ### Example: ZIP compressed
+
+Using `c` param: Accepting Base64 encoded zipped data.
 
 **Browser**
 

@@ -37,6 +37,7 @@ import {
   cleanForFileName,
   trackEvent,
   createRowProxy,
+  tryBase64Decode,
 } from "@/utils"
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -225,6 +226,7 @@ export default function Home() {
             bom: true,
             skip_empty_lines: true,
             relax_column_count: true,
+            relax_quotes: true,
           })
         } catch (err) {
           console.error(err)
@@ -454,11 +456,15 @@ export default function Home() {
       if (hash) {
         if (hash.startsWith("#d=")) {
           setParsingState("parsing")
-          parseText(
-            decodeURI(hash.substring(StartHashContent)),
-            "URL Data",
-            true,
-          )
+          const data = hash.substring(StartHashContent)
+          let decoded: string | null
+          // If string looks like base64 -> decoded that
+          decoded = tryBase64Decode(data)
+          // Otherwise assume URI encoded (as it is in hash part of URL that should be enough, decodeURIComponent it not required)
+          if (!decoded) {
+            decoded = decodeURI(data)
+          }
+          parseText(decoded, "URL Data", true)
         } else if (hash.startsWith("#c=")) {
           setParsingState("parsing")
           base64GzippedToString(hash.substring(StartHashContent)).then(

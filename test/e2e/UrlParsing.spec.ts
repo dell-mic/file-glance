@@ -1,7 +1,16 @@
 import { test, expect } from "@playwright/test"
 import { stringToBase64Gzipped } from "../../src/utils"
 
-const sampleCsv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+// Test string to test proper encoding/decoding
+const specialChars = "!\"#$%&'()*+-./:;<=>?@[\\]^_`{|}~"
+const NameWithSpecialCharts = "Bob#❤️" + specialChars
+
+const sampleCsv = `ID,Name,Age\n1,Alice,30\n2,${NameWithSpecialCharts},25`
+const sampleJson = JSON.stringify([
+  { ID: 1, Name: "Alice", Age: 30 },
+  { ID: 2, Name: NameWithSpecialCharts, Age: 25 },
+])
+
 const DATA_TABLE_SELECTOR = '[data-testid="DataTable"]'
 const DATA_CONTENT_WRAPPER_SELECTOR = '[data-testid="DataContentWrapper"]'
 
@@ -13,19 +22,31 @@ test("parses #d= URI encoded CSV data", async ({ page }) => {
   await page.goto(targetUrl)
   await page.waitForSelector(DATA_TABLE_SELECTOR, { state: "visible" })
   const wrapper = page.locator(DATA_CONTENT_WRAPPER_SELECTOR)
+
+  await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
 })
 
 test("parses #d= URI encoded JSON data", async ({ page }) => {
-  const jsonArray = JSON.stringify([
-    { ID: 1, Name: "Alice", Age: 30 },
-    { ID: 2, Name: "Bob", Age: 25 },
-  ])
-  const targetUrl = host + "#d=" + encodeURI(jsonArray)
+  const targetUrl = host + "#d=" + encodeURI(sampleJson)
   // console.log(targetUrl)
   await page.goto(targetUrl)
   await page.waitForSelector(DATA_TABLE_SELECTOR, { state: "visible" })
   const wrapper = page.locator(DATA_CONTENT_WRAPPER_SELECTOR)
+
+  await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
+  await expect(wrapper).toHaveScreenshot()
+})
+
+test("parses #d= BASE64/JSON data", async ({ page }) => {
+  const encodedData = Buffer.from(sampleJson, "utf8").toString("base64")
+  const targetUrl = host + "#d=" + encodedData
+  // console.log(targetUrl)
+  await page.goto(targetUrl)
+  await page.waitForSelector(DATA_TABLE_SELECTOR, { state: "visible" })
+  const wrapper = page.locator(DATA_CONTENT_WRAPPER_SELECTOR)
+
+  await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
 })
 
@@ -35,5 +56,7 @@ test("parses #c= base64 gzipped data", async ({ page }) => {
   await page.goto(targetUrl)
   await page.waitForSelector(DATA_TABLE_SELECTOR, { state: "visible" })
   const wrapper = page.locator(DATA_CONTENT_WRAPPER_SELECTOR)
+
+  await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
 })
