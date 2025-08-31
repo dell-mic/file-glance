@@ -167,6 +167,8 @@ console.log(url)
 ## Roadmap
 
 - Support for additional file formats
+- Code history
+- View & edit transformer
 - Encrypt URL and exported data
 - Advanced data manipulation, including column renaming, splitting and merging
 - Options to override detected encoding and delimiters
