@@ -16,12 +16,13 @@ import "./DataTable.css"
 
 import { ColumnInfos } from "../ValueInspector"
 import { MenuPopover } from "../../../components/ui/Popover"
-import useWindowDimensions from "../../hooks/useWindowDimensions"
+import useWindowDimensions from "../../../hooks/useWindowDimensions"
 import { SortSetting } from "../../home-page"
-import { innerElementType, Row, StickyList } from "../VirtualizedList"
+import { innerElementType, Row, StickyList } from "./VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
 import { compileTransformerCode } from "@/utils"
 import TransformDialog from "../TransformDialog"
+import useKeyPress from "@/hooks/useKeyPress"
 
 export interface SortEvent {
   columnIndex: number
@@ -58,6 +59,7 @@ export const DataTable = (props: {
   const { width: windowWidth } = useWindowDimensions()
 
   const { toast } = useToast()
+  const isMetaPressed = useKeyPress("Meta")
 
   // console.log(rows)
   const rows = [props.headerRow, ...props.rows]
@@ -331,6 +333,7 @@ export const DataTable = (props: {
             headerRow={props.headerRow}
             columnsWidths={sColumnWidths}
             sortSetting={props.sortSetting}
+            isMetaPressed={isMetaPressed}
             onHeaderPressed={({ columnIndex }) => {
               let newSortOrder: SortEvent["sortOrder"] = "asc"
               if (props.sortSetting?.columnIndex === columnIndex) {

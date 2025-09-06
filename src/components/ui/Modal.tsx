@@ -48,7 +48,7 @@ const Frame: React.FC<ModalProps> = ({
     >
       {/* container: `max-w-sm` to make it reasonably narrow, `mx-auto` to center horizontally */}
       <div
-        className="relative w-full bg-white max-w-3xl m-auto p-2 rounded-md shadow-xl roll-out overflow-hidden"
+        className="relative w-full bg-white max-w-4xl m-auto p-2 rounded-md shadow-xl roll-out overflow-hidden"
         ref={container}
       >
         {/* contents */}

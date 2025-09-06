@@ -5,15 +5,22 @@ import { maxBy, set, uniq } from "lodash-es"
 const defaultNumberFormatter = new Intl.NumberFormat()
 
 export function valueAsStringFormatted(v: any): string {
+  const valueAsStringUnformatted = "" + v
+
   // Convert false,0 to string, but null/undefined to empty string
   if (v === "" || v === null || v === undefined) {
     return ""
   } else if (typeof v === "number") {
-    return defaultNumberFormatter.format(v)
+    // Do only format large numbers / long floats but display e.g. years as is
+    if (valueAsStringUnformatted.length > 4) {
+      return defaultNumberFormatter.format(v)
+    } else {
+      return valueAsStringUnformatted
+    }
   } else if (v instanceof Date) {
     return v.toISOString()
   } else {
-    return "" + v
+    return valueAsStringUnformatted
   }
 }
 
@@ -957,4 +964,10 @@ export function cleanForFileName(name: string): string {
     cleaned = `fileglance_export_${yyyy}${mm}${dd}`
   }
   return cleaned
+}
+
+const LinkRegex = /^(https?:\/\/)/i
+
+export function isLink(input: string): boolean {
+  return typeof input === "string" && LinkRegex.test(input)
 }

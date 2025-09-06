@@ -204,22 +204,34 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
               </tr>
             </thead>
             <tbody>
-              {transformerValidation?.sampleResults.map((sample, index) => (
-                <tr key={index} className="even:bg-gray-100 font-mono">
-                  <td className="border border-gray-300 px-2 py-1 overflow-hidden">
-                    {JSON.stringify(sample.value)}
-                  </td>
-                  <td
-                    className={`border border-gray-300 px-2 py-1 overflow-hidden ${
-                      sample.error ? "text-red-600" : "text-green-600"
-                    }`}
+              {transformerValidation?.sampleResults.map((sample, index) => {
+                const sampleRender = JSON.stringify(sample.value)
+
+                const resultRender = sample.error
+                  ? sample.error
+                  : JSON.stringify(sample.result)
+                return (
+                  <tr
+                    key={index}
+                    className="even:bg-gray-100 font-mono whitespace-nowrap"
                   >
-                    {sample.error
-                      ? sample.error
-                      : JSON.stringify(sample.result)}
-                  </td>
-                </tr>
-              ))}
+                    <td
+                      className="border border-gray-300 px-2 py-1 overflow-hidden"
+                      title={sampleRender}
+                    >
+                      {sampleRender}
+                    </td>
+                    <td
+                      className={`border border-gray-300 px-2 py-1 overflow-hidden ${
+                        sample.error ? "text-red-600" : "text-green-600"
+                      }`}
+                      title={resultRender}
+                    >
+                      {resultRender}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

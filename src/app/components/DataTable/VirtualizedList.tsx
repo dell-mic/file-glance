@@ -7,8 +7,8 @@ import {
   ArrowDownIcon as ArrowDownIconMicro,
 } from "@heroicons/react/16/solid"
 
-import { valueAsStringFormatted } from "@/utils"
-import { SortSetting } from "../home-page"
+import { isLink, valueAsStringFormatted } from "@/utils"
+import { SortSetting } from "../../home-page"
 import { cva } from "class-variance-authority"
 
 // Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
@@ -28,6 +28,7 @@ const ItemWrapper = ({ data, index, style }) => {
     headerRow,
     columnsWidths,
     sortSetting,
+    isMetaPressed,
     onHeaderPressed,
     onHeaderMenuPressed,
     onValueCellPressed,
@@ -43,6 +44,7 @@ const ItemWrapper = ({ data, index, style }) => {
       hiddenColumns={hiddenColumns}
       headerRow={headerRow}
       columnsWidths={columnsWidths}
+      isMetaPressed={isMetaPressed}
       sortSetting={sortSetting}
       onHeaderPressed={onHeaderPressed}
       onHeaderMenuPressed={onHeaderMenuPressed}
@@ -71,6 +73,10 @@ const cellClass = cva(
         true: "text-gray-500 font-mono",
         false: "",
       },
+      isLink: {
+        true: "hover:text-blue-600 hover:underline cursor-pointer",
+        false: "",
+      },
     },
   },
 )
@@ -78,7 +84,7 @@ const cellClass = cva(
 export const Row = (
   // @ts-ignore
   // prettier-ignore
-  { index, style, rows, headerRow, hiddenColumns, columnsWidths, onValueCellPressed },
+  { index, style, rows, headerRow, hiddenColumns, columnsWidths, onValueCellPressed, isMetaPressed },
 ) => {
   const rowClasses = "flex flex-row" + (index % 2 === 0 ? " bg-gray-100" : "")
   // console.log("row index:", index)
@@ -94,7 +100,7 @@ export const Row = (
           const _valueAsStringRow = "" + v
           let isEmpty = false
           let valueCell
-          const isTypedValue = typeof v !== "string" && typeof v !== "boolean"
+          const isTypedValue = typeof v !== "string"
           const booleanTrue = v === true
           const booleanFalse = v === false
           if (_valueAsStringFormatted) {
@@ -108,24 +114,31 @@ export const Row = (
               ? `${_valueAsStringRow} [${v.constructor.name}]`
               : _valueAsStringRow
 
+          const highlightLinks = isMetaPressed && isLink(v)
+
           return (
             <span
               key={vi}
               title={title}
               className={cellClass({
-                isTypedValue,
+                isTypedValue: isTypedValue && typeof v !== "boolean",
                 booleanTrue,
                 booleanFalse,
                 isEmpty,
+                isLink: highlightLinks,
               })}
               style={{
                 width: columnsWidths[vi],
               }}
               onClick={() => {
-                onValueCellPressed({
-                  value: v,
-                  valueAsString: _valueAsStringFormatted,
-                })
+                if (highlightLinks) {
+                  window.open(v, "_blank")
+                } else {
+                  onValueCellPressed({
+                    value: v,
+                    valueAsString: _valueAsStringFormatted,
+                  })
+                }
               }}
             >
               {valueCell}
@@ -272,6 +285,7 @@ export const StickyList = ({
   headerRow,
   columnsWidths,
   sortSetting,
+  isMetaPressed,
   onHeaderPressed,
   onHeaderMenuPressed,
   onValueCellPressed,
@@ -287,6 +301,7 @@ export const StickyList = ({
       headerRow,
       columnsWidths,
       sortSetting,
+      isMetaPressed,
       onHeaderPressed,
       onHeaderMenuPressed,
       onValueCellPressed,
@@ -302,6 +317,7 @@ export const StickyList = ({
         headerRow,
         columnsWidths,
         sortSetting,
+        isMetaPressed,
         onHeaderPressed,
         onHeaderMenuPressed,
         onValueCellPressed,
@@ -328,6 +344,7 @@ interface VirtualizedListProps {
   headerRow: string[]
   columnsWidths: string[]
   sortSetting: SortSetting | null
+  isMetaPressed: boolean
   onHeaderPressed: ({ columnIndex }: { columnIndex: number }) => void
   onHeaderMenuPressed: ({
     columnIndex,
