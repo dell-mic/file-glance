@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Modal } from "../../components/ui/Modal"
+import { tryParseJSONObject } from "@/utils"
 
 interface TransformerValidation {
   compilationError: string | null
@@ -42,6 +43,9 @@ interface TransformDialogProps {
   onApply: () => void
 }
 
+const TransformerFunctionCodeHistoryKey = "transformerFunctionCodeHistory"
+const MaxHistoryEntries = 50
+
 const TransformDialog: React.FC<TransformDialogProps> = ({
   open,
   headerName,
@@ -55,6 +59,24 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
   onTransformerCodeChange,
   onApply,
 }) => {
+  const [history, setHistory] = React.useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = React.useState<number | null>(null)
+  const [preHistoryValue, setPreHistoryValue] = React.useState<string>("")
+
+  React.useEffect(() => {
+    const stored = localStorage.getItem(TransformerFunctionCodeHistoryKey)
+    if (stored) {
+      setHistory(tryParseJSONObject(stored) || [])
+    }
+  }, [open])
+
+  React.useEffect(() => {
+    if (!open) {
+      setHistoryIndex(null)
+      setPreHistoryValue("")
+    }
+  }, [open])
+
   const handleTransformerSelected = (value: string) => {
     switch (value) {
       case "custom":
@@ -86,6 +108,32 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
       default:
         console.error("Unexpected select option value: " + value)
         break
+    }
+  }
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    if (history.length === 0) return
+    if (e.key === "ArrowUp") {
+      e.preventDefault()
+      if (historyIndex === null) {
+        setPreHistoryValue(transformerFunctionCode)
+        setHistoryIndex(0)
+        onTransformerCodeChange(history[0])
+      } else if (historyIndex < history.length - 1) {
+        setHistoryIndex(historyIndex + 1)
+        onTransformerCodeChange(history[historyIndex + 1])
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault()
+      if (historyIndex === null) return
+      if (historyIndex > 0) {
+        setHistoryIndex(historyIndex - 1)
+        onTransformerCodeChange(history[historyIndex - 1])
+      } else {
+        setHistoryIndex(null)
+        onTransformerCodeChange(preHistoryValue)
+        setPreHistoryValue("")
+      }
     }
   }
 
@@ -176,6 +224,7 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
           highlight={(code) => highlight(code, languages.js, "js")}
           padding={5}
           onValueChange={onTransformerCodeChange}
+          onKeyDown={handleEditorKeyDown}
         ></Editor>
         <div className="h-52 w-full mt-4">
           <h3 className="text-xl">Preview</h3>
@@ -243,7 +292,26 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
           >
             Cancel
           </Button>
-          <Button data-testid="btnTransformApply" onPointerDown={onApply}>
+          <Button
+            data-testid="btnTransformApply"
+            onPointerDown={() => {
+              try {
+                const existingHistory: string[] =
+                  tryParseJSONObject(
+                    localStorage.getItem(TransformerFunctionCodeHistoryKey) ||
+                      "[]",
+                  ) || []
+                existingHistory.unshift(transformerFunctionCode)
+                localStorage.setItem(
+                  TransformerFunctionCodeHistoryKey,
+                  JSON.stringify(existingHistory.slice(0, MaxHistoryEntries)),
+                )
+              } catch (e) {
+                console.error(e)
+              }
+              onApply()
+            }}
+          >
             Apply
           </Button>
         </div>
