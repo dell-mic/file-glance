@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import zlib from "zlib"
 import { stringToBase64Gzipped } from "../../src/utils"
 
 // Test string to test proper encoding/decoding
@@ -59,4 +60,23 @@ test("parses #c= base64 gzipped data", async ({ page }) => {
 
   await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
+})
+
+test("parses #p= base64 gzipped minimal project", async ({ page }) => {
+  const base64Gzipped = zlib
+    .gzipSync(
+      JSON.stringify({
+        v: 2,
+        name: "minimal project.json",
+        data: sampleJson,
+      }),
+    )
+    .toString("base64")
+  const targetUrl = host + "#p=" + base64Gzipped
+  // console.log(targetUrl)
+  await page.goto(targetUrl)
+  await page.waitForSelector(DATA_TABLE_SELECTOR, { state: "visible" })
+
+  await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
+  await expect(page).toHaveScreenshot()
 })

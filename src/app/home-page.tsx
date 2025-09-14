@@ -455,6 +455,8 @@ export default function Home() {
       // console.log(hash)
       if (hash) {
         if (hash.startsWith("#d=")) {
+          trackEvent("UrlParse", "Data")
+
           setParsingState("parsing")
           const data = hash.substring(StartHashContent)
           let decoded: string | null
@@ -466,6 +468,8 @@ export default function Home() {
           }
           parseText(decoded, "URL Data", true)
         } else if (hash.startsWith("#c=")) {
+          trackEvent("UrlParse", "CompressedData")
+
           setParsingState("parsing")
           base64GzippedToString(hash.substring(StartHashContent)).then(
             (decompressed) => {
@@ -473,6 +477,7 @@ export default function Home() {
             },
           )
         } else if (hash.startsWith("#p=")) {
+          trackEvent("UrlParse", "Project")
           setParsingState("parsing")
 
           base64GzippedToString(hash.substring(StartHashContent)).then((p) => {
@@ -685,7 +690,7 @@ export default function Home() {
   const ExportDelimiter_v1 = ";"
   const exportProject = (): ProjectExport => {
     const project = {
-      v: 2,
+      v: 1,
       name: currentFile!.name!,
       data: JSON.stringify(tableToJson([headerRow, ...allRows])),
       transformers: transformers.map((t) => omit(t, "transformer")),
@@ -706,7 +711,10 @@ export default function Home() {
       // parseText(project.data, project.name, false)
       let data, _headerRow: string[]
 
-      if (project.v === 1) {
+      const maybeJson = tryParseJSONObject(project.data)
+
+      // For legacy reasons assume CSV if not valid JSON
+      if (!maybeJson) {
         data = parse(project.data, {
           delimiter: ExportDelimiter_v1,
           bom: true,
@@ -715,7 +723,7 @@ export default function Home() {
         })
         _headerRow = data.shift()!
       } else {
-        const parsed = jsonToTable(JSON.parse(project.data))
+        const parsed = jsonToTable(maybeJson)
         data = parsed.data
         _headerRow = parsed.headerRow
       }
@@ -723,7 +731,7 @@ export default function Home() {
       setDataIncludesHeaderRow(true)
       setDataFormatAlwaysIncludesHeader(true)
       setTransformers(
-        project.transformers.map((t) => ({
+        (project.transformers || []).map((t) => ({
           ...t,
           transformer: compileTransformerCode(t.transformerFunctionCode)
             .transformer!,
@@ -733,12 +741,12 @@ export default function Home() {
         setFilterFunctionCode(project.filterFunction)
         setAppliedFilterFunctionCode(project.filterFunction)
       }
-      setFilters(project.filters)
-      setSearch(project.search)
-      setHiddenColumns(project.hiddenColumns)
-      setSortSetting(project.sortSetting)
+      setFilters(project.filters || [])
+      setSearch(project.search || "")
+      setHiddenColumns(project.hiddenColumns || [])
+      setSortSetting(project.sortSetting || null)
       setData(
-        generateSyntheticFile(project.data, project.name),
+        generateSyntheticFile(project.data, project.name || "URL data"),
         _headerRow,
         data,
         false,
@@ -786,7 +794,7 @@ export default function Home() {
       // console.log(transformerExport)
 
       setTransformers(
-        transformerImport.transformers.map((t) => ({
+        (transformerImport.transformers || []).map((t) => ({
           ...t,
           transformer: compileTransformerCode(t.transformerFunctionCode)
             .transformer!,
@@ -796,10 +804,10 @@ export default function Home() {
         setFilterFunctionCode(transformerImport.filterFunction)
         setAppliedFilterFunctionCode(transformerImport.filterFunction)
       }
-      setFilters(transformerImport.filters)
-      setSearch(transformerImport.search)
-      setHiddenColumns(transformerImport.hiddenColumns)
-      setSortSetting(transformerImport.sortSetting)
+      setFilters(transformerImport.filters || [])
+      setSearch(transformerImport.search || "")
+      setHiddenColumns(transformerImport.hiddenColumns || [])
+      setSortSetting(transformerImport.sortSetting || null)
 
       toast({
         title: "Transformer applied",
@@ -1445,15 +1453,15 @@ export interface Transformer {
 }
 
 interface ProjectExport {
-  v: number
+  v?: number
   data: string
-  filters: ColumnFilter[]
-  hiddenColumns: number[]
-  name: string
-  search: string
-  filterFunction: string | null
-  transformers: Omit<Transformer, "transformer">[]
-  sortSetting: SortSetting | null
+  filters?: ColumnFilter[]
+  hiddenColumns?: number[]
+  name?: string
+  search?: string
+  filterFunction?: string | null
+  transformers?: Omit<Transformer, "transformer">[]
+  sortSetting?: SortSetting | null
 }
 
 interface TransformerExport extends Omit<ProjectExport, "data" | "name"> {}
