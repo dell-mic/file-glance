@@ -5,7 +5,6 @@ import { postProcessCode, saveFile } from "@/utils"
 import { Download } from "lucide-react"
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline"
 import { PlayIcon } from "@heroicons/react/20/solid"
-import Editor from "react-simple-code-editor"
 import { highlight, languages } from "prismjs"
 import Split from "react-split"
 import "prismjs/components/prism-clike"
@@ -15,6 +14,7 @@ import "prismjs/themes/prism.css"
 import "./FreeQuery.css"
 import { toast } from "@/hooks/use-toast"
 import MonacoEditor, { loader } from "@monaco-editor/react"
+import Editor from "@/components/ui/Editor"
 
 interface FreeQueryProps {
   data: any[][]
@@ -151,6 +151,7 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
                   handleRun()
                 }
               }}
+              localStorageHistoryKey="freeQueryCodeHistory"
             />
           </div>
         </div>

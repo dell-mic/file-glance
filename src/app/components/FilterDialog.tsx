@@ -1,6 +1,5 @@
 import React from "react"
 import { highlight, languages } from "prismjs"
-import Editor from "react-simple-code-editor"
 import "prismjs/components/prism-clike"
 import "prismjs/components/prism-javascript"
 import "prismjs/themes/prism.css"
@@ -15,6 +14,7 @@ import {
   SelectValue,
 } from "../../components/ui/select"
 import { applyFilterFunction, compileFilterCode, createRowProxy } from "@/utils"
+import Editor from "@/components/ui/Editor"
 
 interface ColumnInfos {
   columnName: string
@@ -178,6 +178,7 @@ return rowIndex < ${topX}`)
           value={filterFunctionCode}
           highlight={(code) => highlight(code, languages.js, "js")}
           padding={5}
+          localStorageHistoryKey="filterFunctionCodeHistory"
           onValueChange={onFilterCodeChange}
         />
         {filterValidationResult.error ? (
