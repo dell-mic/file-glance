@@ -145,18 +145,12 @@ window.open(url, "_blank")
 **Node**
 
 ```js
+import zlib from "zlib"
 // import open from "open" // npm install open
 
 const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
 
-const byteArray = new TextEncoder().encode(csv)
-const cs = new CompressionStream("gzip")
-const writer = cs.writable.getWriter()
-await writer.write(byteArray)
-await writer.close()
-const gzipped = await new Response(cs.readable).arrayBuffer()
-
-const base64Gzipped = Buffer.from(gzipped).toString("base64")
+const base64Gzipped = zlib.gzipSync(csv).toString("base64")
 
 const url = "https://www.fileglance.info/#c=" + base64Gzipped
 console.log(url)
