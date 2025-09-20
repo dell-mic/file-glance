@@ -605,35 +605,38 @@ export function postProcessCode(inputCode: string): string {
 }
 
 export function detectDelimiter(input: string): string | null {
-  const supportedDelimiters = [",", "\t", ";", "|"] // Note: Order matters in case of equal occurence count!
+  const supportedDelimiters = [",", "\t", ";", "|"] // Note: Order matters in case of equal occurrence count!
   const counts: Record<string, number> = {}
   const linesToTest = input
     .split("\n")
     .slice(0, 50)
-    .map((l) => l.trim())
+    .map((l) => l.replace(/['"]/g, "").slice(0, 1000).trim())
     .filter((l) => l.length > 0)
 
   if (!linesToTest.length) {
     return null
   }
 
-  let delimtersToTest = supportedDelimiters.filter((sd) =>
+  let delimItersToTest = supportedDelimiters.filter((sd) =>
     linesToTest[0].includes(sd),
   )
   for (const line of linesToTest) {
-    // Disregard delimter candidates which are not occuring at all for one or more line
-    if (line.trim().length > 1) {
-      delimtersToTest = delimtersToTest.filter((dl) => line.includes(dl))
+    // Disregard delimiter candidates which are not occurring at all for one or more line
+    if (line.length > 1) {
+      delimItersToTest = delimItersToTest.filter((dl) => line.includes(dl))
     }
     for (const c of line) {
-      if (delimtersToTest.includes(c)) {
+      if (delimItersToTest.includes(c)) {
         counts[c] = (counts[c] || 0) + 1
       }
+    }
+    if (delimItersToTest.length < 2) {
+      break
     }
   }
   // console.log(counts)
   const maxEntry = maxBy(
-    Object.entries(counts).filter((c) => delimtersToTest.includes(c[0])),
+    Object.entries(counts).filter((c) => delimItersToTest.includes(c[0])),
     (_) => _[1],
   )!
   // console.log("detected delimiter: ", maxEntry)

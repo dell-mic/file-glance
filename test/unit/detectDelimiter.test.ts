@@ -33,9 +33,15 @@ describe("detectDelimiter", () => {
     expect(detectDelimiter(input)).toBe(",")
   })
 
-  it("it should detect only delimiter occuring in every row, even if not the most frequent", () => {
+  it("it should detect only delimiter occurring in every row, even if not the most frequent", () => {
     const input = `v1,v2,x1;x2;x3;x4;x5;x6
     v1,v2,x1`.trim()
+    expect(detectDelimiter(input)).toBe(",")
+  })
+  it("it should ignore effectively empty rows w/o any delimiter for detection", () => {
+    const input = `"ID","Name","Age","City"
+"1","Alice","25","New York"
+""`.trim()
     expect(detectDelimiter(input)).toBe(",")
   })
 
