@@ -1,5 +1,11 @@
 import { sum, uniq } from "lodash-es"
-import React from "react"
+import React, {
+  createRef,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 
 import {
@@ -23,6 +29,7 @@ import { useToast } from "@/hooks/use-toast"
 import { compileTransformerCode } from "@/utils"
 import TransformDialog from "../TransformDialog"
 import useKeyPress from "@/hooks/useKeyPress"
+import { FixedSizeList } from "react-window"
 
 export interface SortEvent {
   columnIndex: number
@@ -61,9 +68,40 @@ export const DataTable = (props: {
   const { toast } = useToast()
   const isMetaPressed = useKeyPress("Meta")
 
+  const [selectedRow, setSelectedRow] = useState<number | null>(null)
+  const [navigationDirection, setNavigationDirection] = useState<
+    "up" | "down" | null
+  >(null)
+
+  const listRef = createRef<FixedSizeList>()
+
   // console.log(rows)
   const rows = [props.headerRow, ...props.rows]
   const hiddenColumns = props.hiddenColumns
+
+  const OverScanScroll = 5
+
+  // reset selection when rows change (e.g. when sorted)
+  useEffect(() => {
+    setSelectedRow(null)
+    setNavigationDirection(null)
+  }, [props.rows])
+
+  useEffect(() => {
+    if (
+      listRef?.current &&
+      selectedRow !== null &&
+      navigationDirection !== null
+    ) {
+      const scrollToRow =
+        navigationDirection === "up"
+          ? Math.max(selectedRow - OverScanScroll, 0)
+          : Math.min(selectedRow + OverScanScroll, rows.length - 1)
+      listRef.current.scrollToItem(scrollToRow)
+      // console.log("listRef.current.scrollToItem", scrollToRow, selectedRow, listRef, navigationDirection, rows.length)
+    }
+    // TODO: Fix liniting complaint / maybe refactor to useCallback?
+  }, [selectedRow, listRef.current, navigationDirection, rows.length])
 
   const columnWidths = props.columnValueCounts.map((cvc) =>
     !hiddenColumns.includes(cvc.columnIndex)
@@ -267,60 +305,87 @@ export const DataTable = (props: {
     ],
   ]
 
+  const handleKeyDown: React.KeyboardEventHandler = (e) => {
+    // console.log(e)
+
+    if (!selectedRow) return
+
+    // Actual rows start with 1 because header is technically a row here
+    if (e.key === "ArrowUp" && selectedRow > 1) {
+      e.preventDefault()
+      setNavigationDirection("up")
+      setSelectedRow(selectedRow - 1)
+    } else if (e.key === "ArrowDown" && selectedRow < rows.length - 1) {
+      e.preventDefault()
+      setNavigationDirection("down")
+      setSelectedRow(selectedRow + 1)
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      setNavigationDirection(null)
+      setSelectedRow(null)
+    }
+  }
+
   return (
     <div
-      className="h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-xs"
+      className="data-table h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-xs"
       data-testid="DataTable"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
     >
-      <MenuPopover
-        id={"columnPopover"}
-        menuItems={popoverEntries}
-        open={Boolean(popoverAnchorElement)}
-        anchorEl={popoverAnchorElement}
-        onClose={handlePopoverClose}
-        onSelect={() => setPopoverAnchorElement(null)}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
-        }}
-      ></MenuPopover>
-      <TransformDialog
-        open={transformModalOpen}
-        headerName={props.headerRow[popoverColumnIndex!]}
-        targetType={targetType}
-        newColName={newColName}
-        transformerFunctionCode={transformerFunctionCode}
-        transformerValidation={transformerValidation}
-        onClose={handleTransformModalClose}
-        onTargetTypeChange={setTargetType}
-        onNewColNameChange={setNewColName}
-        onTransformerCodeChange={handleTransformerCodeChanged}
-        onApply={() => {
-          const { transformer } = compileTransformerCode(
-            transformerFunctionCode,
-          )
+      {!!popoverAnchorElement && (
+        <MenuPopover
+          id={"columnPopover"}
+          menuItems={popoverEntries}
+          open={Boolean(popoverAnchorElement)}
+          anchorEl={popoverAnchorElement}
+          onClose={handlePopoverClose}
+          onSelect={() => setPopoverAnchorElement(null)}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "left",
+          }}
+        ></MenuPopover>
+      )}
+      {transformModalOpen && (
+        <TransformDialog
+          open={transformModalOpen}
+          headerName={props.headerRow[popoverColumnIndex!]}
+          targetType={targetType}
+          newColName={newColName}
+          transformerFunctionCode={transformerFunctionCode}
+          transformerValidation={transformerValidation}
+          onClose={handleTransformModalClose}
+          onTargetTypeChange={setTargetType}
+          onNewColNameChange={setNewColName}
+          onTransformerCodeChange={handleTransformerCodeChanged}
+          onApply={() => {
+            const { transformer } = compileTransformerCode(
+              transformerFunctionCode,
+            )
 
-          if (transformer) {
-            props.onTransformerAdded({
-              columnIndex: popoverColumnIndex!,
-              transformerFunctionCode: transformerFunctionCode,
-              transformer,
-              asNewColumn: targetType === "new",
-              newColumnName: newColName,
-            })
-            handleTransformModalClose()
-          } else {
-            // TODO: Error handling
-          }
-        }}
-      />
+            if (transformer) {
+              props.onTransformerAdded({
+                columnIndex: popoverColumnIndex!,
+                transformerFunctionCode: transformerFunctionCode,
+                transformer,
+                asNewColumn: targetType === "new",
+                newColumnName: newColName,
+              })
+              handleTransformModalClose()
+            } else {
+              // TODO: Error handling
+            }
+          }}
+        />
+      )}
       {/* TODO: Last line hidden in case of horizontal scrolling */}
       <AutoSizer disableWidth>
         {({ height }) => (
           // @ts-ignore
           <StickyList
-            data-testid="dataTable"
             className=""
+            ref={listRef}
             innerElementType={innerElementType}
             stickyIndices={[0]}
             height={height}
@@ -330,6 +395,7 @@ export const DataTable = (props: {
             width={tableWidth}
             hiddenColumns={hiddenColumns}
             rows={rows}
+            selectedRow={selectedRow}
             headerRow={props.headerRow}
             columnsWidths={sColumnWidths}
             sortSetting={props.sortSetting}
@@ -360,6 +426,11 @@ export const DataTable = (props: {
               toast({
                 title: "Value copied to clipboard",
               })
+            }}
+            onRowSelected={({ rowIndex }) => {
+              // console.log(rowIndex, rowData)
+              setSelectedRow(rowIndex !== selectedRow ? rowIndex : null)
+              setNavigationDirection(null)
             }}
           >
             {Row}

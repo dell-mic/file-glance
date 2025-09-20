@@ -10,6 +10,7 @@ import {
 import { isLink, valueAsStringFormatted } from "@/utils"
 import { SortSetting } from "../../home-page"
 import { cva } from "class-variance-authority"
+import { cloneDeep } from "lodash-es"
 
 // Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
 // See also: https://github.com/bvaughn/react-window?tab=readme-ov-file
@@ -25,6 +26,7 @@ const ItemWrapper = ({ data, index, style }) => {
     stickyIndices,
     hiddenColumns,
     rows,
+    selectedRow,
     headerRow,
     columnsWidths,
     sortSetting,
@@ -32,6 +34,7 @@ const ItemWrapper = ({ data, index, style }) => {
     onHeaderPressed,
     onHeaderMenuPressed,
     onValueCellPressed,
+    onRowSelected,
   } = data
   if (stickyIndices && stickyIndices.includes(index)) {
     return null
@@ -41,6 +44,7 @@ const ItemWrapper = ({ data, index, style }) => {
       index={index}
       style={style}
       rows={rows}
+      selectedRow={selectedRow}
       hiddenColumns={hiddenColumns}
       headerRow={headerRow}
       columnsWidths={columnsWidths}
@@ -49,6 +53,7 @@ const ItemWrapper = ({ data, index, style }) => {
       onHeaderPressed={onHeaderPressed}
       onHeaderMenuPressed={onHeaderMenuPressed}
       onValueCellPressed={onValueCellPressed}
+      onRowSelected={onRowSelected}
     />
   )
 }
@@ -73,25 +78,52 @@ const cellClass = cva(
         true: "text-gray-500 font-mono",
         false: "",
       },
+      isMetaPressed: {
+        true: "hover:underline cursor-pointer",
+        false: "",
+      },
       isLink: {
-        true: "hover:text-blue-600 hover:underline cursor-pointer",
+        true: "hover:text-blue-600 ",
         false: "",
       },
     },
   },
 )
 
+const rowClasses = cva("flex flex-row", {
+  variants: {
+    isOdd: {
+      true: "bg-gray-100",
+      false: "",
+    },
+  },
+})
+
 export const Row = (
   // @ts-ignore
   // prettier-ignore
-  { index, style, rows, headerRow, hiddenColumns, columnsWidths, onValueCellPressed, isMetaPressed },
+  { index, style, rows, selectedRow, headerRow, hiddenColumns, columnsWidths, onValueCellPressed, onRowSelected, isMetaPressed },
 ) => {
-  const rowClasses = "flex flex-row" + (index % 2 === 0 ? " bg-gray-100" : "")
+  // const rowClasses = "flex flex-row" + (index % 2 === 0 ? " bg-gray-100" : "")
   // console.log("row index:", index)
   // console.log("row:", rows[index])
   return (
-    <div style={style} className={rowClasses}>
-      {headerRow.map((_: any, vi: number) => {
+    <div
+      // TODO: Regular tab index vs custom highlight of selected row?
+      // tabIndex={0}
+      className={rowClasses({
+        isOdd: index % 2 === 0,
+      })}
+      style={{
+        ...style,
+        outline:
+          index === selectedRow
+            ? "1px dotted var(--color-blue-900)"
+            : undefined,
+        outlineOffset: index === selectedRow ? "-1px" : undefined,
+      }}
+    >
+      {headerRow.map((header: any, vi: number) => {
         const v = rows[index][vi]
         if (hiddenColumns.includes(vi)) {
           return null
@@ -109,10 +141,12 @@ export const Row = (
             valueCell = "empty"
             isEmpty = true
           }
-          const title =
+          let title =
             isTypedValue && !isEmpty
               ? `${_valueAsStringRow} [${v.constructor.name}]`
               : _valueAsStringRow
+
+          title += "\n" + header
 
           const highlightLinks = isMetaPressed && isLink(v)
 
@@ -125,6 +159,7 @@ export const Row = (
                 booleanTrue,
                 booleanFalse,
                 isEmpty,
+                isMetaPressed,
                 isLink: highlightLinks,
               })}
               style={{
@@ -133,10 +168,15 @@ export const Row = (
               onClick={() => {
                 if (highlightLinks) {
                   window.open(v, "_blank")
-                } else {
+                } else if (isMetaPressed) {
                   onValueCellPressed({
                     value: v,
                     valueAsString: _valueAsStringFormatted,
+                  })
+                } else {
+                  onRowSelected({
+                    rowIndex: index,
+                    rowData: cloneDeep(rows[index]),
                   })
                 }
               }}
@@ -282,6 +322,7 @@ export const StickyList = ({
   stickyIndices,
   hiddenColumns,
   rows,
+  selectedRow,
   headerRow,
   columnsWidths,
   sortSetting,
@@ -289,6 +330,7 @@ export const StickyList = ({
   onHeaderPressed,
   onHeaderMenuPressed,
   onValueCellPressed,
+  onRowSelected,
   ...rest
 }: VirtualizedListProps) => (
   <StickyListContext.Provider
@@ -298,6 +340,7 @@ export const StickyList = ({
       stickyIndices,
       hiddenColumns,
       rows,
+      selectedRow,
       headerRow,
       columnsWidths,
       sortSetting,
@@ -305,6 +348,7 @@ export const StickyList = ({
       onHeaderPressed,
       onHeaderMenuPressed,
       onValueCellPressed,
+      onRowSelected,
     }}
   >
     {/* @ts-ignore */}
@@ -314,6 +358,7 @@ export const StickyList = ({
         stickyIndices,
         hiddenColumns,
         rows,
+        selectedRow,
         headerRow,
         columnsWidths,
         sortSetting,
@@ -321,6 +366,7 @@ export const StickyList = ({
         onHeaderPressed,
         onHeaderMenuPressed,
         onValueCellPressed,
+        onRowSelected,
       }}
       {...rest}
     >
@@ -341,6 +387,7 @@ interface VirtualizedListProps {
   width: string
   hiddenColumns: number[]
   rows: any[]
+  selectedRow: number | null
   headerRow: string[]
   columnsWidths: string[]
   sortSetting: SortSetting | null
@@ -359,5 +406,12 @@ interface VirtualizedListProps {
   }: {
     value: any
     valueAsString: string
+  }) => void
+  onRowSelected: ({
+    rowIndex,
+    rowData,
+  }: {
+    rowIndex: number
+    rowData: any[]
   }) => void
 }

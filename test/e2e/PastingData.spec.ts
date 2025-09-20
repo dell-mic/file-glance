@@ -38,7 +38,7 @@ test.describe("Pasting data test", () => {
       await page.goto("http://localhost:3000/")
       // await page.evaluate(() => location.reload(true))
       await page.getByTestId("fileInput").isVisible()
-      await page.getByTestId("dataTable").isHidden()
+      await page.getByTestId("DataTable").isHidden()
 
       page.on("console", (msg) => {
         if (msg.type() === "error") {
