@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React, { useCallback, useMemo } from "react"
 
 import { cloneDeep, isNil, maxBy, omit, orderBy } from "lodash-es"
 
@@ -218,7 +218,7 @@ export default function Home() {
       console.time("detectDelimiter")
       const delimiter = detectDelimiter(contentAsText)
       console.timeEnd("detectDelimiter")
-      console.log("detected delimter: ", delimiter)
+      console.log("detected delimiter: ", delimiter)
       if (delimiter) {
         try {
           data = parse(contentAsText, {
@@ -232,6 +232,8 @@ export default function Home() {
           console.error(err)
           errorMessage = "Parsing failed"
         }
+      } else {
+        errorMessage = "No delimiter detected"
       }
 
       // console.log(data)
@@ -339,11 +341,15 @@ export default function Home() {
       setParsingState("initial")
       return
     }
-    document.title = file.name
+
     setCurrentFile(file)
     setHeaderRow(headerRow)
     setAllRows(data)
     setParsingState("finished")
+
+    // TODO: Hacky workaround; somehow document title gets reset in URL parsing case
+    document.title = file.name
+    setTimeout(() => (document.title = file.name), 200)
 
     // TODO: More efficient way to find empty columns?
     const _columnValueCounts = countValues(headerRow, data, [])
@@ -447,6 +453,73 @@ export default function Home() {
     }
   }, [])
 
+  const importProject = useCallback(
+    (p: ProjectExport | string): void => {
+      try {
+        const project: ProjectExport = typeof p === "string" ? JSON.parse(p) : p
+        // console.log(project)
+
+        // parseText(project.data, project.name, false)
+        let data, _headerRow: string[]
+
+        const maybeJson = tryParseJSONObject(project.data)
+
+        // For legacy reasons assume CSV if not valid JSON
+        if (!maybeJson) {
+          data = parse(project.data, {
+            delimiter: ExportDelimiter_v1,
+            bom: true,
+            skip_empty_lines: true,
+            relax_column_count: true,
+          })
+          _headerRow = data.shift()!
+        } else {
+          const parsed = jsonToTable(maybeJson)
+          data = parsed.data
+          _headerRow = parsed.headerRow
+        }
+
+        setDataIncludesHeaderRow(true)
+        setDataFormatAlwaysIncludesHeader(true)
+        setTransformers(
+          (project.transformers || []).map((t) => ({
+            ...t,
+            transformer: compileTransformerCode(t.transformerFunctionCode)
+              .transformer!,
+          })),
+        )
+        if (project.filterFunction) {
+          setFilterFunctionCode(project.filterFunction)
+          setAppliedFilterFunctionCode(project.filterFunction)
+        }
+        setFilters(project.filters || [])
+        setSearch(project.search || "")
+        setHiddenColumns(project.hiddenColumns || [])
+        setSortSetting(project.sortSetting || null)
+        setData(
+          generateSyntheticFile(project.data, project.name || "URL data"),
+          _headerRow,
+          data,
+          false,
+        )
+        toast({
+          title: project.name + " loaded",
+          description: data.length + " lines",
+          variant: "success",
+        })
+      } catch (error) {
+        // Most probably incomplete/corrupted URL data
+        console.error(error)
+        toast({
+          title: "Import failed",
+          variant: "error",
+        })
+        setParsingState("initial")
+      }
+    },
+    [toast],
+  )
+
   // Check URL for data/project hash
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -487,7 +560,7 @@ export default function Home() {
         history.replaceState(undefined, "", "#")
       }
     }
-  }, [])
+  }, [importProject, parseText])
 
   // console.log("dragging", dragging)
 
@@ -701,70 +774,6 @@ export default function Home() {
       sortSetting: sortSetting,
     }
     return project
-  }
-
-  const importProject = (p: ProjectExport | string): void => {
-    try {
-      const project: ProjectExport = typeof p === "string" ? JSON.parse(p) : p
-      // console.log(project)
-
-      // parseText(project.data, project.name, false)
-      let data, _headerRow: string[]
-
-      const maybeJson = tryParseJSONObject(project.data)
-
-      // For legacy reasons assume CSV if not valid JSON
-      if (!maybeJson) {
-        data = parse(project.data, {
-          delimiter: ExportDelimiter_v1,
-          bom: true,
-          skip_empty_lines: true,
-          relax_column_count: true,
-        })
-        _headerRow = data.shift()!
-      } else {
-        const parsed = jsonToTable(maybeJson)
-        data = parsed.data
-        _headerRow = parsed.headerRow
-      }
-
-      setDataIncludesHeaderRow(true)
-      setDataFormatAlwaysIncludesHeader(true)
-      setTransformers(
-        (project.transformers || []).map((t) => ({
-          ...t,
-          transformer: compileTransformerCode(t.transformerFunctionCode)
-            .transformer!,
-        })),
-      )
-      if (project.filterFunction) {
-        setFilterFunctionCode(project.filterFunction)
-        setAppliedFilterFunctionCode(project.filterFunction)
-      }
-      setFilters(project.filters || [])
-      setSearch(project.search || "")
-      setHiddenColumns(project.hiddenColumns || [])
-      setSortSetting(project.sortSetting || null)
-      setData(
-        generateSyntheticFile(project.data, project.name || "URL data"),
-        _headerRow,
-        data,
-        false,
-      )
-      toast({
-        title: project.name + " loaded",
-        description: data.length + " lines",
-        variant: "success",
-      })
-    } catch (error) {
-      // Most probably incomplete/corrupted URL data
-      console.error(error)
-      toast({
-        title: "Import failed",
-        variant: "error",
-      })
-      setParsingState("initial")
-    }
   }
 
   const getExportData = (): any[][] => {

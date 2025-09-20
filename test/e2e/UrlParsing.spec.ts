@@ -79,4 +79,6 @@ test("parses #p= base64 gzipped minimal project", async ({ page }) => {
 
   await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(page).toHaveScreenshot()
+  // Check document title includes the project name
+  await expect(page).toHaveTitle(/minimal project\.json/i)
 })
