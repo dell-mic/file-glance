@@ -748,6 +748,8 @@ export default function Home() {
   }
   if (isFiltered) {
     fileInfos.push(`${displayedDataFiltered.length.toLocaleString()} filtered`)
+  } else {
+    fileInfos.push("all shown")
   }
 
   const getExportFileName = (newEnding: string): string => {
