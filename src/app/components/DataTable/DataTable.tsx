@@ -276,19 +276,39 @@ export const DataTable = (props: {
       {
         text: "Copy values",
         icon: <ClipboardDocumentListIcon />,
-        onSelect: () => {
-          navigator.clipboard.writeText(
+        onSelect: async () => {
+          await navigator.clipboard.writeText(
             props.rows.map((row) => row[popoverColumnIndex!]).join("\n"),
           )
+          toast({
+            title: "Values copied to clipboard",
+          })
         },
       },
       {
         text: "Copy values (unique)",
         icon: <ClipboardDocumentListIcon />,
-        onSelect: () => {
-          navigator.clipboard.writeText(
+        onSelect: async () => {
+          await navigator.clipboard.writeText(
             uniq(props.rows.map((row) => row[popoverColumnIndex!])).join("\n"),
           )
+          toast({
+            title: "Values copied to clipboard",
+          })
+        },
+      },
+      {
+        text: "Copy values (unique, JS array)",
+        icon: <ClipboardDocumentListIcon />,
+        onSelect: async () => {
+          await navigator.clipboard.writeText(
+            JSON.stringify(
+              uniq(props.rows.map((row) => row[popoverColumnIndex!])),
+            ),
+          )
+          toast({
+            title: "Values copied to clipboard",
+          })
         },
       },
     ],
@@ -305,7 +325,7 @@ export const DataTable = (props: {
     ],
   ]
 
-  const handleKeyDown: React.KeyboardEventHandler = (e) => {
+  const handleKeyDown: React.KeyboardEventHandler = async (e) => {
     // console.log(e)
 
     if (!selectedRow) return
@@ -323,6 +343,23 @@ export const DataTable = (props: {
       e.preventDefault()
       setNavigationDirection(null)
       setSelectedRow(null)
+    } else if (e.key === "Enter") {
+      if (e.metaKey) {
+        await navigator.clipboard.writeText(
+          JSON.stringify(props.rows[selectedRow - 1]),
+        )
+        toast({
+          title: "Row values copied to clipboard",
+          description: "(as JS array)",
+        })
+      } else {
+        await navigator.clipboard.writeText(
+          props.rows[selectedRow - 1].join("\t"),
+        )
+        toast({
+          title: "Row values copied to clipboard",
+        })
+      }
     }
   }
 
