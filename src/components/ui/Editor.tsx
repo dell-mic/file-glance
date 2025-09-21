@@ -1,6 +1,6 @@
 import { tryParseJSONObject } from "@/utils"
 import { uniq } from "lodash-es"
-import React, { useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import SimpleEditor from "react-simple-code-editor"
 
 type EditorProps = React.ComponentProps<typeof SimpleEditor> & {
@@ -23,19 +23,6 @@ function Editor({
   const [historyIndex, setHistoryIndex] = useState<number | null>(null)
   const [preHistoryValue, setPreHistoryValue] = useState<string>("")
   const valueRef = useRef(value)
-
-  // Load history from localStorage on startup
-  useEffect(() => {
-    if (!localStorageHistoryKey) return
-    const stored = tryParseJSONObject(
-      localStorage.getItem(localStorageHistoryKey) || "[]",
-    )
-    setHistory(stored || [])
-  }, [localStorageHistoryKey])
-
-  useEffect(() => {
-    valueRef.current = value
-  }, [value])
 
   //   useEffect(() => {
   //     setHistoryIndex(null)
@@ -74,32 +61,38 @@ function Editor({
     }
   }
 
-  const saveToHistory = (newValue: string) => {
-    if (!localStorageHistoryKey) return
-    if (!newValue || newValue.trim() === "") return
-    let existingHistory: string[] = []
+  const saveToHistory = useCallback(
+    (newValue: string) => {
+      if (!localStorageHistoryKey) return
+      if (!newValue || newValue.trim() === "") return
+      let existingHistory: string[] = []
 
-    try {
-      existingHistory =
-        tryParseJSONObject(
-          localStorage.getItem(localStorageHistoryKey) || "[]",
-        ) || []
+      try {
+        existingHistory =
+          tryParseJSONObject(
+            localStorage.getItem(localStorageHistoryKey) || "[]",
+          ) || []
 
-      if (existingHistory[0] !== newValue) {
-        existingHistory.unshift(newValue)
-        const updatedHistory = uniq(existingHistory).slice(0, maxHistoryEntries)
-        localStorage.setItem(
-          localStorageHistoryKey,
-          JSON.stringify(updatedHistory),
-        )
-        setHistory(updatedHistory)
+        if (existingHistory[0] !== newValue) {
+          existingHistory.unshift(newValue)
+          const updatedHistory = uniq(existingHistory).slice(
+            0,
+            maxHistoryEntries,
+          )
+          localStorage.setItem(
+            localStorageHistoryKey,
+            JSON.stringify(updatedHistory),
+          )
+          setHistory(updatedHistory)
+        }
+      } catch (error) {
+        // Catch all, but just log errors, such that this never actually has user impact when failing
+        console.error(error)
+        setHistory([])
       }
-    } catch (error) {
-      // Catch all, but just log errors, such that this never actually has user impact when failing
-      console.error(error)
-      setHistory([])
-    }
-  }
+    },
+    [localStorageHistoryKey, maxHistoryEntries],
+  )
 
   // save on blur
   const handleBlur: React.FocusEventHandler<HTMLTextAreaElement> &
@@ -109,6 +102,24 @@ function Editor({
     // TODO: Reason this expects FocusEvent<HTMLDivElement>?
     if (onBlur) onBlur(e as React.FocusEvent<HTMLDivElement>)
   }
+
+  // Load history from localStorage on startup
+  useEffect(() => {
+    if (!localStorageHistoryKey) return
+    const stored = tryParseJSONObject(
+      localStorage.getItem(localStorageHistoryKey) || "[]",
+    )
+    setHistory(stored || [])
+
+    // Also save last value on unmount (e.g. when modal is closed)
+    return () => {
+      saveToHistory(valueRef.current)
+    }
+  }, [localStorageHistoryKey, saveToHistory])
+
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
 
   return (
     <SimpleEditor
