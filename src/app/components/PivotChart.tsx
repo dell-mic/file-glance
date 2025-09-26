@@ -399,7 +399,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
             variant="ghost"
             size="sm"
             title="Download chart"
-            disabled={noNumericColumns}
+            disabled={!xField || !yField}
             onPointerDown={() =>
               setPopoverAnchorElement(exportButtonRef.current)
             }
