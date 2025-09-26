@@ -21,16 +21,19 @@ export const ValuesInspector = (props: {
 
   const ValuesDisplayedInitially = 50
 
-  const isEffectivlyFiltered = props.columnValueCounts.some((ci) =>
+  const isEffectivelyFiltered = props.columnValueCounts.some((ci) =>
     ci.columnValues.some((cv) => cv.valueCountTotal !== cv.valueCountFiltered),
   )
+
+  // Limit max value inspectors max length to avoid issues when parsing corrupted data leads to large amount of columns
+  const MaxColumnsToDisplay = 500
 
   return (
     <div
       className="w-96 flex shrink-0 flex-col gap-2 mb-2 pr-1 overflow-y-auto"
       style={{ scrollbarWidth: "thin" }}
     >
-      {props.columnValueCounts.map((column) => {
+      {props.columnValueCounts.slice(0, MaxColumnsToDisplay).map((column) => {
         const columnValues = orderBy(
           column.columnValues,
           ["valueCountTotal", "valueName"],
@@ -71,7 +74,7 @@ export const ValuesInspector = (props: {
                       (fValue) => fValue === columnValue.valueName,
                     )
 
-                  const displayedValueCounts: string = isEffectivlyFiltered
+                  const displayedValueCounts: string = isEffectivelyFiltered
                     ? `${columnValue.valueCountFiltered.toLocaleString()}\u2009/\u2009${columnValue.valueCountTotal.toLocaleString()}`
                     : `${columnValue.valueCountTotal.toLocaleString()}`
 
