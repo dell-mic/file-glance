@@ -141,49 +141,78 @@ export const Row = (
             valueCell = "empty"
             isEmpty = true
           }
-          let title =
-            isTypedValue && !isEmpty
+          let title = ""
+
+          if (!isEmpty) {
+            title = isTypedValue
               ? `${_valueAsStringRow} [${v.constructor.name}]`
               : _valueAsStringRow
+          } else if (_valueAsStringRow === "") {
+            title = "(empty string)"
+          } else {
+            title = _valueAsStringRow
+          }
 
-          title += "\n" + header
+          title += "\n\nColumn: " + header
 
           const highlightLinks = isMetaPressed && isLink(v)
 
-          return (
-            <span
-              key={vi}
-              title={title}
-              className={cellClass({
-                isTypedValue: isTypedValue && typeof v !== "boolean",
-                booleanTrue,
-                booleanFalse,
-                isEmpty,
-                isMetaPressed,
-                isLink: highlightLinks,
-              })}
-              style={{
-                width: columnsWidths[vi],
-              }}
-              onClick={() => {
-                if (highlightLinks) {
-                  window.open(v, "_blank")
-                } else if (isMetaPressed) {
-                  onValueCellPressed({
-                    value: v,
-                    valueAsString: _valueAsStringFormatted,
-                  })
-                } else {
-                  onRowSelected({
-                    rowIndex: index,
-                    rowData: cloneDeep(rows[index]),
-                  })
-                }
-              }}
-            >
-              {valueCell}
-            </span>
-          )
+          if (highlightLinks) {
+            // Use actual links for link highlight such that e.g. "copy link" context menu features work out of the box
+            return (
+              <a
+                key={vi}
+                title={title}
+                className={cellClass({
+                  isTypedValue: false,
+                  booleanTrue,
+                  booleanFalse,
+                  isEmpty,
+                  isMetaPressed,
+                  isLink: true,
+                })}
+                style={{
+                  width: columnsWidths[vi],
+                }}
+                href={valueCell}
+                target="_blank"
+              >
+                {valueCell}
+              </a>
+            )
+          } else {
+            return (
+              <span
+                key={vi}
+                title={title}
+                className={cellClass({
+                  isTypedValue: isTypedValue && typeof v !== "boolean",
+                  booleanTrue,
+                  booleanFalse,
+                  isEmpty,
+                  isMetaPressed,
+                })}
+                style={{
+                  width: columnsWidths[vi],
+                }}
+                onClick={() => {
+                  if (isMetaPressed) {
+                    onValueCellPressed({
+                      value: v,
+                      valueAsString: _valueAsStringFormatted,
+                    })
+                  } else {
+                    onRowSelected({
+                      rowIndex: index,
+                      rowData: cloneDeep(rows[index]),
+                    })
+                  }
+                }}
+              >
+                {valueCell}
+              </span>
+            )
+          }
         }
       })}
     </div>
