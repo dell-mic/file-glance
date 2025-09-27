@@ -76,11 +76,14 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
       case "emaildomain":
         onTransformerCodeChange("return value.split('@')[1] || ''")
         break
-      case "parseint":
+      case "parse_int":
         onTransformerCodeChange("return parseInt(value, 10)")
         break
-      case "parsefloat":
+      case "parse_float":
         onTransformerCodeChange("return parseFloat(value)")
+        break
+      case "parse_boolean":
+        onTransformerCodeChange("return String(value).toLowerCase() === 'true'")
         break
       case "parse_unix_ts":
         onTransformerCodeChange(
@@ -155,8 +158,9 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
             <SelectItem value="lowercase">Lowercase</SelectItem>
             <SelectItem value="emaildomain">Domain from Email</SelectItem>
             <SelectSeparator />
-            <SelectItem value="parseint">Parse Integer</SelectItem>
-            <SelectItem value="parsefloat">Parse Float</SelectItem>
+            <SelectItem value="parse_int">Parse Integer</SelectItem>
+            <SelectItem value="parse_float">Parse Float</SelectItem>
+            <SelectItem value="parse_boolean">Parse Boolean</SelectItem>
             <SelectItem value="parse_unix_ts">Parse UNIX Timestamp</SelectItem>
             <SelectSeparator />
             <SelectItem value="custom">Custom</SelectItem>
