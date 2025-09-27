@@ -345,12 +345,16 @@ export const DataTable = (props: {
       setSelectedRow(null)
     } else if (e.key === "Enter") {
       if (e.metaKey) {
-        await navigator.clipboard.writeText(
-          JSON.stringify(props.rows[selectedRow - 1]),
+        const rowObj = Object.fromEntries(
+          props.headerRow.map((header, i) => [
+            header,
+            props.rows[selectedRow - 1][i],
+          ]),
         )
+        await navigator.clipboard.writeText(JSON.stringify(rowObj))
         toast({
           title: "Row values copied to clipboard",
-          description: "(as JS array)",
+          description: "as JSON",
         })
       } else {
         await navigator.clipboard.writeText(
@@ -358,6 +362,7 @@ export const DataTable = (props: {
         )
         toast({
           title: "Row values copied to clipboard",
+          description: "as tab separated",
         })
       }
     }
