@@ -1223,21 +1223,29 @@ export default function Home() {
                       )}
                       <span className="ml-1 hidden 2xl:inline">Filter</span>
                     </Button>
-                    <FilterDialog
-                      open={filterDialogOpen}
-                      filterFunctionCode={filterFunctionCode}
-                      columnValueCounts={columnValueCounts}
-                      headerRow={displayedHeader}
-                      displayedData={displayedData}
-                      onClose={() => setFilterDialogOpen(false)}
-                      onFilterCodeChange={(code: string) =>
-                        setFilterFunctionCode(code)
-                      }
-                      onApply={(code) => {
-                        setFilterDialogOpen(false)
-                        setAppliedFilterFunctionCode(code)
-                      }}
-                    />
+                    {filterDialogOpen && (
+                      <FilterDialog
+                        open={filterDialogOpen}
+                        filterFunctionCode={filterFunctionCode}
+                        columnValueCounts={columnValueCounts}
+                        headerRow={displayedHeader}
+                        displayedData={displayedData}
+                        onClose={() => {
+                          setFilterDialogOpen(false)
+                          // Make sure to always show current applied filter when re-opening first (last draft state can still be recovered from history if needed)
+                          if (appliedFilterFunctionCode) {
+                            setFilterFunctionCode(appliedFilterFunctionCode)
+                          }
+                        }}
+                        onFilterCodeChange={(code: string) =>
+                          setFilterFunctionCode(code)
+                        }
+                        onApply={(code) => {
+                          setFilterDialogOpen(false)
+                          setAppliedFilterFunctionCode(code)
+                        }}
+                      />
+                    )}
                     <Button
                       data-testid={"btnExport"}
                       title="Export data"
