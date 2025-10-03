@@ -65,14 +65,13 @@ export function jsonToTable(jsonArray: Array<any>): {
     }, {})
   }
 
-  // Flatten all objects in the JSON array
   const flatArray = jsonArray.map((item) => flattenObject(item))
 
   const header = Array.from(
     new Set(flatArray.flatMap((item) => Object.keys(item))),
   )
 
-  const rows = flatArray.map((item) => header.map((h) => item[h] ?? ""))
+  const rows = flatArray.map((item) => header.map((h) => item[h]))
 
   return { data: rows, headerRow: header }
 }

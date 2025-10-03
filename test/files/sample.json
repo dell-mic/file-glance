@@ -10,37 +10,60 @@
       "city": "Moers",
       "person": {
         "name": "test",
-        "email": "test0@example.com"
+        "email": "test0@example.com",
+        "birthdate": null
       },
       "active": false,
-      "count": 95
+      "count": 95,
+      "lastLogin": "2023-12-01T10:00:00.000Z",
+      "notes": ""
     },
     {
       "city": "Krefeld",
       "person": {
         "name": "user",
-        "email": "user1@example.com"
+        "email": "user1@example.com",
+        "birthdate": "undefined"
       },
       "active": true,
-      "count": 0
+      "count": 0,
+      "lastLogin": "",
+      "notes": null
     },
     {
       "city": "Düsseldorf",
       "person": {
         "name": "admin",
-        "email": "admin2@example.com"
+        "email": "admin2@example.com",
+        "birthdate": "1990-05-20T00:00:00.000Z"
       },
       "active": true,
-      "count": null
+      "count": null,
+      "lastLogin": null,
+      "notes": "undefined"
     },
     {
       "city": "Cologne",
       "person": {
         "name": "",
-        "email": "guest3@example.com"
+        "email": "guest3@example.com",
+        "birthdate": ""
       },
       "active": true,
-      "count": 24
+      "count": 24,
+      "lastLogin": "2024-01-15T15:30:00.000Z",
+      "notes": ""
+    },
+    {
+      "city": "Wuppertal",
+      "person": {
+        "name": "author",
+        "email": "author99@example.com"
+      },
+      "active": false,
+      "count": 68,
+      "lastLogin": "undefined",
+      "notes": ""
     },
     {
       "city": "Bonn",
@@ -896,15 +919,6 @@
       },
       "active": true,
       "count": 33
-    },
-    {
-      "city": "Wuppertal",
-      "person": {
-        "name": "author",
-        "email": "author99@example.com"
-      },
-      "active": false,
-      "count": 68
     }
   ]
 }

@@ -1382,6 +1382,8 @@ function countValues(
   const countsPerColumn: CountMap[] = headers.map((v, i) => ({}))
   const typesPerColumn: Set<string>[] = headers.map((v, i) => new Set())
 
+  // TODO: Duplicate code in counting loops and not tests!
+
   for (const row of input.values()) {
     // console.log(row);
     for (const [valueIndex, value] of row.entries()) {
@@ -1389,9 +1391,11 @@ function countValues(
 
       // Do not crash on oversized rows which do not have a header
       if (countsPerColumn[valueIndex]) {
-        countsPerColumn[valueIndex][value] = {
+        // Count null / undefined as empty string, will show up all as "empty" category then (assumed to be better UX for the simple facet filtering)
+        countsPerColumn[valueIndex][value ?? ""] = {
           valueCountTotal:
-            (countsPerColumn[valueIndex][value]?.valueCountTotal || 0) + 1,
+            (countsPerColumn[valueIndex][value ?? ""]?.valueCountTotal || 0) +
+            1,
           valueCountFiltered: 0,
           value: value, // Preserve original value (w/o converting to string)
         }
@@ -1405,8 +1409,8 @@ function countValues(
       // const currentColumn = headers[valueIndex];
       // Do not crash on oversized rows which do not have a header
       if (countsPerColumn[valueIndex]) {
-        countsPerColumn[valueIndex][value].valueCountFiltered =
-          countsPerColumn[valueIndex][value]?.valueCountFiltered + 1
+        countsPerColumn[valueIndex][value ?? ""].valueCountFiltered =
+          countsPerColumn[valueIndex][value ?? ""]?.valueCountFiltered + 1
       }
       if (typesPerColumn[valueIndex] && !isNil(value) && !(value === "")) {
         // console.log(value, value.constructor.name)
