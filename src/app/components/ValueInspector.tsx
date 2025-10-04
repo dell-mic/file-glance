@@ -1,6 +1,6 @@
 import { orderBy } from "lodash-es"
 import Accordion from "../../components/ui/Accordion"
-import { ColumnFilter } from "../home-page"
+import { ColumnFilter, FilterValue } from "../home-page"
 import React from "react"
 import MiddleEllipsis from "../../components/ui/MiddleEllipsis"
 
@@ -8,7 +8,7 @@ export const ValuesInspector = (props: {
   filters: ColumnFilter[]
   onFilterToggle: (
     columnIndex: number,
-    valueName: string,
+    filterValue: FilterValue,
     isAdding: boolean,
   ) => void
   columnValueCounts: ColumnInfos[]
@@ -68,11 +68,15 @@ export const ValuesInspector = (props: {
                     (_) => _.columnIndex === column.columnIndex,
                   )
 
-                  const isFilteredValue =
+                  const existingFilterForValue =
                     existingColFilter &&
-                    existingColFilter.includedValues.some(
-                      (fValue) => fValue === columnValue.valueName,
+                    existingColFilter.filterValues.find(
+                      (fValue) => fValue.value === columnValue.valueName,
                     )
+                  const isFilteredValue = !!existingFilterForValue
+
+                  const isExcludeFilter =
+                    isFilteredValue && !existingFilterForValue.included
 
                   const displayedValueCounts: string = isEffectivelyFiltered
                     ? `${columnValue.valueCountFiltered.toLocaleString()}\u2009/\u2009${columnValue.valueCountTotal.toLocaleString()}`
@@ -101,12 +105,23 @@ export const ValuesInspector = (props: {
                           }
                           props.onFilterToggle(
                             column.columnIndex,
-                            columnValue.valueName,
+                            {
+                              value: columnValue.valueName,
+                              included: !e.altKey,
+                            },
                             e.metaKey,
                           )
                         }}
                       >
                         <MiddleEllipsis>
+                          {isExcludeFilter && (
+                            <span
+                              className="mr-0.5 text-red-700"
+                              style={{ fontWeight: "bold" }}
+                            >
+                              ¬
+                            </span>
+                          )}
                           <span>{columnValue.valueName || "empty"}</span>
                         </MiddleEllipsis>
                       </a>

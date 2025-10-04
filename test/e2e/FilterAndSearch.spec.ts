@@ -21,7 +21,22 @@ test(`Searching in column`, async ({ page }) => {
 })
 
 test(`Filter on value`, async ({ page }) => {
+  // Includes filter variant
   await page.getByTestId("valueInspector_2_Age").click()
   await page.getByTestId("valueInspector_2_Age").locator("a").first().click()
+  await page
+    .getByTestId("valueInspector_2_Age")
+    .locator("a")
+    .nth(1)
+    .click({ modifiers: ["Meta"] })
+
+  // Excludes
+  await page.getByTestId("valueInspector_5_Country").click()
+  await page
+    .getByTestId("valueInspector_5_Country")
+    .locator("a")
+    .first()
+    .click({ modifiers: ["Alt"] })
+
   await expect(page).toHaveScreenshot()
 })

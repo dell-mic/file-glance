@@ -1,5 +1,5 @@
 import * as jschardet from "jschardet"
-import { maxBy, set, uniq } from "lodash-es"
+import { maxBy, set, uniq, isEqual } from "lodash-es"
 
 // Cache a default NumberFormat instance for repeated use instead of using toLocaleString(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
 const defaultNumberFormatter = new Intl.NumberFormat()
@@ -22,6 +22,10 @@ export function valueAsStringFormatted(v: any): string {
   } else {
     return valueAsStringUnformatted
   }
+}
+
+export function valueAsString(v: any): string {
+  return "" + v
 }
 
 // Proxy wrapper for each row to allow access by header name
@@ -885,9 +889,21 @@ export function findArrayProp(json: any): any[] | null {
 
 /**
  * Toggle item in array, if it exists remove it, otherwise add it
+ * Uses deep equality for objects.
  */
 export function addOrRemove(arr: any[], item: any): any[] {
-  return arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item]
+  const index = arr.findIndex((i) =>
+    typeof i === "object" &&
+    typeof item === "object" &&
+    i !== null &&
+    item !== null
+      ? isEqual(i, item)
+      : i === item,
+  )
+  if (index !== -1) {
+    return arr.filter((_, idx) => idx !== index)
+  }
+  return [...arr, item]
 }
 
 export function formatBytes(bytes: number, dp = 1): string {

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "curl --retry 10 --retry-delay 1 --retry-connrefused --silent --output /dev/null http://localhost:3000 & next dev --turbopack",
+    "dev": "curl --retry 5 --retry-delay 1 --retry-connrefused --silent --output /dev/null http://localhost:3000 & next dev --turbopack",
     "dev:https": "next dev --experimental-https",
     "build": "next build",
     "buildAndStart": "next build && serve out",

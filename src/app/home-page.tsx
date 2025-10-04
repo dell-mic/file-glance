@@ -2,7 +2,15 @@
 
 import React, { useCallback, useMemo } from "react"
 
-import { cloneDeep, isNil, maxBy, omit, orderBy } from "lodash-es"
+import {
+  cloneDeep,
+  groupBy,
+  isNil,
+  maxBy,
+  omit,
+  orderBy,
+  partition,
+} from "lodash-es"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
@@ -31,13 +39,14 @@ import {
   applyFilterFunction,
   getMaxStringLength,
   findArrayProp,
-  addOrRemove,
   formatBytes,
   cleanWorksheetName,
   cleanForFileName,
   trackEvent,
   createRowProxy,
   tryBase64Decode,
+  addOrRemove,
+  valueAsString,
 } from "@/utils"
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -492,7 +501,8 @@ export default function Home() {
           setFilterFunctionCode(project.filterFunction)
           setAppliedFilterFunctionCode(project.filterFunction)
         }
-        setFilters(project.filters || [])
+
+        setFilters(validateFiltersImport(project.filters))
         setSearch(project.search || "")
         setHiddenColumns(project.hiddenColumns || [])
         setSortSetting(project.sortSetting || null)
@@ -566,38 +576,45 @@ export default function Home() {
 
   const onFilterToggle = (
     columnIndex: number,
-    valueName: string,
+    filterValue: FilterValue,
     isAdding: boolean,
   ) => {
     let newColFilter: ColumnFilter
     const existingColFilter = filters.find((_) => _.columnIndex === columnIndex)
     // Easy case: No filter for this column so far => Simply add with clicked value
     if (!existingColFilter) {
-      newColFilter = { columnIndex: columnIndex, includedValues: [valueName] }
+      newColFilter = { columnIndex: columnIndex, filterValues: [filterValue] }
     } else {
       if (isAdding) {
         // With meta key pressed allow selecting of several values
         newColFilter = {
           columnIndex: columnIndex,
-          includedValues: addOrRemove(
-            existingColFilter.includedValues,
-            valueName,
-          ),
+          filterValues: existingColFilter.filterValues.find(
+            (ef) => ef.value === filterValue.value,
+          )
+            ? existingColFilter.filterValues.filter(
+                (iv) => iv.value !== filterValue.value,
+              )
+            : [...existingColFilter.filterValues, filterValue],
         }
       } else {
         // Deselect already selected / replace
         newColFilter = {
           columnIndex: columnIndex,
-          includedValues: existingColFilter.includedValues.includes(valueName)
-            ? existingColFilter.includedValues.filter((iv) => iv !== valueName)
-            : [valueName],
+          filterValues: existingColFilter.filterValues.find(
+            (ef) => ef.value === filterValue.value,
+          )
+            ? existingColFilter.filterValues.filter(
+                (iv) => iv.value !== filterValue.value,
+              )
+            : [filterValue],
         }
       }
     }
     const updatedFilters = [
       ...filters.filter((_) => _.columnIndex !== columnIndex),
       newColFilter,
-    ].filter((f) => f.includedValues.length)
+    ].filter((f) => f.filterValues.length)
     setFilters(updatedFilters)
   }
 
@@ -665,15 +682,50 @@ export default function Home() {
   const displayedDataFiltered = useMemo(() => {
     console.time("filterAndSorting")
 
+    const filtersFlat = filters.flatMap((f) =>
+      f.filterValues.map((fv) => ({ ...fv, columnIndex: f.columnIndex })),
+    )
+    const [includeFilters, excludeFilters] = partition(
+      filtersFlat,
+      (fv) => fv.included,
+    )
+      .map((ff) => groupBy(ff, "columnIndex"))
+      .map((fg) =>
+        Object.entries(fg).map((oe) => ({
+          columnIndex: Number(oe[0]),
+          filterValues: oe[1].map((fv) => omit(fv, "columnIndex")),
+        })),
+      )
+
     let filteredData = filters.length
-      ? displayedData.filter((row) =>
-          filters.every((filter) =>
-            filter.includedValues.some(
+      ? displayedData.filter((row) => {
+          const isExcluded = excludeFilters.some((filter) =>
+            filter.filterValues.some(
               (filterValue) =>
-                filterValue === valueAsStringFormatted(row[filter.columnIndex]),
+                filterValue.value === valueAsString(row[filter.columnIndex]),
             ),
-          ),
-        )
+          )
+
+          // Explicit exclusion should have priority when in doubt
+          if (isExcluded) {
+            return false
+          }
+
+          if (includeFilters.length) {
+            // For inclusion filter: Apply OR logic within the same column, but AND conjunction across columns
+            const isIncluded = includeFilters.every((filter) =>
+              filter.filterValues.some(
+                (filterValue) =>
+                  filterValue.value === valueAsString(row[filter.columnIndex]),
+              ),
+            )
+
+            return isIncluded
+          } else {
+            // No inclusion filter used => Do not filter any out & display all
+            return true
+          }
+        })
       : displayedData
 
     const searchSplits = search.split(":")
@@ -688,12 +740,8 @@ export default function Home() {
     filteredData = search.length
       ? filteredData.filter((row) =>
           isColumnSearch
-            ? valueAsStringFormatted(row[searchColumnIndex]).includes(
-                searchValue,
-              )
-            : row.some((value) =>
-                valueAsStringFormatted(value).includes(searchValue),
-              ),
+            ? searchMatch(row[searchColumnIndex], searchValue)
+            : row.some((value) => searchMatch(value, searchValue)),
         )
       : filteredData
 
@@ -815,7 +863,7 @@ export default function Home() {
         setFilterFunctionCode(transformerImport.filterFunction)
         setAppliedFilterFunctionCode(transformerImport.filterFunction)
       }
-      setFilters(transformerImport.filters || [])
+      setFilters(validateFiltersImport(transformerImport.filters))
       setSearch(transformerImport.search || "")
       setHiddenColumns(transformerImport.hiddenColumns || [])
       setSortSetting(transformerImport.sortSetting || null)
@@ -1457,7 +1505,49 @@ function countValues(
   return columnInfos
 }
 
+function searchMatch(cell: any, search: string): boolean {
+  return (
+    valueAsString(cell).includes(search) ||
+    valueAsStringFormatted(cell).includes(search)
+  )
+}
+
+// Support legacy format for downwards compatibility and simpler variant when create projects from other apps
+function instanceOfColumnFilterSimple(
+  object: any,
+): object is ColumnFilterSimple {
+  return "includedValues" in object
+}
+
+function validateFiltersImport(
+  filterToImport?: null | ColumnFilter[] | ColumnFilterSimple[],
+): ColumnFilter[] {
+  return (filterToImport || []).map((f) => {
+    if (instanceOfColumnFilterSimple(f)) {
+      return {
+        columnIndex: f.columnIndex,
+        filterValues: f.includedValues.map((ic) => ({
+          included: true,
+          value: ic,
+        })),
+      } as ColumnFilter
+    } else {
+      return f
+    }
+  })
+}
+
+export interface FilterValue {
+  value: string
+  included: boolean
+}
 export interface ColumnFilter {
+  columnIndex: number
+  filterValues: FilterValue[]
+}
+
+// Simple / legacy variant w/o include/exclude differentiation
+export interface ColumnFilterSimple {
   columnIndex: number
   includedValues: string[]
 }
@@ -1478,7 +1568,7 @@ export interface Transformer {
 interface ProjectExport {
   v?: number
   data: string
-  filters?: ColumnFilter[]
+  filters?: ColumnFilter[] | ColumnFilterSimple[]
   hiddenColumns?: number[]
   name?: string
   search?: string
