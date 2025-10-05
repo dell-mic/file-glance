@@ -1,11 +1,5 @@
 import { sum, uniq } from "lodash-es"
-import React, {
-  createRef,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react"
+import React, { createRef, useEffect, useState } from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 
 import {
@@ -79,6 +73,7 @@ export const DataTable = (props: {
   const rows = [props.headerRow, ...props.rows]
   const hiddenColumns = props.hiddenColumns
 
+  const RowHeight = 20 // px
   const OverScanScroll = 5
 
   // reset selection when rows change (e.g. when sorted)
@@ -87,6 +82,7 @@ export const DataTable = (props: {
     setNavigationDirection(null)
   }, [props.rows])
 
+  // Adjust scroll position when selected column near out of displayed range
   useEffect(() => {
     if (
       listRef?.current &&
@@ -113,6 +109,8 @@ export const DataTable = (props: {
   const leftColumnWidthPx = 380 + 24 // TODO: Hardcoded width for value inspector + padding/scrollbar etc; would better be dynamic
 
   const remainingWidth = windowWidth - leftColumnWidthPx - columnWidthSum
+  // console.log("remainingWidth", remainingWidth)
+  const isOverFlowingHorizontally = remainingWidth < 0
 
   const growthFactor = (remainingWidth * 1.0) / columnWidthSum + 1
   const MinGrowthFactor = 1
@@ -371,6 +369,9 @@ export const DataTable = (props: {
   return (
     <div
       className="data-table h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-xs"
+      style={{
+        paddingBottom: isOverFlowingHorizontally ? RowHeight : undefined, // Make space for horizontal scrollbar, such that it does not overlap content
+      }}
       data-testid="DataTable"
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -432,7 +433,7 @@ export const DataTable = (props: {
             stickyIndices={[0]}
             height={height}
             itemCount={rows.length}
-            itemSize={20}
+            itemSize={RowHeight}
             overscanCount={50}
             width={tableWidth}
             hiddenColumns={hiddenColumns}
