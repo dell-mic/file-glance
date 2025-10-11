@@ -28,6 +28,14 @@ export function valueAsString(v: any): string {
   return "" + v
 }
 
+export function valueAsStringSimplified(v: any): string {
+  if (v === "" || v === null || v === undefined) {
+    return ""
+  } else {
+    return valueAsString(v)
+  }
+}
+
 // Proxy wrapper for each row to allow access by header name
 export function createRowProxy(row: any[], headers: string[]) {
   return new Proxy(row, {

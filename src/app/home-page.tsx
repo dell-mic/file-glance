@@ -47,6 +47,7 @@ import {
   tryBase64Decode,
   addOrRemove,
   valueAsString,
+  valueAsStringSimplified,
 } from "@/utils"
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -123,193 +124,263 @@ export default function Home() {
     e.stopPropagation()
   }
 
-  const parseFile = async (file: File, hideEmptyColumns: boolean) => {
-    console.time("parseFile")
-    //Reset all properties to initial state
-    setHiddenColumns([])
-    setOpenAccordions([])
-    setTransformers([])
-    setSearch("")
-    setFilters([])
-    setFilterFunctionCode("")
+  const importProject = useCallback(
+    (p: ProjectExport | string): void => {
+      try {
+        const project: ProjectExport = typeof p === "string" ? JSON.parse(p) : p
+        // console.log(project)
 
-    setDataIncludesHeaderRow(false)
-    setDataFormatAlwaysIncludesHeader(false)
-    setAppliedFilterFunctionCode(null)
-    setSortSetting(null)
-    setPopoverAnchorElement(null)
+        // parseText(project.data, project.name, false)
+        let data, _headerRow: string[]
 
-    setParsingState("parsing")
-    let data: any[][] = []
-    let _headerRow: string[] = []
-    let isHeaderSet = false
-    let errorMessage = ""
+        const maybeJson = tryParseJSONObject(project.data)
 
-    // Import full project (no postprocessing needed / return early)
-    if (file.name.toLowerCase().endsWith(".fg")) {
-      const data = await file.arrayBuffer()
-      const project = await decompressString(data)
-      importProject(project)
-      return
-    }
-
-    // Parse data/content from file (including some postprocessing)
-    if (file.name.toLowerCase().endsWith(".xlsx")) {
-      const fileAsArrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(fileAsArrayBuffer, { cellDates: true })
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      // Get the range of the sheet
-      const ref = firstSheet["!ref"]
-      if (!ref) {
-        data = []
-      } else {
-        const range = XLSX.utils.decode_range(ref)
-        const rows: any[][] = []
-        for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
-          const row: any[] = []
-          for (let colIdx = range.s.c; colIdx <= range.e.c; colIdx++) {
-            const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx })
-            const cell: CellObject = firstSheet[cellRef]
-            if (!cell) {
-              row.push("")
-            } else if (cell.t === "d" && cell.v instanceof Date) {
-              row.push(cell.v)
-            } else if (cell.t === "n") {
-              row.push(cell.v)
-            } else if (cell.t === "b") {
-              row.push(!!cell.v)
-            } else if (cell.t === "e") {
-              row.push(null)
-            } else {
-              row.push(cell.v)
-            }
-          }
-          rows.push(row)
-        }
-        data = rows
-      }
-    } else if (file.name.toLowerCase().endsWith(".json")) {
-      const contentAsText: string = await readFileToString(file)
-
-      const parsedContent: any = JSON.parse(contentAsText)
-
-      const arrayData = findArrayProp(parsedContent)
-
-      if (arrayData) {
-        const jsonAsTable = jsonToTable(arrayData)
-        data = jsonAsTable.data
-        _headerRow = jsonAsTable.headerRow
-        isHeaderSet = true
-        setDataFormatAlwaysIncludesHeader(true)
-        setDataIncludesHeaderRow(true)
-      } else {
-        data = []
-        _headerRow = []
-        errorMessage = "No array in JSON found"
-      }
-    } else if (file.name.toLowerCase().endsWith(".md")) {
-      const contentAsText: string = await readFileToString(file)
-
-      const markdownParsingResult = parseMarkdownTable(contentAsText)
-      data = markdownParsingResult.rows
-      _headerRow = markdownParsingResult.headerRow
-      isHeaderSet = true
-      setDataFormatAlwaysIncludesHeader(true)
-      setDataIncludesHeaderRow(true)
-      // console.log(
-      //   "Parsed as markdown with headers:",
-      //   markdownParsingResult.headerRow,
-      // )
-    } else {
-      const contentAsText: string = await readFileToString(file)
-
-      // Assume somehow-Separated text
-      console.time("detectDelimiter")
-      const delimiter = detectDelimiter(contentAsText)
-      console.timeEnd("detectDelimiter")
-      console.log("detected delimiter: ", delimiter)
-      if (delimiter) {
-        try {
-          data = parse(contentAsText, {
-            delimiter,
+        // For legacy reasons assume CSV if not valid JSON
+        if (!maybeJson) {
+          data = parse(project.data, {
+            delimiter: ExportDelimiter_v1,
             bom: true,
             skip_empty_lines: true,
             relax_column_count: true,
-            relax_quotes: true,
           })
-        } catch (err) {
-          console.error(err)
-          errorMessage = "Parsing failed"
-        }
-      } else {
-        errorMessage = "No delimiter detected"
-      }
-
-      // console.log(data)
-    }
-
-    if (data.length) {
-      const longestRowLength = maxBy(data, (d) => d.length)!.length
-      if (!isHeaderSet) {
-        console.time("hasHeader")
-        const headerDetected = hasHeader(data)
-        console.timeEnd("hasHeader")
-        console.log("headerDetected", headerDetected)
-        setDataIncludesHeaderRow(headerDetected)
-        // header row detection and synthetic generation if not present
-        if (headerDetected) {
           _headerRow = data.shift()!
-          _headerRow = generateHeaderRow(longestRowLength, _headerRow)
         } else {
-          _headerRow = generateHeaderRow(longestRowLength)
+          const parsed = jsonToTable(maybeJson)
+          data = parsed.data
+          _headerRow = parsed.headerRow
         }
+
+        setDataIncludesHeaderRow(true)
+        setDataFormatAlwaysIncludesHeader(true)
+        setTransformers(
+          (project.transformers || []).map((t) => ({
+            ...t,
+            transformer: compileTransformerCode(t.transformerFunctionCode)
+              .transformer!,
+          })),
+        )
+        if (project.filterFunction) {
+          setFilterFunctionCode(project.filterFunction)
+          setAppliedFilterFunctionCode(project.filterFunction)
+        }
+
+        setFilters(validateFiltersImport(project.filters))
+        setSearch(project.search || "")
+        setHiddenColumns(project.hiddenColumns || [])
+        setSortSetting(project.sortSetting || null)
+        setData(
+          generateSyntheticFile(project.data, project.name || "URL data"),
+          _headerRow,
+          data,
+          false,
+        )
+        toast({
+          title: project.name + " loaded",
+          description: data.length + " lines",
+          variant: "success",
+        })
+      } catch (error) {
+        // Most probably incomplete/corrupted URL data
+        console.error(error)
+        toast({
+          title: "Import failed",
+          variant: "error",
+        })
+        setParsingState("initial")
+      }
+    },
+    [toast],
+  )
+
+  const parseFile = useCallback(
+    async (file: File, hideEmptyColumns: boolean) => {
+      console.time("parseFile")
+      //Reset all properties to initial state
+      setHiddenColumns([])
+      setOpenAccordions([])
+      setTransformers([])
+      setSearch("")
+      setFilters([])
+      setFilterFunctionCode("")
+
+      setDataIncludesHeaderRow(false)
+      setDataFormatAlwaysIncludesHeader(false)
+      setAppliedFilterFunctionCode(null)
+      setSortSetting(null)
+      setPopoverAnchorElement(null)
+
+      setParsingState("parsing")
+      let data: any[][] = []
+      let _headerRow: string[] = []
+      let isHeaderSet = false
+      let errorMessage = ""
+
+      // Import full project (no postprocessing needed / return early)
+      if (file.name.toLowerCase().endsWith(".fg")) {
+        const data = await file.arrayBuffer()
+        const project = await decompressString(data)
+        importProject(project)
+        return
       }
 
-      // Fill shorter rows with null values if needed
-      for (const row of data) {
-        if (row.length < longestRowLength) {
-          row.push(...Array(longestRowLength - row.length).fill(null))
+      // Parse data/content from file (including some postprocessing)
+      if (file.name.toLowerCase().endsWith(".xlsx")) {
+        const fileAsArrayBuffer = await file.arrayBuffer()
+        const workbook = XLSX.read(fileAsArrayBuffer, { cellDates: true })
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+        // Get the range of the sheet
+        const ref = firstSheet["!ref"]
+        if (!ref) {
+          data = []
+        } else {
+          const range = XLSX.utils.decode_range(ref)
+          const rows: any[][] = []
+          for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
+            const row: any[] = []
+            for (let colIdx = range.s.c; colIdx <= range.e.c; colIdx++) {
+              const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx })
+              const cell: CellObject = firstSheet[cellRef]
+              if (!cell) {
+                row.push("")
+              } else if (cell.t === "d" && cell.v instanceof Date) {
+                row.push(cell.v)
+              } else if (cell.t === "n") {
+                row.push(cell.v)
+              } else if (cell.t === "b") {
+                row.push(!!cell.v)
+              } else if (cell.t === "e") {
+                row.push(null)
+              } else {
+                row.push(cell.v)
+              }
+            }
+            rows.push(row)
+          }
+          data = rows
         }
+      } else if (file.name.toLowerCase().endsWith(".json")) {
+        const contentAsText: string = await readFileToString(file)
+
+        const parsedContent: any = JSON.parse(contentAsText)
+
+        const arrayData = findArrayProp(parsedContent)
+
+        if (arrayData) {
+          const jsonAsTable = jsonToTable(arrayData)
+          data = jsonAsTable.data
+          _headerRow = jsonAsTable.headerRow
+          isHeaderSet = true
+          setDataFormatAlwaysIncludesHeader(true)
+          setDataIncludesHeaderRow(true)
+        } else {
+          data = []
+          _headerRow = []
+          errorMessage = "No array in JSON found"
+        }
+      } else if (file.name.toLowerCase().endsWith(".md")) {
+        const contentAsText: string = await readFileToString(file)
+
+        const markdownParsingResult = parseMarkdownTable(contentAsText)
+        data = markdownParsingResult.rows
+        _headerRow = markdownParsingResult.headerRow
+        isHeaderSet = true
+        setDataFormatAlwaysIncludesHeader(true)
+        setDataIncludesHeaderRow(true)
+        // console.log(
+        //   "Parsed as markdown with headers:",
+        //   markdownParsingResult.headerRow,
+        // )
+      } else {
+        const contentAsText: string = await readFileToString(file)
+
+        // Assume somehow-Separated text
+        console.time("detectDelimiter")
+        const delimiter = detectDelimiter(contentAsText)
+        console.timeEnd("detectDelimiter")
+        console.log("detected delimiter: ", delimiter)
+        if (delimiter) {
+          try {
+            data = parse(contentAsText, {
+              delimiter,
+              bom: true,
+              skip_empty_lines: true,
+              relax_column_count: true,
+              relax_quotes: true,
+            })
+          } catch (err) {
+            console.error(err)
+            errorMessage = "Parsing failed"
+          }
+        } else {
+          errorMessage = "No delimiter detected"
+        }
+
+        // console.log(data)
       }
 
-      toast({
-        title: file.name + " parsed",
-        description: data.length + " lines found",
-        variant: "success",
-      })
-      setData(file, _headerRow, data, hideEmptyColumns)
-    } else {
-      console.error(errorMessage)
-      toast({
-        title: "File not supported!",
-        description: errorMessage,
-        variant: "error",
-      })
-      setData(null, [], [], true)
-    }
-    console.timeEnd("parseFile")
-  }
+      if (data.length) {
+        const longestRowLength = maxBy(data, (d) => d.length)!.length
+        if (!isHeaderSet) {
+          console.time("hasHeader")
+          const headerDetected = hasHeader(data)
+          console.timeEnd("hasHeader")
+          console.log("headerDetected", headerDetected)
+          setDataIncludesHeaderRow(headerDetected)
+          // header row detection and synthetic generation if not present
+          if (headerDetected) {
+            _headerRow = data.shift()!
+            _headerRow = generateHeaderRow(longestRowLength, _headerRow)
+          } else {
+            _headerRow = generateHeaderRow(longestRowLength)
+          }
+        }
 
-  const parseText = (
-    text: string,
-    syntheticFileName: string,
-    hideEmptyColumns: boolean,
-  ) => {
-    setParsingState("parsing")
-    // detect if text looks like proper json
-    const isJson = tryParseJSONObject(text) !== false
-    if (isJson) {
-      syntheticFileName += ".json"
-    } else if (isMarkdownTable(text)) {
-      syntheticFileName += ".md"
-    } else {
-      // If no ending parsing logic will attempt CSV parings
-    }
+        // Fill shorter rows with null values if needed
+        for (const row of data) {
+          if (row.length < longestRowLength) {
+            row.push(...Array(longestRowLength - row.length).fill(null))
+          }
+        }
 
-    // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
-    const syntheticFile = generateSyntheticFile(text, syntheticFileName)
-    parseFile(syntheticFile, hideEmptyColumns)
-  }
+        toast({
+          title: file.name + " parsed",
+          description: data.length + " lines found",
+          variant: "success",
+        })
+        setData(file, _headerRow, data, hideEmptyColumns)
+      } else {
+        console.error(errorMessage)
+        toast({
+          title: "File not supported!",
+          description: errorMessage,
+          variant: "error",
+        })
+        setData(null, [], [], true)
+      }
+      console.timeEnd("parseFile")
+    },
+    [importProject, toast],
+  )
+
+  const parseText = useCallback(
+    (text: string, syntheticFileName: string, hideEmptyColumns: boolean) => {
+      setParsingState("parsing")
+      // detect if text looks like proper json
+      const isJson = tryParseJSONObject(text) !== false
+      if (isJson) {
+        syntheticFileName += ".json"
+      } else if (isMarkdownTable(text)) {
+        syntheticFileName += ".md"
+      } else {
+        // If no ending parsing logic will attempt CSV parings
+      }
+
+      // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
+      const syntheticFile = generateSyntheticFile(text, syntheticFileName)
+      parseFile(syntheticFile, hideEmptyColumns)
+    },
+    [parseFile],
+  )
 
   const onGenerateSampleData = (rowsAmount = 1337) => {
     const simulatedFileBytes = Array.from(
@@ -461,74 +532,6 @@ export default function Home() {
       window.removeEventListener("mouseout", handleWindowMouseOut)
     }
   }, [])
-
-  const importProject = useCallback(
-    (p: ProjectExport | string): void => {
-      try {
-        const project: ProjectExport = typeof p === "string" ? JSON.parse(p) : p
-        // console.log(project)
-
-        // parseText(project.data, project.name, false)
-        let data, _headerRow: string[]
-
-        const maybeJson = tryParseJSONObject(project.data)
-
-        // For legacy reasons assume CSV if not valid JSON
-        if (!maybeJson) {
-          data = parse(project.data, {
-            delimiter: ExportDelimiter_v1,
-            bom: true,
-            skip_empty_lines: true,
-            relax_column_count: true,
-          })
-          _headerRow = data.shift()!
-        } else {
-          const parsed = jsonToTable(maybeJson)
-          data = parsed.data
-          _headerRow = parsed.headerRow
-        }
-
-        setDataIncludesHeaderRow(true)
-        setDataFormatAlwaysIncludesHeader(true)
-        setTransformers(
-          (project.transformers || []).map((t) => ({
-            ...t,
-            transformer: compileTransformerCode(t.transformerFunctionCode)
-              .transformer!,
-          })),
-        )
-        if (project.filterFunction) {
-          setFilterFunctionCode(project.filterFunction)
-          setAppliedFilterFunctionCode(project.filterFunction)
-        }
-
-        setFilters(validateFiltersImport(project.filters))
-        setSearch(project.search || "")
-        setHiddenColumns(project.hiddenColumns || [])
-        setSortSetting(project.sortSetting || null)
-        setData(
-          generateSyntheticFile(project.data, project.name || "URL data"),
-          _headerRow,
-          data,
-          false,
-        )
-        toast({
-          title: project.name + " loaded",
-          description: data.length + " lines",
-          variant: "success",
-        })
-      } catch (error) {
-        // Most probably incomplete/corrupted URL data
-        console.error(error)
-        toast({
-          title: "Import failed",
-          variant: "error",
-        })
-        setParsingState("initial")
-      }
-    },
-    [toast],
-  )
 
   // Check URL for data/project hash
   React.useEffect(() => {
@@ -702,7 +705,8 @@ export default function Home() {
           const isExcluded = excludeFilters.some((filter) =>
             filter.filterValues.some(
               (filterValue) =>
-                filterValue.value === valueAsString(row[filter.columnIndex]),
+                filterValue.value ===
+                valueAsStringSimplified(row[filter.columnIndex]),
             ),
           )
 
@@ -716,7 +720,8 @@ export default function Home() {
             const isIncluded = includeFilters.every((filter) =>
               filter.filterValues.some(
                 (filterValue) =>
-                  filterValue.value === valueAsString(row[filter.columnIndex]),
+                  filterValue.value ===
+                  valueAsStringSimplified(row[filter.columnIndex]),
               ),
             )
 
