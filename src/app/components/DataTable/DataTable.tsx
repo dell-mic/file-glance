@@ -1,5 +1,5 @@
 import { sum, uniq } from "lodash-es"
-import React, { createRef, useEffect, useState } from "react"
+import React, { createRef, useEffect, useState, useMemo } from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 
 import {
@@ -20,7 +20,7 @@ import useWindowDimensions from "../../../hooks/useWindowDimensions"
 import { SortSetting } from "../../home-page"
 import { innerElementType, Row, StickyList } from "./VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
-import { compileTransformerCode } from "@/utils"
+import { compileTransformerCode, getScrollbarWidth } from "@/utils"
 import TransformDialog from "../TransformDialog"
 import useKeyPress from "@/hooks/useKeyPress"
 import { FixedSizeList } from "react-window"
@@ -66,6 +66,8 @@ export const DataTable = (props: {
   const [navigationDirection, setNavigationDirection] = useState<
     "up" | "down" | null
   >(null)
+
+  const scrollbarWidth = useMemo(() => getScrollbarWidth(), [])
 
   const listRef = createRef<FixedSizeList>()
 
@@ -370,7 +372,7 @@ export const DataTable = (props: {
     <div
       className="data-table h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-xs"
       style={{
-        paddingBottom: isOverFlowingHorizontally ? RowHeight : undefined, // Make space for horizontal scrollbar, such that it does not overlap content
+        paddingBottom: isOverFlowingHorizontally ? scrollbarWidth : undefined, // Make space for horizontal scrollbar, such that it does not overlap content
       }}
       data-testid="DataTable"
       tabIndex={0}
