@@ -7,7 +7,12 @@ import {
   ArrowDownIcon as ArrowDownIconMicro,
 } from "@heroicons/react/16/solid"
 
-import { isLink, valueAsStringFormatted } from "@/utils"
+import {
+  isEmptyArray,
+  isLink,
+  isNonEmptyArray,
+  valueAsStringFormatted,
+} from "@/utils"
 import { SortSetting } from "../../home-page"
 import { cva } from "class-variance-authority"
 import { cloneDeep } from "lodash-es"
@@ -62,7 +67,7 @@ const cellClass = cva(
   "p-0.5 text-xs overflow-hidden whitespace-nowrap text-ellipsis",
   {
     variants: {
-      isTypedValue: {
+      isNumber: {
         true: "text-blue-900",
         false: "",
       },
@@ -72,6 +77,14 @@ const cellClass = cva(
       },
       booleanFalse: {
         true: "text-red-900",
+        false: "",
+      },
+      isArray: {
+        true: "text-purple-950",
+        false: "",
+      },
+      isDate: {
+        true: "text-cyan-900",
         false: "",
       },
       isEmpty: {
@@ -132,10 +145,30 @@ export const Row = (
           const _valueAsStringRow = "" + v
           let isEmpty = false
           let valueCell
+
           const isTypedValue = typeof v !== "string"
-          const booleanTrue = v === true
-          const booleanFalse = v === false
-          if (_valueAsStringFormatted) {
+
+          let isNumber = false
+          let isDate = false
+          let isArray = false
+          let booleanTrue = false
+          let booleanFalse = false
+
+          if (isTypedValue) {
+            if (typeof v === "number") {
+              isNumber = true
+            } else if (v === true) {
+              booleanTrue = true
+            } else if (v === false) {
+              booleanFalse = true
+            } else if (v instanceof Date) {
+              isDate = true
+            } else if (Array.isArray(v)) {
+              isArray = true
+            }
+          }
+
+          if (_valueAsStringFormatted || isNonEmptyArray(v)) {
             valueCell = _valueAsStringFormatted
           } else {
             valueCell = "empty"
@@ -147,6 +180,8 @@ export const Row = (
             title = isTypedValue
               ? `${_valueAsStringRow} [${v.constructor.name}]`
               : _valueAsStringRow
+          } else if (isEmptyArray(v)) {
+            title = `${JSON.stringify(v)} [${v.constructor.name}]`
           } else if (_valueAsStringRow === "") {
             title = "(empty string)"
           } else {
@@ -164,9 +199,10 @@ export const Row = (
                 key={vi}
                 title={title}
                 className={cellClass({
-                  isTypedValue: false,
+                  isNumber: false,
                   booleanTrue,
                   booleanFalse,
+                  isArray,
                   isEmpty,
                   isMetaPressed,
                   isLink: true,
@@ -186,7 +222,9 @@ export const Row = (
                 key={vi}
                 title={title}
                 className={cellClass({
-                  isTypedValue: isTypedValue && typeof v !== "boolean",
+                  isNumber,
+                  isArray,
+                  isDate,
                   booleanTrue,
                   booleanFalse,
                   isEmpty,

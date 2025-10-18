@@ -1017,3 +1017,10 @@ export function getScrollbarWidth(): number {
 
   return scrollbarWidth
 }
+
+export function isNonEmptyArray(v: any): boolean {
+  return Array.isArray(v) && v.length > 0
+}
+export function isEmptyArray(v: any): boolean {
+  return Array.isArray(v) && v.length === 0
+}

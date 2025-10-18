@@ -131,6 +131,15 @@ export const ValuesInspector = (props: {
                     </div>
                   )
                 })}
+
+              {column.columnType === "Array" && (
+                <div className="text-xs text-gray-500 italic mt-1">
+                  Note: Values have been flattened for filtering and will use an{" "}
+                  <span className="font-mono">includes</span> check when
+                  selected.
+                </div>
+              )}
+
               {columnValues.length >
               (valuesDisplayed[column.columnIndex] ||
                 ValuesDisplayedInitially) ? (
@@ -164,6 +173,7 @@ export interface ColumnInfos {
 
 export interface ColumnValues {
   value: any
+  originalValue: any
   valueName: string
   valueCountTotal: number
   valueCountFiltered: number

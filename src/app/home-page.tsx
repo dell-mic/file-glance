@@ -48,6 +48,7 @@ import {
   addOrRemove,
   valueAsString,
   valueAsStringSimplified,
+  isNonEmptyArray,
 } from "@/utils"
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -703,11 +704,24 @@ export default function Home() {
     let filteredData = filters.length
       ? displayedData.filter((row) => {
           const isExcluded = excludeFilters.some((filter) =>
-            filter.filterValues.some(
-              (filterValue) =>
-                filterValue.value ===
-                valueAsStringSimplified(row[filter.columnIndex]),
-            ),
+            filter.filterValues.some((filterValue) => {
+              if (Array.isArray(row[filter.columnIndex])) {
+                if (filterValue.value) {
+                  return row[filter.columnIndex].some(
+                    (cellValue: any) =>
+                      filterValue.value === valueAsStringSimplified(cellValue),
+                  )
+                } else {
+                  // "Empty" filter case => Exclude also empty arrays
+                  return row[filter.columnIndex].length === 0
+                }
+              } else {
+                return (
+                  filterValue.value ===
+                  valueAsStringSimplified(row[filter.columnIndex])
+                )
+              }
+            }),
           )
 
           // Explicit exclusion should have priority when in doubt
@@ -718,11 +732,25 @@ export default function Home() {
           if (includeFilters.length) {
             // For inclusion filter: Apply OR logic within the same column, but AND conjunction across columns
             const isIncluded = includeFilters.every((filter) =>
-              filter.filterValues.some(
-                (filterValue) =>
-                  filterValue.value ===
-                  valueAsStringSimplified(row[filter.columnIndex]),
-              ),
+              filter.filterValues.some((filterValue) => {
+                if (Array.isArray(row[filter.columnIndex])) {
+                  if (filterValue.value) {
+                    return row[filter.columnIndex].some(
+                      (cellValue: any) =>
+                        filterValue.value ===
+                        valueAsStringSimplified(cellValue),
+                    )
+                  } else {
+                    // "Empty" filter case => Include also empty arrays
+                    return row[filter.columnIndex].length === 0
+                  }
+                } else {
+                  return (
+                    filterValue.value ===
+                    valueAsStringSimplified(row[filter.columnIndex])
+                  )
+                }
+              }),
             )
 
             return isIncluded
@@ -1422,55 +1450,100 @@ type ValuInfos = {
   valueCountTotal: number
   valueCountFiltered: number
   value: any
+  originalValue: any
 }
 
 type CountMap = Record<string, ValuInfos>
 
 function countValues(
   headers: string[],
-  input: string[][],
-  inputFiltered: string[][],
+  input: any[][],
+  inputFiltered: any[][],
 ): ColumnInfos[] {
   console.time("countValues")
   const countsPerColumn: CountMap[] = headers.map((v, i) => ({}))
   const typesPerColumn: Set<string>[] = headers.map((v, i) => new Set())
 
-  // TODO: Duplicate code in counting loops and not tests!
+  // TODO: Duplicate code in counting loops and no tests!
 
-  for (const row of input.values()) {
-    // console.log(row);
-    for (const [valueIndex, value] of row.entries()) {
-      // const currentColumn = headers[valueIndex];
+  const countConfigs: Array<{
+    input: any[][]
+    name: "valueCountTotal" | "valueCountFiltered"
+    inferType: boolean
+  }> = [
+    {
+      input: input,
+      name: "valueCountTotal",
+      inferType: false,
+    },
+    {
+      input: inputFiltered,
+      name: "valueCountFiltered",
+      inferType: true,
+    },
+  ]
 
-      // Do not crash on oversized rows which do not have a header
-      if (countsPerColumn[valueIndex]) {
-        // Count null / undefined as empty string, will show up all as "empty" category then (assumed to be better UX for the simple facet filtering)
-        countsPerColumn[valueIndex][value ?? ""] = {
-          valueCountTotal:
-            (countsPerColumn[valueIndex][value ?? ""]?.valueCountTotal || 0) +
-            1,
-          valueCountFiltered: 0,
-          value: value, // Preserve original value (w/o converting to string)
+  for (const countConfig of countConfigs) {
+    for (const row of countConfig.input.values()) {
+      // console.log(row);
+      for (const [valueIndex, value] of row.entries()) {
+        // const currentColumn = headers[valueIndex];
+        // Do not crash on oversized rows which do not have a header
+        if (countsPerColumn[valueIndex]) {
+          // Flatten arrays to allow filtering for individual members instead of string representation of array (on first level only)
+          for (const flattenedValue of isNonEmptyArray(value)
+            ? value
+            : [value]) {
+            // Count null / undefined as empty string, will show up all as "empty" category then (assumed to be better UX for the simple facet filtering)
+            const valueCountKey = flattenedValue ?? ""
+            let valueCounts = countsPerColumn[valueIndex][valueCountKey]
+
+            // Init count values
+            if (!valueCounts) {
+              valueCounts = {
+                valueCountTotal: 0,
+                valueCountFiltered: 0,
+                value: flattenedValue, // Preserve original value (w/o converting to string)
+                originalValue: value, // Need to keep the unflattened value for transformer case
+              }
+              countsPerColumn[valueIndex][valueCountKey] = valueCounts
+            }
+
+            valueCounts[countConfig.name] = valueCounts[countConfig.name] + 1
+          }
+          if (countConfig.inferType) {
+            if (
+              typesPerColumn[valueIndex] &&
+              !isNil(value) &&
+              !(value === "")
+            ) {
+              // console.log(value, value.constructor.name)
+              typesPerColumn[valueIndex].add(value.constructor.name)
+            }
+          }
         }
       }
     }
   }
 
-  for (const row of inputFiltered.values()) {
-    // console.log(row);
-    for (const [valueIndex, value] of row.entries()) {
-      // const currentColumn = headers[valueIndex];
-      // Do not crash on oversized rows which do not have a header
-      if (countsPerColumn[valueIndex]) {
-        countsPerColumn[valueIndex][value ?? ""].valueCountFiltered =
-          countsPerColumn[valueIndex][value ?? ""]?.valueCountFiltered + 1
-      }
-      if (typesPerColumn[valueIndex] && !isNil(value) && !(value === "")) {
-        // console.log(value, value.constructor.name)
-        typesPerColumn[valueIndex].add(value.constructor.name)
-      }
-    }
-  }
+  // for (const row of input.values()) {
+  //   // console.log(row);
+  //   for (const [valueIndex, value] of row.entries()) {
+  //     // const currentColumn = headers[valueIndex];
+
+  //     // Do not crash on oversized rows which do not have a header
+  //     if (countsPerColumn[valueIndex]) {
+  //       // Count null / undefined as empty string, will show up all as "empty" category then (assumed to be better UX for the simple facet filtering)
+  //       countsPerColumn[valueIndex][value ?? ""] = {
+  //         valueCountTotal:
+  //           (countsPerColumn[valueIndex][value ?? ""]?.valueCountTotal || 0) +
+  //           1,
+  //         valueCountFiltered: 0,
+  //         value: value, // Preserve original value (w/o converting to string)
+  //       }
+  //     }
+  //   }
+  // }
 
   const columnInfos = countsPerColumn.map((v, i) => {
     const columnIndex = i
@@ -1480,6 +1553,7 @@ function countValues(
       valueCountTotal: e[1].valueCountTotal,
       valueCountFiltered: e[1].valueCountFiltered,
       value: e[1].value,
+      originalValue: e[1].originalValue,
     }))
 
     const valuesMaxLength = getMaxStringLength(

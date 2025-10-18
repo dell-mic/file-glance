@@ -172,7 +172,7 @@ export const DataTable = (props: {
       const sampleValues = sampleValuesFromArray(
         props.columnValueCounts
           .find((cvc) => cvc.columnIndex === popoverColumnIndex)!
-          .columnValues.map((cv) => cv.value)
+          .columnValues.map((cv) => cv.originalValue)
           .slice()
           .sort(),
       )
