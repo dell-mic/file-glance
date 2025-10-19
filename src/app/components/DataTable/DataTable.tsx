@@ -402,7 +402,6 @@ export const DataTable = (props: {
           onNewColNameChange={setNewColName}
           onTransformerCodeChange={handleTransformerCodeChanged}
           onApply={() => {
-
             if (!transformerValidation?.compilationError) {
               props.onTransformerAdded({
                 columnIndex: popoverColumnIndex!,
