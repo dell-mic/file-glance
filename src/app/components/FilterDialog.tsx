@@ -128,7 +128,12 @@ return rowIndex < ${topX}`)
       } else {
         const cache = {}
         const count = displayedData.filter((row, i) =>
-          applyFilterFunction(row, i, compiled.filter!, cache),
+          applyFilterFunction(
+            createRowProxy(row, headerRow),
+            i,
+            compiled.filter!,
+            cache,
+          ),
         ).length
         setFilterValidationResult({
           error: null,

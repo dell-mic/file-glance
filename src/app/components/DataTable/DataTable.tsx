@@ -1,5 +1,5 @@
-import { sum, uniq } from "lodash-es"
-import React, { createRef, useEffect, useState, useMemo } from "react"
+import { orderBy, sum, uniq } from "lodash-es"
+import React, { createRef, useEffect, useState, useMemo, useRef } from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 
 import {
@@ -17,10 +17,9 @@ import "./DataTable.css"
 import { ColumnInfos } from "../ValueInspector"
 import { MenuPopover } from "../../../components/ui/Popover"
 import useWindowDimensions from "../../../hooks/useWindowDimensions"
-import { SortSetting } from "../../home-page"
 import { innerElementType, Row, StickyList } from "./VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
-import { compileTransformerCode, getScrollbarWidth } from "@/utils"
+import { getScrollbarWidth, SortSetting } from "@/utils"
 import TransformDialog from "../TransformDialog"
 import useKeyPress from "@/hooks/useKeyPress"
 import { FixedSizeList } from "react-window"
@@ -33,7 +32,6 @@ export interface SortEvent {
 export interface TransformerAddedEvent {
   columnIndex: number
   transformerFunctionCode: string
-  transformer: Function
   asNewColumn: boolean
   newColumnName: string
 }
@@ -51,15 +49,17 @@ interface TransformerValidation {
 export const DataTable = (props: {
   headerRow: string[]
   rows: Array<Array<any>>
-  columnValueCounts: ColumnInfos[]
+  columnInfos: ColumnInfos[]
   hiddenColumns: number[]
   sortSetting: SortSetting | null
   onSortingChange: (e: SortEvent) => void
   onTransformerAdded: (e: TransformerAddedEvent) => void
+  style?: React.CSSProperties
 }) => {
   const { width: windowWidth } = useWindowDimensions()
 
   const { toast } = useToast()
+  const transformerValidationWorkerRef = useRef<Worker>(null)
   const isMetaPressed = useKeyPress("Meta")
 
   const [selectedRow, setSelectedRow] = useState<number | null>(null)
@@ -77,6 +77,27 @@ export const DataTable = (props: {
 
   const RowHeight = 20 // px
   const OverScanScroll = 5
+
+  useEffect(() => {
+    const transformerValidationWorker = new Worker(
+      new URL(
+        "../../../worker/transformerValidationWorker.ts",
+        import.meta.url,
+      ),
+    )
+
+    transformerValidationWorker.onmessage = (
+      event: MessageEvent<TransformerValidation>,
+    ) => {
+      // console.log("response from worker", event.data)
+      setTransformerValidation(event.data)
+    }
+    transformerValidationWorkerRef.current = transformerValidationWorker
+    return () => {
+      transformerValidationWorkerRef.current = null
+      transformerValidationWorker.terminate()
+    }
+  }, [])
 
   // reset selection when rows change (e.g. when sorted)
   useEffect(() => {
@@ -98,10 +119,10 @@ export const DataTable = (props: {
       listRef.current.scrollToItem(scrollToRow)
       // console.log("listRef.current.scrollToItem", scrollToRow, selectedRow, listRef, navigationDirection, rows.length)
     }
-    // TODO: Fix liniting complaint / maybe refactor to useCallback?
+    // TODO: Fix linting complaint / maybe refactor to useCallback?
   }, [selectedRow, listRef.current, navigationDirection, rows.length])
 
-  const columnWidths = props.columnValueCounts.map((cvc) =>
+  const columnWidths = props.columnInfos.map((cvc) =>
     !hiddenColumns.includes(cvc.columnIndex)
       ? estimateColumnWidthPx(cvc.valuesMaxLength)
       : 0,
@@ -162,57 +183,32 @@ export const DataTable = (props: {
 
   // console.log("Datatable - anchorEl", anchorEl)
 
-  const handleTransformerCodeChanged = (code: string) => {
+  const sampleValues = useMemo(() => {
+    if (popoverColumnIndex == null) return []
+    const columnInfo = props.columnInfos.find(
+      (cvc) => cvc.columnIndex === popoverColumnIndex,
+    )
+    if (!columnInfo) return []
+    const valueCounts = columnInfo.columnValues
+    // Sample by count to include at least both: the most common as well as the least common (latter might be outliers / needing special treatment)
+    return sampleValuesFromArray(
+      orderBy(valueCounts, "valueCountFiltered", "desc").map(
+        (cv) => cv.originalValue,
+      ),
+    )
+  }, [popoverColumnIndex, props.columnInfos])
+
+  const handleTransformerCodeChanged = async (code: string) => {
     // TODO: Could be debounced?
     // console.log("code", code)
     setTransformerFunctionCode(code)
 
-    const { transformer, error } = compileTransformerCode(code)
-    if (transformer) {
-      const sampleValues = sampleValuesFromArray(
-        props.columnValueCounts
-          .find((cvc) => cvc.columnIndex === popoverColumnIndex)!
-          .columnValues.map((cv) => cv.originalValue)
-          .slice()
-          .sort(),
-      )
-
-      const sampleResults = sampleValues.map((value, index) => {
-        let result
-        let error
-
-        try {
-          result = transformer(
-            value,
-            popoverColumnIndex,
-            index,
-            props.headerRow[popoverColumnIndex!],
-            value, // TODO: How to pass actual originalValue?
-          )
-        } catch (err: any) {
-          error = err.toString()
-        }
-
-        return {
-          value,
-          result,
-          error,
-        }
-      })
-
-      // console.log("sampleResults", sampleResults)
-      setTransformerValidation({
-        compilationError: null,
-        sampleResults: sampleResults,
-      })
-    } else if (error) {
-      setTransformerValidation({
-        compilationError: error,
-        sampleResults: [],
-      })
-    } else {
-      throw "This should never happen: Should either get compiled transformer or error!"
-    }
+    transformerValidationWorkerRef.current?.postMessage({
+      transformerCode: code,
+      columnIndex: popoverColumnIndex!,
+      header: props.headerRow[popoverColumnIndex!],
+      data: sampleValues,
+    })
   }
 
   const popoverColumnsIsSorted =
@@ -372,6 +368,7 @@ export const DataTable = (props: {
     <div
       className="data-table h-full overflow-x-auto overflow-y-hidden border border-gray-300 rounded-md shadow-xs"
       style={{
+        ...props.style,
         paddingBottom: isOverFlowingHorizontally ? scrollbarWidth : undefined, // Make space for horizontal scrollbar, such that it does not overlap content
       }}
       data-testid="DataTable"
@@ -405,15 +402,12 @@ export const DataTable = (props: {
           onNewColNameChange={setNewColName}
           onTransformerCodeChange={handleTransformerCodeChanged}
           onApply={() => {
-            const { transformer } = compileTransformerCode(
-              transformerFunctionCode,
-            )
 
-            if (transformer) {
+            if (!transformerValidation?.compilationError) {
               props.onTransformerAdded({
                 columnIndex: popoverColumnIndex!,
                 transformerFunctionCode: transformerFunctionCode,
-                transformer,
+                // transformer,
                 asNewColumn: targetType === "new",
                 newColumnName: newColName,
               })

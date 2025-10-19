@@ -1,16 +1,8 @@
 "use client"
 
-import React, { useCallback, useMemo } from "react"
+import React, { useCallback, useEffect, useRef } from "react"
 
-import {
-  cloneDeep,
-  groupBy,
-  isNil,
-  maxBy,
-  omit,
-  orderBy,
-  partition,
-} from "lodash-es"
+import { maxBy, omit } from "lodash-es"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
@@ -30,26 +22,27 @@ import {
   saveFile,
   tableToJson,
   tryParseJSONObject,
-  valueAsStringFormatted,
-  compileTransformerCode,
   compressString,
   decompressString,
   generateSyntheticFile,
-  compileFilterCode,
-  applyFilterFunction,
-  getMaxStringLength,
   findArrayProp,
   formatBytes,
   cleanWorksheetName,
   cleanForFileName,
   trackEvent,
-  createRowProxy,
   tryBase64Decode,
   addOrRemove,
-  valueAsString,
-  valueAsStringSimplified,
-  isNonEmptyArray,
+  ColumnFilter,
+  ColumnFilterSimple,
+  FilterValue,
+  SortSetting,
+  Transformer,
+  findEmptyColumns,
+  applyFilters,
+  countValues,
+  createRowProxy,
 } from "@/utils"
+
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
 import { MenuPopover } from "../components/ui/Popover"
@@ -105,6 +98,16 @@ export default function Home() {
   >("initial")
   const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
 
+  // Calculated values
+  const [displayedHeader, setDisplayedHeader] = React.useState<Array<string>>(
+    [],
+  )
+  // const [displayedData, setDisplayedData] = React.useState<any[][]>([])
+  const [displayedDataFiltered, setDisplayedDataFiltered] = React.useState<
+    any[][]
+  >([])
+  const [columnInfos, setColumnInfos] = React.useState<ColumnInfos[]>([])
+
   const [filterDialogOpen, setFilterDialogOpen] = React.useState(false)
   const [filterFunctionCode, setFilterFunctionCode] = React.useState<string>("")
   const [appliedFilterFunctionCode, setAppliedFilterFunctionCode] =
@@ -124,6 +127,38 @@ export default function Home() {
     e.preventDefault()
     e.stopPropagation()
   }
+
+  const displayedDataWorkerRef = useRef<Worker>(null)
+  const [calculationInProgress, setCalculationInProgress] =
+    React.useState(false)
+
+  // Setup background worker
+  useEffect(() => {
+    const displayedDataWorker = new Worker(
+      new URL("../worker/displayedDataWorker.ts", import.meta.url),
+    )
+
+    displayedDataWorker.onmessage = (
+      event: MessageEvent<{
+        displayedHeader: string[]
+        displayedDataFiltered: any[][]
+        columnInfos: ColumnInfos[]
+      }>,
+    ) => {
+      // console.log("response from displayedDataWorker", event.data)
+      console.timeEnd("displayedDataWorker")
+      setDisplayedHeader(event.data.displayedHeader)
+      // setDisplayedData(event.data.displayedData)
+      setDisplayedDataFiltered(event.data.displayedDataFiltered)
+      setColumnInfos(event.data.columnInfos)
+      setCalculationInProgress(false)
+    }
+    displayedDataWorkerRef.current = displayedDataWorker
+    return () => {
+      displayedDataWorkerRef.current = null
+      displayedDataWorker.terminate()
+    }
+  }, [])
 
   const importProject = useCallback(
     (p: ProjectExport | string): void => {
@@ -153,13 +188,7 @@ export default function Home() {
 
         setDataIncludesHeaderRow(true)
         setDataFormatAlwaysIncludesHeader(true)
-        setTransformers(
-          (project.transformers || []).map((t) => ({
-            ...t,
-            transformer: compileTransformerCode(t.transformerFunctionCode)
-              .transformer!,
-          })),
-        )
+        setTransformers(project.transformers || [])
         if (project.filterFunction) {
           setFilterFunctionCode(project.filterFunction)
           setAppliedFilterFunctionCode(project.filterFunction)
@@ -426,6 +455,11 @@ export default function Home() {
     setCurrentFile(file)
     setHeaderRow(headerRow)
     setAllRows(data)
+
+    // Set displayed data from raw data to display something immediately (will be updated after background calculation finishes)
+    setDisplayedHeader(headerRow)
+    setDisplayedDataFiltered(data)
+
     setParsingState("finished")
 
     // TODO: Hacky workaround; somehow document title gets reset in URL parsing case
@@ -433,15 +467,11 @@ export default function Home() {
     setTimeout(() => (document.title = file.name), 200)
 
     // TODO: More efficient way to find empty columns?
-    const _columnValueCounts = countValues(headerRow, data, [])
+    const emptyColumns = findEmptyColumns(data)
 
     // Hide empty columns initially
     if (hideEmptyColumns) {
-      setHiddenColumns(
-        _columnValueCounts
-          .filter((cvc) => cvc.isEmptyColumn)
-          .map((cvc) => cvc.columnIndex),
-      )
+      setHiddenColumns(emptyColumns)
     }
   }
 
@@ -622,200 +652,242 @@ export default function Home() {
     setFilters(updatedFilters)
   }
 
-  // Update headerRow based on transformers
-  const displayedHeader = useMemo(() => {
-    const transformedHeaderRow = cloneDeep(headerRow)
-    for (const transformer of transformers) {
-      if (transformer.asNewColumn) {
-        transformedHeaderRow.splice(
-          transformer.columnIndex + 1,
-          0,
-          transformer.newColumnName ||
-            headerRow[transformer.columnIndex] + "_NEW",
-        )
-      }
-    }
-    return transformedHeaderRow
-  }, [headerRow, transformers])
+  // // Update headerRow based on transformers
+  // const displayedHeader = useMemo(() => {
+  //   const transformedHeaderRow = cloneDeep(headerRow)
+  //   for (const transformer of transformers) {
+  //     if (transformer.asNewColumn) {
+  //       transformedHeaderRow.splice(
+  //         transformer.columnIndex + 1,
+  //         0,
+  //         transformer.newColumnName ||
+  //           headerRow[transformer.columnIndex] + "_NEW",
+  //       )
+  //     }
+  //   }
+  //   return transformedHeaderRow
+  // }, [headerRow, transformers])
 
-  const displayedData = useMemo(() => {
-    console.time("applyTransfomer")
+  useEffect(() => {
+    if (!allRows?.length) return
 
-    // Allow access via headerName in subsequent code (esp. user functions)
-    const transformedData = allRows.map((row) =>
-      createRowProxy(cloneDeep(row), displayedHeader),
-    )
-
-    if (!transformers.length) {
-      console.timeEnd("applyTransfomer")
-      return transformedData
-    }
-
-    for (const [rowIndex, row] of transformedData.entries()) {
-      for (const columnIndex of row.keys()) {
-        for (const transformer of transformers) {
-          if (transformer.columnIndex === columnIndex) {
-            let newValue
-            try {
-              newValue = transformer.transformer(
-                row[columnIndex],
-                columnIndex,
-                rowIndex,
-                displayedHeader[columnIndex],
-                transformedData,
-                allRows[rowIndex][columnIndex],
-              )
-            } catch (err: any) {
-              console.error("Error while applying transformer:", err.toString())
-              newValue = err.toString()
-            }
-            if (transformer.asNewColumn) {
-              row.splice(columnIndex + 1, 0, newValue)
-            } else {
-              row[columnIndex] = newValue
-            }
-          }
-        }
-      }
-    }
-
-    console.timeEnd("applyTransfomer")
-    return transformedData
-  }, [allRows, transformers, displayedHeader])
-
-  const displayedDataFiltered = useMemo(() => {
-    console.time("filterAndSorting")
-
-    const filtersFlat = filters.flatMap((f) =>
-      f.filterValues.map((fv) => ({ ...fv, columnIndex: f.columnIndex })),
-    )
-    const [includeFilters, excludeFilters] = partition(
-      filtersFlat,
-      (fv) => fv.included,
-    )
-      .map((ff) => groupBy(ff, "columnIndex"))
-      .map((fg) =>
-        Object.entries(fg).map((oe) => ({
-          columnIndex: Number(oe[0]),
-          filterValues: oe[1].map((fv) => omit(fv, "columnIndex")),
-        })),
-      )
-
-    let filteredData = filters.length
-      ? displayedData.filter((row) => {
-          const isExcluded = excludeFilters.some((filter) =>
-            filter.filterValues.some((filterValue) => {
-              if (Array.isArray(row[filter.columnIndex])) {
-                if (filterValue.value) {
-                  return row[filter.columnIndex].some(
-                    (cellValue: any) =>
-                      filterValue.value === valueAsStringSimplified(cellValue),
-                  )
-                } else {
-                  // "Empty" filter case => Exclude also empty arrays
-                  return row[filter.columnIndex].length === 0
-                }
-              } else {
-                return (
-                  filterValue.value ===
-                  valueAsStringSimplified(row[filter.columnIndex])
-                )
-              }
-            }),
-          )
-
-          // Explicit exclusion should have priority when in doubt
-          if (isExcluded) {
-            return false
-          }
-
-          if (includeFilters.length) {
-            // For inclusion filter: Apply OR logic within the same column, but AND conjunction across columns
-            const isIncluded = includeFilters.every((filter) =>
-              filter.filterValues.some((filterValue) => {
-                if (Array.isArray(row[filter.columnIndex])) {
-                  if (filterValue.value) {
-                    return row[filter.columnIndex].some(
-                      (cellValue: any) =>
-                        filterValue.value ===
-                        valueAsStringSimplified(cellValue),
-                    )
-                  } else {
-                    // "Empty" filter case => Include also empty arrays
-                    return row[filter.columnIndex].length === 0
-                  }
-                } else {
-                  return (
-                    filterValue.value ===
-                    valueAsStringSimplified(row[filter.columnIndex])
-                  )
-                }
-              }),
-            )
-
-            return isIncluded
-          } else {
-            // No inclusion filter used => Do not filter any out & display all
-            return true
-          }
-        })
-      : displayedData
-
-    const searchSplits = search.split(":")
-    const searchColumnIndex = displayedHeader.findIndex(
-      (header) => header === searchSplits[0],
-    )
-    const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
-    const searchValue = isColumnSearch
-      ? searchSplits.slice(1).join(":")
-      : search
-
-    filteredData = search.length
-      ? filteredData.filter((row) =>
-          isColumnSearch
-            ? searchMatch(row[searchColumnIndex], searchValue)
-            : row.some((value) => searchMatch(value, searchValue)),
-        )
-      : filteredData
-
-    // Apply sorting before filter function as might impact results
-    if (sortSetting) {
-      filteredData = orderBy(
-        filteredData,
-        (e) => e[sortSetting?.columnIndex],
-        sortSetting.sortOrder,
-      )
-    }
-
-    // Apply filter function if set
-    if (appliedFilterFunctionCode) {
-      const compilationResult = compileFilterCode(
+    // Run all user-space JS code in worker
+    if (transformers.length || !!appliedFilterFunctionCode) {
+      console.time("displayedDataWorker")
+      setCalculationInProgress(true)
+      displayedDataWorkerRef.current?.postMessage({
+        allRows,
+        transformers,
+        headerRow,
+        filters,
+        search,
+        sortSetting,
         appliedFilterFunctionCode,
-        displayedData[0],
+      })
+    } else {
+      // For simple cases do filtering in main thread (todo: also limit for non-large files?)
+      const displayedDataFiltered = applyFilters(
+        allRows.map((row) => createRowProxy(row, headerRow)),
+        headerRow,
+        filters,
+        search,
+        sortSetting,
+        appliedFilterFunctionCode,
       )
-      const cache = {}
-      if (compilationResult.filter && !compilationResult.error) {
-        filteredData = filteredData.filter((row, i) =>
-          applyFilterFunction(row, i, compilationResult.filter!, cache),
-        )
-      }
+
+      const columnInfos = countValues(headerRow, allRows, displayedDataFiltered)
+      setDisplayedHeader(headerRow)
+      setDisplayedDataFiltered(displayedDataFiltered)
+      setColumnInfos(columnInfos)
     }
-
-    console.timeEnd("filterAndSorting")
-
-    return filteredData
   }, [
-    displayedData,
+    allRows,
+    transformers,
+    headerRow,
     filters,
     search,
-    appliedFilterFunctionCode,
-    displayedHeader,
     sortSetting,
+    appliedFilterFunctionCode,
   ])
 
-  const columnValueCounts = useMemo(() => {
-    return countValues(displayedHeader, displayedData, displayedDataFiltered)
-  }, [displayedHeader, displayedData, displayedDataFiltered])
+  // const displayedData = useMemo(() => {
+  //   console.time("applyTransfomer")
+
+  //   // Allow access via headerName in subsequent code (esp. user functions)
+  //   const transformedData = allRows.map((row) =>
+  //     createRowProxy(cloneDeep(row), displayedHeader),
+  //   )
+
+  //   if (!transformers.length) {
+  //     console.timeEnd("applyTransfomer")
+  //     return transformedData
+  //   }
+
+  //   for (const [rowIndex, row] of transformedData.entries()) {
+  //     for (const columnIndex of row.keys()) {
+  //       for (const transformer of transformers) {
+  //         if (transformer.columnIndex === columnIndex) {
+  //           let newValue
+  //           try {
+  //             newValue = transformer.transformer(
+  //               row[columnIndex],
+  //               columnIndex,
+  //               rowIndex,
+  //               displayedHeader[columnIndex],
+  //               transformedData,
+  //               allRows[rowIndex][columnIndex],
+  //             )
+  //           } catch (err: any) {
+  //             console.error("Error while applying transformer:", err.toString())
+  //             newValue = err.toString()
+  //           }
+  //           if (transformer.asNewColumn) {
+  //             row.splice(columnIndex + 1, 0, newValue)
+  //           } else {
+  //             row[columnIndex] = newValue
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   console.timeEnd("applyTransfomer")
+  //   return transformedData
+  // }, [allRows, transformers, displayedHeader])
+
+  // const displayedDataFiltered = useMemo(() => {
+  //   console.time("filterAndSorting")
+
+  //   const filtersFlat = filters.flatMap((f) =>
+  //     f.filterValues.map((fv) => ({ ...fv, columnIndex: f.columnIndex })),
+  //   )
+  //   const [includeFilters, excludeFilters] = partition(
+  //     filtersFlat,
+  //     (fv) => fv.included,
+  //   )
+  //     .map((ff) => groupBy(ff, "columnIndex"))
+  //     .map((fg) =>
+  //       Object.entries(fg).map((oe) => ({
+  //         columnIndex: Number(oe[0]),
+  //         filterValues: oe[1].map((fv) => omit(fv, "columnIndex")),
+  //       })),
+  //     )
+
+  //   let filteredData = filters.length
+  //     ? displayedData.filter((row) => {
+  //         const isExcluded = excludeFilters.some((filter) =>
+  //           filter.filterValues.some((filterValue) => {
+  //             if (Array.isArray(row[filter.columnIndex])) {
+  //               if (filterValue.value) {
+  //                 return row[filter.columnIndex].some(
+  //                   (cellValue: any) =>
+  //                     filterValue.value === valueAsStringSimplified(cellValue),
+  //                 )
+  //               } else {
+  //                 // "Empty" filter case => Exclude also empty arrays
+  //                 return row[filter.columnIndex].length === 0
+  //               }
+  //             } else {
+  //               return (
+  //                 filterValue.value ===
+  //                 valueAsStringSimplified(row[filter.columnIndex])
+  //               )
+  //             }
+  //           }),
+  //         )
+
+  //         // Explicit exclusion should have priority when in doubt
+  //         if (isExcluded) {
+  //           return false
+  //         }
+
+  //         if (includeFilters.length) {
+  //           // For inclusion filter: Apply OR logic within the same column, but AND conjunction across columns
+  //           const isIncluded = includeFilters.every((filter) =>
+  //             filter.filterValues.some((filterValue) => {
+  //               if (Array.isArray(row[filter.columnIndex])) {
+  //                 if (filterValue.value) {
+  //                   return row[filter.columnIndex].some(
+  //                     (cellValue: any) =>
+  //                       filterValue.value ===
+  //                       valueAsStringSimplified(cellValue),
+  //                   )
+  //                 } else {
+  //                   // "Empty" filter case => Include also empty arrays
+  //                   return row[filter.columnIndex].length === 0
+  //                 }
+  //               } else {
+  //                 return (
+  //                   filterValue.value ===
+  //                   valueAsStringSimplified(row[filter.columnIndex])
+  //                 )
+  //               }
+  //             }),
+  //           )
+
+  //           return isIncluded
+  //         } else {
+  //           // No inclusion filter used => Do not filter any out & display all
+  //           return true
+  //         }
+  //       })
+  //     : displayedData
+
+  //   const searchSplits = search.split(":")
+  //   const searchColumnIndex = displayedHeader.findIndex(
+  //     (header) => header === searchSplits[0],
+  //   )
+  //   const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
+  //   const searchValue = isColumnSearch
+  //     ? searchSplits.slice(1).join(":")
+  //     : search
+
+  //   filteredData = search.length
+  //     ? filteredData.filter((row) =>
+  //         isColumnSearch
+  //           ? searchMatch(row[searchColumnIndex], searchValue)
+  //           : row.some((value) => searchMatch(value, searchValue)),
+  //       )
+  //     : filteredData
+
+  //   // Apply sorting before filter function as might impact results
+  //   if (sortSetting) {
+  //     filteredData = orderBy(
+  //       filteredData,
+  //       (e) => e[sortSetting?.columnIndex],
+  //       sortSetting.sortOrder,
+  //     )
+  //   }
+
+  //   // Apply filter function if set
+  //   if (appliedFilterFunctionCode) {
+  //     const compilationResult = compileFilterCode(
+  //       appliedFilterFunctionCode,
+  //       displayedData[0],
+  //     )
+  //     const cache = {}
+  //     if (compilationResult.filter && !compilationResult.error) {
+  //       filteredData = filteredData.filter((row, i) =>
+  //         applyFilterFunction(row, i, compilationResult.filter!, cache),
+  //       )
+  //     }
+  //   }
+
+  //   console.timeEnd("filterAndSorting")
+
+  //   return filteredData
+  // }, [
+  //   displayedData,
+  //   filters,
+  //   search,
+  //   appliedFilterFunctionCode,
+  //   displayedHeader,
+  //   sortSetting,
+  // ])
+
+  // const columnInfos = useMemo(() => {
+  //   return countValues(displayedHeader, displayedData, displayedDataFiltered)
+  // }, [displayedHeader, displayedData, displayedDataFiltered])
 
   const fileInfos: string[] = []
   const isFiltered =
@@ -885,13 +957,7 @@ export default function Home() {
         typeof p === "string" ? JSON.parse(p) : p
       // console.log(transformerExport)
 
-      setTransformers(
-        (transformerImport.transformers || []).map((t) => ({
-          ...t,
-          transformer: compileTransformerCode(t.transformerFunctionCode)
-            .transformer!,
-        })),
-      )
+      setTransformers(transformerImport.transformers || [])
       if (transformerImport.filterFunction) {
         setFilterFunctionCode(transformerImport.filterFunction)
         setAppliedFilterFunctionCode(transformerImport.filterFunction)
@@ -1308,9 +1374,9 @@ export default function Home() {
                       <FilterDialog
                         open={filterDialogOpen}
                         filterFunctionCode={filterFunctionCode}
-                        columnValueCounts={columnValueCounts}
+                        columnValueCounts={columnInfos}
                         headerRow={displayedHeader}
-                        displayedData={displayedData}
+                        displayedData={displayedDataFiltered}
                         onClose={() => {
                           setFilterDialogOpen(false)
                           // Make sure to always show current applied filter when re-opening first (last draft state can still be recovered from history if needed)
@@ -1359,7 +1425,7 @@ export default function Home() {
                   data-testid="DataContentWrapper"
                 >
                   <ValuesInspector
-                    columnValueCounts={columnValueCounts}
+                    columnValueCounts={columnInfos}
                     filters={filters}
                     onFilterToggle={onFilterToggle}
                     openAccordions={openAccordions}
@@ -1373,9 +1439,10 @@ export default function Home() {
                       setHiddenColumns(addOrRemove(hiddenColumns, columnIndex))
                     }}
                   ></ValuesInspector>
+
                   {viewMode === "visual" ? (
                     <VisualView
-                      columnInfos={columnValueCounts}
+                      columnInfos={columnInfos}
                       hiddenColumns={hiddenColumns}
                       data={displayedDataFiltered}
                     />
@@ -1386,10 +1453,14 @@ export default function Home() {
                     />
                   ) : (
                     <DataTable
+                      style={{
+                        opacity: calculationInProgress ? 0.7 : undefined,
+                        transition: "opacity 0.3s ease",
+                      }}
                       key={currentFile?.name}
                       headerRow={displayedHeader}
                       rows={displayedDataFiltered}
-                      columnValueCounts={columnValueCounts}
+                      columnInfos={columnInfos}
                       hiddenColumns={hiddenColumns}
                       sortSetting={sortSetting}
                       onSortingChange={(e) => {
@@ -1446,151 +1517,6 @@ export default function Home() {
   )
 }
 
-type ValuInfos = {
-  valueCountTotal: number
-  valueCountFiltered: number
-  value: any
-  originalValue: any
-}
-
-type CountMap = Record<string, ValuInfos>
-
-function countValues(
-  headers: string[],
-  input: any[][],
-  inputFiltered: any[][],
-): ColumnInfos[] {
-  console.time("countValues")
-  const countsPerColumn: CountMap[] = headers.map((v, i) => ({}))
-  const typesPerColumn: Set<string>[] = headers.map((v, i) => new Set())
-
-  // TODO: Duplicate code in counting loops and no tests!
-
-  const countConfigs: Array<{
-    input: any[][]
-    name: "valueCountTotal" | "valueCountFiltered"
-    inferType: boolean
-  }> = [
-    {
-      input: input,
-      name: "valueCountTotal",
-      inferType: false,
-    },
-    {
-      input: inputFiltered,
-      name: "valueCountFiltered",
-      inferType: true,
-    },
-  ]
-
-  for (const countConfig of countConfigs) {
-    for (const row of countConfig.input.values()) {
-      // console.log(row);
-      for (const [valueIndex, value] of row.entries()) {
-        // const currentColumn = headers[valueIndex];
-        // Do not crash on oversized rows which do not have a header
-        if (countsPerColumn[valueIndex]) {
-          // Flatten arrays to allow filtering for individual members instead of string representation of array (on first level only)
-          for (const flattenedValue of isNonEmptyArray(value)
-            ? value
-            : [value]) {
-            // Count null / undefined as empty string, will show up all as "empty" category then (assumed to be better UX for the simple facet filtering)
-            const valueCountKey = flattenedValue ?? ""
-            let valueCounts = countsPerColumn[valueIndex][valueCountKey]
-
-            // Init count values
-            if (!valueCounts) {
-              valueCounts = {
-                valueCountTotal: 0,
-                valueCountFiltered: 0,
-                value: flattenedValue, // Preserve original value (w/o converting to string)
-                originalValue: value, // Need to keep the unflattened value for transformer case
-              }
-              countsPerColumn[valueIndex][valueCountKey] = valueCounts
-            }
-
-            valueCounts[countConfig.name] = valueCounts[countConfig.name] + 1
-          }
-          if (countConfig.inferType) {
-            if (
-              typesPerColumn[valueIndex] &&
-              !isNil(value) &&
-              !(value === "")
-            ) {
-              // console.log(value, value.constructor.name)
-              typesPerColumn[valueIndex].add(value.constructor.name)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // for (const row of input.values()) {
-  //   // console.log(row);
-  //   for (const [valueIndex, value] of row.entries()) {
-  //     // const currentColumn = headers[valueIndex];
-
-  //     // Do not crash on oversized rows which do not have a header
-  //     if (countsPerColumn[valueIndex]) {
-  //       // Count null / undefined as empty string, will show up all as "empty" category then (assumed to be better UX for the simple facet filtering)
-  //       countsPerColumn[valueIndex][value ?? ""] = {
-  //         valueCountTotal:
-  //           (countsPerColumn[valueIndex][value ?? ""]?.valueCountTotal || 0) +
-  //           1,
-  //         valueCountFiltered: 0,
-  //         value: value, // Preserve original value (w/o converting to string)
-  //       }
-  //     }
-  //   }
-  // }
-
-  const columnInfos = countsPerColumn.map((v, i) => {
-    const columnIndex = i
-    const columnName = headers[columnIndex]
-    const columnValues = Object.entries(v).map((e) => ({
-      valueName: e[0],
-      valueCountTotal: e[1].valueCountTotal,
-      valueCountFiltered: e[1].valueCountFiltered,
-      value: e[1].value,
-      originalValue: e[1].originalValue,
-    }))
-
-    const valuesMaxLength = getMaxStringLength(
-      columnValues.map((v) => v.valueName),
-    )
-
-    const isEmptyColumn = valuesMaxLength === 0
-
-    const columnType =
-      typesPerColumn[columnIndex].size === 1
-        ? typesPerColumn[columnIndex].values().next().value
-        : "any"
-    return {
-      columnIndex,
-      columnName,
-      columnValues,
-      valuesMaxLength,
-      isEmptyColumn,
-      columnType: columnType!,
-    }
-  })
-
-  console.timeEnd("countValues")
-
-  // console.log("typesPerColumn", typesPerColumn)
-  // console.log("columnInfos", columnInfos)
-
-  return columnInfos
-}
-
-function searchMatch(cell: any, search: string): boolean {
-  return (
-    valueAsString(cell).includes(search) ||
-    valueAsStringFormatted(cell).includes(search)
-  )
-}
-
 // Support legacy format for downwards compatibility and simpler variant when create projects from other apps
 function instanceOfColumnFilterSimple(
   object: any,
@@ -1614,34 +1540,6 @@ function validateFiltersImport(
       return f
     }
   })
-}
-
-export interface FilterValue {
-  value: string
-  included: boolean
-}
-export interface ColumnFilter {
-  columnIndex: number
-  filterValues: FilterValue[]
-}
-
-// Simple / legacy variant w/o include/exclude differentiation
-export interface ColumnFilterSimple {
-  columnIndex: number
-  includedValues: string[]
-}
-
-export interface SortSetting {
-  columnIndex: number
-  sortOrder: "asc" | "desc"
-}
-
-export interface Transformer {
-  columnIndex: number
-  transformerFunctionCode: string
-  transformer: Function
-  asNewColumn?: boolean
-  newColumnName?: string
 }
 
 interface ProjectExport {

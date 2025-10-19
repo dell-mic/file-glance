@@ -1,8 +1,8 @@
 import { orderBy } from "lodash-es"
 import Accordion from "../../components/ui/Accordion"
-import { ColumnFilter, FilterValue } from "../home-page"
 import React from "react"
 import MiddleEllipsis from "../../components/ui/MiddleEllipsis"
+import { ColumnFilter, FilterValue } from "@/utils"
 
 export const ValuesInspector = (props: {
   filters: ColumnFilter[]

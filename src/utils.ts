@@ -1,5 +1,16 @@
 import * as jschardet from "jschardet"
-import { maxBy, set, uniq, isEqual } from "lodash-es"
+import {
+  maxBy,
+  set,
+  uniq,
+  isEqual,
+  isNil,
+  partition,
+  groupBy,
+  omit,
+  orderBy,
+} from "lodash-es"
+import { ColumnInfos } from "./app/components/ValueInspector"
 
 // Cache a default NumberFormat instance for repeated use instead of using toLocaleString(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
 const defaultNumberFormatter = new Intl.NumberFormat()
@@ -1023,4 +1034,303 @@ export function isNonEmptyArray(v: any): boolean {
 }
 export function isEmptyArray(v: any): boolean {
   return Array.isArray(v) && v.length === 0
+}
+
+type ValuInfos = {
+  valueCountTotal: number
+  valueCountFiltered: number
+  value: any
+  originalValue: any
+}
+
+type CountMap = Record<string, ValuInfos>
+
+export function countValues(
+  headers: string[],
+  input: any[][],
+  inputFiltered: any[][],
+): ColumnInfos[] {
+  console.time("countValues")
+  const countsPerColumn: CountMap[] = headers.map((v, i) => ({}))
+  const typesPerColumn: Set<string>[] = headers.map((v, i) => new Set())
+
+  const countConfigs: Array<{
+    input: any[][]
+    name: "valueCountTotal" | "valueCountFiltered"
+    inferType: boolean
+  }> = [
+    {
+      input: input,
+      name: "valueCountTotal",
+      inferType: false,
+    },
+    {
+      input: inputFiltered,
+      name: "valueCountFiltered",
+      inferType: true,
+    },
+  ]
+
+  for (const countConfig of countConfigs) {
+    for (const row of countConfig.input.values()) {
+      // console.log(row);
+      for (const [valueIndex, value] of row.entries()) {
+        // const currentColumn = headers[valueIndex];
+        // Do not crash on oversized rows which do not have a header
+        if (countsPerColumn[valueIndex]) {
+          // Flatten arrays to allow filtering for individual members instead of string representation of array (on first level only)
+          for (const flattenedValue of isNonEmptyArray(value)
+            ? value
+            : [value]) {
+            // Count null / undefined as empty string, will show up all as "empty" category then (assumed to be better UX for the simple facet filtering)
+            const valueCountKey = flattenedValue ?? ""
+            let valueCounts = countsPerColumn[valueIndex][valueCountKey]
+
+            // Init count values
+            if (!valueCounts) {
+              valueCounts = {
+                valueCountTotal: 0,
+                valueCountFiltered: 0,
+                value: flattenedValue, // Preserve original value (w/o converting to string)
+                originalValue: value, // Need to keep the unflattened value for transformer case
+              }
+              countsPerColumn[valueIndex][valueCountKey] = valueCounts
+            }
+
+            valueCounts[countConfig.name] = valueCounts[countConfig.name] + 1
+          }
+          if (countConfig.inferType) {
+            if (
+              typesPerColumn[valueIndex] &&
+              !isNil(value) &&
+              !(value === "")
+            ) {
+              // console.log(value, value.constructor.name)
+              typesPerColumn[valueIndex].add(value.constructor.name)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const columnInfos = countsPerColumn.map((v, i) => {
+    const columnIndex = i
+    const columnName = headers[columnIndex]
+    const columnValues = Object.entries(v).map((e) => ({
+      valueName: e[0],
+      valueCountTotal: e[1].valueCountTotal,
+      valueCountFiltered: e[1].valueCountFiltered,
+      value: e[1].value,
+      originalValue: e[1].originalValue,
+    }))
+
+    const valuesMaxLength = getMaxStringLength(
+      columnValues.map((v) => v.valueName),
+    )
+
+    const isEmptyColumn = valuesMaxLength === 0
+
+    const columnType =
+      typesPerColumn[columnIndex].size === 1
+        ? typesPerColumn[columnIndex].values().next().value
+        : "any"
+    return {
+      columnIndex,
+      columnName,
+      columnValues,
+      valuesMaxLength,
+      isEmptyColumn,
+      columnType: columnType!,
+    }
+  })
+
+  console.timeEnd("countValues")
+
+  // console.log("typesPerColumn", typesPerColumn)
+  // console.log("columnInfos", columnInfos)
+
+  return columnInfos
+}
+
+export function findEmptyColumns(data: any[][]): number[] {
+  if (data.length === 0) return []
+
+  const numCols = data[0].length // Do not check all rows for performance reasons
+  const emptyCols: number[] = []
+
+  for (let col = 0; col < numCols; col++) {
+    let isEmpty = true
+    for (let row = 0; row < data.length; row++) {
+      const value = data[row][col]
+      if (value !== "" && value !== null && value !== undefined) {
+        isEmpty = false
+        break
+      }
+    }
+    if (isEmpty) emptyCols.push(col)
+  }
+
+  return emptyCols
+}
+
+export function applyFilters(
+  displayedData: any[][],
+  displayedHeader: string[],
+  filters: ColumnFilter[],
+  search: string,
+  sortSetting: SortSetting | null,
+  appliedFilterFunctionCode: string | null,
+) {
+  console.time("filterAndSorting")
+
+  const filtersFlat = filters.flatMap((f) =>
+    f.filterValues.map((fv) => ({ ...fv, columnIndex: f.columnIndex })),
+  )
+  const [includeFilters, excludeFilters] = partition(
+    filtersFlat,
+    (fv) => fv.included,
+  )
+    .map((ff) => groupBy(ff, "columnIndex"))
+    .map((fg) =>
+      Object.entries(fg).map((oe) => ({
+        columnIndex: Number(oe[0]),
+        filterValues: oe[1].map((fv) => omit(fv, "columnIndex")),
+      })),
+    )
+
+  let filteredData = filters.length
+    ? displayedData.filter((row) => {
+        const isExcluded = excludeFilters.some((filter) =>
+          filter.filterValues.some((filterValue) => {
+            if (Array.isArray(row[filter.columnIndex])) {
+              if (filterValue.value) {
+                return row[filter.columnIndex].some(
+                  (cellValue: any) =>
+                    filterValue.value === valueAsStringSimplified(cellValue),
+                )
+              } else {
+                // "Empty" filter case => Exclude also empty arrays
+                return row[filter.columnIndex].length === 0
+              }
+            } else {
+              return (
+                filterValue.value ===
+                valueAsStringSimplified(row[filter.columnIndex])
+              )
+            }
+          }),
+        )
+
+        // Explicit exclusion should have priority when in doubt
+        if (isExcluded) {
+          return false
+        }
+
+        if (includeFilters.length) {
+          // For inclusion filter: Apply OR logic within the same column, but AND conjunction across columns
+          const isIncluded = includeFilters.every((filter) =>
+            filter.filterValues.some((filterValue) => {
+              if (Array.isArray(row[filter.columnIndex])) {
+                if (filterValue.value) {
+                  return row[filter.columnIndex].some(
+                    (cellValue: any) =>
+                      filterValue.value === valueAsStringSimplified(cellValue),
+                  )
+                } else {
+                  // "Empty" filter case => Include also empty arrays
+                  return row[filter.columnIndex].length === 0
+                }
+              } else {
+                return (
+                  filterValue.value ===
+                  valueAsStringSimplified(row[filter.columnIndex])
+                )
+              }
+            }),
+          )
+
+          return isIncluded
+        } else {
+          // No inclusion filter used => Do not filter any out & display all
+          return true
+        }
+      })
+    : displayedData
+
+  const searchSplits = search.split(":")
+  const searchColumnIndex = displayedHeader.findIndex(
+    (header) => header === searchSplits[0],
+  )
+  const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
+  const searchValue = isColumnSearch ? searchSplits.slice(1).join(":") : search
+
+  filteredData = search.length
+    ? filteredData.filter((row) =>
+        isColumnSearch
+          ? searchMatch(row[searchColumnIndex], searchValue)
+          : row.some((value) => searchMatch(value, searchValue)),
+      )
+    : filteredData
+
+  // Apply sorting before filter function as might impact results
+  if (sortSetting) {
+    filteredData = orderBy(
+      filteredData,
+      (e) => e[sortSetting?.columnIndex],
+      sortSetting.sortOrder,
+    )
+  }
+
+  // Apply filter function if set
+  if (appliedFilterFunctionCode) {
+    const compilationResult = compileFilterCode(
+      appliedFilterFunctionCode,
+      displayedData[0],
+    )
+    const cache = {}
+    if (compilationResult.filter && !compilationResult.error) {
+      filteredData = filteredData.filter((row, i) =>
+        applyFilterFunction(row, i, compilationResult.filter!, cache),
+      )
+    }
+  }
+
+  console.timeEnd("filterAndSorting")
+
+  return filteredData
+}
+
+function searchMatch(cell: any, search: string): boolean {
+  return (
+    valueAsString(cell).includes(search) ||
+    valueAsStringFormatted(cell).includes(search)
+  )
+}
+
+export interface FilterValue {
+  value: string
+  included: boolean
+}
+export interface ColumnFilter {
+  columnIndex: number
+  filterValues: FilterValue[]
+}
+
+// Simple / legacy variant w/o include/exclude differentiation
+export interface ColumnFilterSimple {
+  columnIndex: number
+  includedValues: string[]
+}
+
+export interface SortSetting {
+  columnIndex: number
+  sortOrder: "asc" | "desc"
+}
+
+export interface Transformer {
+  columnIndex: number
+  transformerFunctionCode: string
+  asNewColumn?: boolean
+  newColumnName?: string
 }

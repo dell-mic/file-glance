@@ -12,8 +12,8 @@ import {
   isLink,
   isNonEmptyArray,
   valueAsStringFormatted,
+  SortSetting,
 } from "@/utils"
-import { SortSetting } from "../../home-page"
 import { cva } from "class-variance-authority"
 import { cloneDeep } from "lodash-es"
 
