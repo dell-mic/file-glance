@@ -56,7 +56,7 @@ export const DataTable = (props: {
   onTransformerAdded: (e: TransformerAddedEvent) => void
   style?: React.CSSProperties
 }) => {
-  const { width: windowWidth } = useWindowDimensions()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
 
   const { toast } = useToast()
   const transformerValidationWorkerRef = useRef<Worker>(null)
@@ -130,9 +130,15 @@ export const DataTable = (props: {
   const columnWidthSum = sum(columnWidths)
 
   const leftColumnWidthPx = 380 + 24 // TODO: Hardcoded width for value inspector + padding/scrollbar etc; would better be dynamic
+  const headerHeight = 38 + 3 * 8 // TODO: Hardcoded height for header; would better be dynamic
 
   const remainingWidth = windowWidth - leftColumnWidthPx - columnWidthSum
+  const estimatedTableHeight = windowHeight - headerHeight
+  const estimatedRowsDisplayed =
+    Math.floor((estimatedTableHeight - scrollbarWidth) / RowHeight) - 1 // Do not count fixed header
   // console.log("remainingWidth", remainingWidth)
+  // console.log("estimatedTableHeight", estimatedTableHeight)
+  // console.log("estimatedRowsDisplayed", estimatedRowsDisplayed)
   const isOverFlowingHorizontally = remainingWidth < 0
 
   const growthFactor = (remainingWidth * 1.0) / columnWidthSum + 1
@@ -335,6 +341,19 @@ export const DataTable = (props: {
       e.preventDefault()
       setNavigationDirection("down")
       setSelectedRow(selectedRow + 1)
+    } else if (e.key === "PageUp") {
+      e.preventDefault()
+      const jump = Math.max(1, selectedRow - estimatedRowsDisplayed)
+      setNavigationDirection("up")
+      setSelectedRow(jump)
+    } else if (e.key === "PageDown") {
+      e.preventDefault()
+      const jump = Math.min(
+        rows.length - 1,
+        selectedRow + estimatedRowsDisplayed,
+      )
+      setNavigationDirection("down")
+      setSelectedRow(jump)
     } else if (e.key === "Escape") {
       e.preventDefault()
       setNavigationDirection(null)
