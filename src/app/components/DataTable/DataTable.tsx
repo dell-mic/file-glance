@@ -67,6 +67,9 @@ export const DataTable = (props: {
     "up" | "down" | null
   >(null)
 
+  const [transformerValidation, setTransformerValidation] =
+    React.useState<TransformerValidation | null>(null)
+
   const scrollbarWidth = useMemo(() => getScrollbarWidth(), [])
 
   const listRef = createRef<FixedSizeList>()
@@ -101,6 +104,7 @@ export const DataTable = (props: {
 
   // reset selection when rows change (e.g. when sorted)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedRow(null)
     setNavigationDirection(null)
   }, [props.rows])
@@ -120,7 +124,7 @@ export const DataTable = (props: {
       // console.log("listRef.current.scrollToItem", scrollToRow, selectedRow, listRef, navigationDirection, rows.length)
     }
     // TODO: Fix linting complaint / maybe refactor to useCallback?
-  }, [selectedRow, listRef.current, navigationDirection, rows.length])
+  }, [selectedRow, navigationDirection, rows.length])
 
   const columnWidths = props.columnInfos.map((cvc) =>
     !hiddenColumns.includes(cvc.columnIndex)
@@ -165,9 +169,6 @@ export const DataTable = (props: {
     React.useState<boolean>(false)
   const [transformerFunctionCode, setTransformerFunctionCode] =
     React.useState<string>("")
-
-  const [transformerValidation, setTransformerValidation] =
-    React.useState<TransformerValidation | null>(null)
 
   const [targetType, setTargetType] = React.useState<"current" | "new">(
     "current",

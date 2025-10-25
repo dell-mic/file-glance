@@ -109,6 +109,7 @@ function Editor({
     const stored = tryParseJSONObject(
       localStorage.getItem(localStorageHistoryKey) || "[]",
     )
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHistory(stored || [])
 
     // Also save last value on unmount (e.g. when modal is closed)

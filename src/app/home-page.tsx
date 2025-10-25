@@ -123,6 +123,8 @@ export default function Home() {
 
   const drop = React.useRef(null)
 
+  const ExportDelimiter_v1 = ";"
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -198,6 +200,7 @@ export default function Home() {
         setSearch(project.search || "")
         setHiddenColumns(project.hiddenColumns || [])
         setSortSetting(project.sortSetting || null)
+        // eslint-disable-next-line react-hooks/immutability
         setData(
           generateSyntheticFile(project.data, project.name || "URL data"),
           _headerRow,
@@ -489,6 +492,7 @@ export default function Home() {
       if (firstFile.name.endsWith(".fg.json")) {
         const contentAsText: string = await readFileToString(firstFile)
 
+        // eslint-disable-next-line react-hooks/immutability
         importTransformer(contentAsText)
         trackEvent("Transformer", "Drop")
       } else {
@@ -675,15 +679,18 @@ export default function Home() {
     if (transformers.length || !!appliedFilterFunctionCode) {
       console.time("displayedDataWorker")
       setCalculationInProgress(true)
-      displayedDataWorkerRef.current?.postMessage({
-        allRows,
-        transformers,
-        headerRow,
-        filters,
-        search,
-        sortSetting,
-        appliedFilterFunctionCode,
-      })
+      // Avoid UI lag due to copy/serializing of large data
+      setTimeout(() => {
+        displayedDataWorkerRef.current?.postMessage({
+          allRows,
+          transformers,
+          headerRow,
+          filters,
+          search,
+          sortSetting,
+          appliedFilterFunctionCode,
+        })
+      }, 1)
     } else {
       // For simple cases do filtering in main thread (todo: also limit for non-large files?)
       const displayedDataFiltered = applyFilters(
@@ -915,7 +922,6 @@ export default function Home() {
     return cleanForFileName(currentFileName) + "." + newEnding
   }
 
-  const ExportDelimiter_v1 = ";"
   const exportProject = (): ProjectExport => {
     const project = {
       v: 1,
@@ -951,7 +957,7 @@ export default function Home() {
     return transformerExport
   }
 
-  const importTransformer = (p: TransformerExport | string): void => {
+  function importTransformer(p: TransformerExport | string): void {
     try {
       const transformerImport: TransformerExport =
         typeof p === "string" ? JSON.parse(p) : p
@@ -1422,6 +1428,10 @@ export default function Home() {
                 </div>
                 <div
                   className="flex flex-row h-[calc(100vh-60px)] overflow-clip"
+                  style={{
+                    opacity: calculationInProgress ? 0.7 : undefined,
+                    transition: "opacity 0.3s ease",
+                  }}
                   data-testid="DataContentWrapper"
                 >
                   <ValuesInspector
@@ -1453,10 +1463,6 @@ export default function Home() {
                     />
                   ) : (
                     <DataTable
-                      style={{
-                        opacity: calculationInProgress ? 0.7 : undefined,
-                        transition: "opacity 0.3s ease",
-                      }}
                       key={currentFile?.name}
                       headerRow={displayedHeader}
                       rows={displayedDataFiltered}
