@@ -52,6 +52,7 @@ type SORT_ORDERS = "asc" | "desc"
 
 const ChartElementId = "pivotChartArea"
 
+const MaxGroupsDisplayed = 50
 export const PivotChart: React.FC<PivotChartProps> = ({
   columnInfos,
   data,
@@ -111,62 +112,118 @@ export const PivotChart: React.FC<PivotChartProps> = ({
     useState<(typeof SORT_FIELDS)[number]>("Y-Value")
   const [sortOrder, setSortOrder] = useState<SORT_ORDERS>("desc")
 
+  const isNumericColumn = !!numericColumns.find(
+    (nc) => nc.columnName === yField,
+  )
+
   // Prepare chart data
-  const chartData = useMemo(() => {
-    if (!xField || !yField) return []
-    // Group by xField
-    const groups: Record<string, any[]> = {}
-    for (const row of data) {
-      const x = row[xField as keyof typeof row]
-      const yRaw = row[yField as keyof typeof row]
-      if (
-        x == null ||
-        x === undefined ||
-        yRaw == null ||
-        yRaw === undefined ||
-        yRaw === ""
-      ) {
-        continue
+  const { chartData } = useMemo(() => {
+    if (!xField || !yField) return { chartData: [] }
+
+    // Grouped bar logic: if Bar chart and yField is not numeric, count per combination
+    if (chartType === "Bar" && !isNumericColumn) {
+      // Get all unique values for yField (group keys)
+      const yValuesSet = new Set<any>()
+      for (const row of data) {
+        const yVal = row[yField as keyof typeof row]
+        if (yVal !== undefined && yVal !== null && yVal !== "") {
+          yValuesSet.add(yVal)
+        }
+      }
+      const yValues = Array.from(yValuesSet)
+
+      // Group by xField, then count for each yField value
+      const xGroups: Record<string, Record<string, number>> = {}
+      for (const row of data) {
+        const x = row[xField as keyof typeof row]
+        const y = row[yField as keyof typeof row]
+        if (
+          x == null ||
+          x === undefined ||
+          x === "" ||
+          y == null ||
+          y === undefined ||
+          y === ""
+        ) {
+          continue
+        }
+        if (!xGroups[x]) xGroups[x] = {}
+        if (!xGroups[x][y]) xGroups[x][y] = 0
+        xGroups[x][y] += 1
+      }
+      // Build result array: one object per xField value, with each yField value as a property
+      let result = Object.entries(xGroups).map(([xKey, yCounts]) => {
+        const obj: Record<string, any> = { [xField]: xKey }
+        for (const yVal of yValues) {
+          obj[yVal] = yCounts[yVal] || 0
+        }
+        return obj
+      })
+
+      // Sorting
+      if (sortField !== "None") {
+        const key = sortField === "X-Value" ? xField : yValues[0] // sort by first y value's count
+        result = orderBy(result, [key], [sortOrder])
       }
 
-      // const y = Number(yRaw)
-      // if (isNaN(y)) continue
-      if (!groups[x]) groups[x] = []
-      groups[x].push(yRaw)
-    }
-
-    // console.log("groups", groups)
-
-    let result = Object.entries(groups).map(([key, values]) => {
-      let val = 0
-      switch (aggregation) {
-        case "Count":
-          val = values.length
-          break
-        case "Sum":
-          val = values.reduce((a, b) => a + b, 0)
-          break
-        case "Average":
-          val = values.reduce((a, b) => a + b, 0) / values.length
-          break
-        case "Max":
-          val = Math.max(...values)
-          break
-        case "Min":
-          val = Math.min(...values)
-          break
+      return { chartData: result, _groupedYValues: yValues }
+    } else {
+      // Group by xField
+      const groups: Record<string, any[]> = {}
+      for (const row of data) {
+        const x = row[xField as keyof typeof row]
+        const yRaw = row[yField as keyof typeof row]
+        if (
+          x == null ||
+          x === undefined ||
+          yRaw == null ||
+          yRaw === undefined ||
+          yRaw === ""
+        ) {
+          continue
+        }
+        if (!groups[x]) groups[x] = []
+        groups[x].push(yRaw)
       }
-      return { [xField]: key, [yField]: val }
-    })
 
-    // console.log("result", result)
+      let result = Object.entries(groups).map(([key, values]) => {
+        let val = 0
+        switch (aggregation) {
+          case "Count":
+            val = values.length
+            break
+          case "Sum":
+            val = values.reduce((a, b) => a + b, 0)
+            break
+          case "Average":
+            val = values.reduce((a, b) => a + b, 0) / values.length
+            break
+          case "Max":
+            val = Math.max(...values)
+            break
+          case "Min":
+            val = Math.min(...values)
+            break
+        }
+        return { [xField]: key, [yField]: val }
+      })
 
-    if (sortField !== "None") {
-      const key = sortField === "X-Value" ? xField : yField
-      result = orderBy(result, [key], [sortOrder])
+      if (sortField !== "None") {
+        const key = sortField === "X-Value" ? xField : yField
+        result = orderBy(result, [key], [sortOrder])
+      }
+      return { chartData: result }
     }
-    return result
-  }, [data, xField, yField, aggregation, sortField, sortOrder])
+  }, [
+    xField,
+    yField,
+    chartType,
+    isNumericColumn,
+    sortField,
+    data,
+    sortOrder,
+    aggregation,
+  ])
 
   const pieData = useMemo(() => {
     if (!xField || !yField) return []
@@ -434,32 +491,73 @@ export const PivotChart: React.FC<PivotChartProps> = ({
           <div id={ChartElementId} className="w-full">
             <ChartContainer config={chartConfig} className="w-full">
               {chartType === "Bar" ? (
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 16, right: 16, left: 16, bottom: 16 }}
-                >
-                  <XAxis dataKey={xField} />
-                  <YAxis />
-                  <Tooltip
-                    formatter={(value) => [
-                      value.toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      }),
-                      `${aggregation} of ${yField}`,
-                    ]}
-                  />
-                  {/* <Legend formatter={() => `${aggregation} of ${yField}`} /> */}
-                  <Bar dataKey={yField}>
-                    {chartData.map((entry, i) => (
-                      <Cell
-                        key={`cell-${i}`}
-                        fill={
-                          CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]
-                        }
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
+                // Grouped bar chart if yField is not numeric
+                !isNumericColumn ? (
+                  (() => {
+                    const groupedYValues = (chartData as any)._groupedYValues
+                    return (
+                      <BarChart
+                        data={chartData}
+                        margin={{ top: 16, right: 16, left: 16, bottom: 16 }}
+                      >
+                        <XAxis dataKey={xField} />
+                        <YAxis />
+                        <Tooltip
+                          formatter={(value: any, name: string) => [
+                            value,
+                            name,
+                          ]}
+                        />
+                        {/* One <Bar> per yField value */}
+                        {groupedYValues
+                          .slice(0, MaxGroupsDisplayed)
+                          .map((yVal: any, i: number) => {
+                            // const hasData = chartData.find(cd => cd.some(d => d[xField] === ))
+                            return (
+                              <Bar
+                                key={String(yVal)}
+                                dataKey={String(yVal)}
+                                name={String(yVal)}
+                                // hide={}
+                                fill={
+                                  CHART_SERIES_COLORS[
+                                    i % CHART_SERIES_COLORS.length
+                                  ]
+                                }
+                              />
+                            )
+                          })}
+                      </BarChart>
+                    )
+                  })()
+                ) : (
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 16, right: 16, left: 16, bottom: 16 }}
+                  >
+                    <XAxis dataKey={xField} />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value) => [
+                        value.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        }),
+                        `${aggregation} of ${yField}`,
+                      ]}
+                    />
+                    {/* <Legend formatter={() => `${aggregation} of ${yField}`} /> */}
+                    <Bar dataKey={yField}>
+                      {chartData.map((entry, i) => (
+                        <Cell
+                          key={`cell-${i}`}
+                          fill={
+                            CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                )
               ) : chartType === "Line" ? (
                 <LineChart
                   data={chartData}
