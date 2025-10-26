@@ -117,8 +117,8 @@ export const PivotChart: React.FC<PivotChartProps> = ({
   )
 
   // Prepare chart data
-  const { chartData } = useMemo(() => {
-    if (!xField || !yField) return { chartData: [] }
+  const { chartData, _groupedYValues } = useMemo(() => {
+    if (!xField || !yField) return { chartData: [], _groupedYValues: [] }
 
     // Grouped bar logic: if Bar chart and yField is not numeric, count per combination
     if (chartType === "Bar" && !isNumericColumn) {
@@ -494,7 +494,6 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                 // Grouped bar chart if yField is not numeric
                 !isNumericColumn ? (
                   (() => {
-                    const groupedYValues = (chartData as any)._groupedYValues
                     return (
                       <BarChart
                         data={chartData}
@@ -509,7 +508,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                           ]}
                         />
                         {/* One <Bar> per yField value */}
-                        {groupedYValues
+                        {_groupedYValues!
                           .slice(0, MaxGroupsDisplayed)
                           .map((yVal: any, i: number) => {
                             // const hasData = chartData.find(cd => cd.some(d => d[xField] === ))
