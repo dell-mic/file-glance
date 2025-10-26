@@ -85,7 +85,7 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
     seriesIndex: number,
     forLabel: boolean = false,
   ) => {
-    console.log(columnType, valueName, seriesIndex)
+    // console.log(columnType, valueName, seriesIndex)
 
     const ColorSeries = forLabel ? CHART_LABELS_COLORS : CHART_SERIES_COLORS
 
