@@ -119,7 +119,7 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
   // console.log(chartConfig)
 
   return (
-    <Card className="flex flex-col h-full">
+    <>
       <CardHeader className="items-center pb-0">
         <CardTitle>{col.columnName}</CardTitle>
         <CardDescription>
@@ -230,6 +230,6 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
           )}
         </div>
       </CardFooter>
-    </Card>
+    </>
   )
 }

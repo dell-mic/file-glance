@@ -52,7 +52,7 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
     })
   }
   return (
-    <Card className="flex flex-col h-full">
+    <>
       <CardHeader className="items-center pb-0">
         <CardTitle>{col.columnName}</CardTitle>
         <CardDescription>
@@ -151,6 +151,6 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
           Showing distribution in {barChartData.length} linear buckets
         </div>
       </CardFooter>
-    </Card>
+    </>
   )
 }
