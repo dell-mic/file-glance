@@ -10,7 +10,7 @@ test(`Adjust hasHeader manually`, async ({ page }) => {
   await page.getByTestId("fileInput").click()
   const fileChooser = await fileChooserPromise
   await fileChooser.setFiles(
-    path.join(__dirname, "../files", "similarHeader.csv"),
+    path.join(import.meta.dirname, "../files", "similarHeader.csv"),
   ) // Expected to be parsed "without header" by heuristic
 
   await expect(page.getByTestId("switch-hasHeader").isEnabled()).toBeTruthy()

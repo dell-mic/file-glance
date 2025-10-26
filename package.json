@@ -2,6 +2,7 @@
   "name": "file-glance",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "curl --retry 5 --retry-delay 1 --retry-connrefused --silent --output /dev/null http://localhost:3000 & next dev",
     "dev:https": "next dev --experimental-https",

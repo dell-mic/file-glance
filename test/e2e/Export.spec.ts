@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await page.getByTestId("fileInput").click()
   const fileChooser = await fileChooserPromise
   await fileChooser.setFiles(
-    path.join(__dirname, "../files", "small_sample.tsv"),
+    path.join(import.meta.dirname, "../files", "small_sample.tsv"),
   )
 })
 

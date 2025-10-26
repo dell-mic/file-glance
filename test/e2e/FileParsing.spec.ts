@@ -21,7 +21,7 @@ files.forEach((file) => {
     const fileChooserPromise = page.waitForEvent("filechooser")
     await page.getByTestId("fileInput").click()
     const fileChooser = await fileChooserPromise
-    await fileChooser.setFiles(path.join(__dirname, "../files", file))
+    await fileChooser.setFiles(path.join(import.meta.dirname, "../files", file))
 
     await expect(page).toHaveScreenshot()
   })

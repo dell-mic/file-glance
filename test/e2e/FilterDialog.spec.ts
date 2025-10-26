@@ -9,7 +9,9 @@ test.beforeEach(async ({ page }) => {
   const fileChooserPromise = page.waitForEvent("filechooser")
   await page.getByTestId("fileInput").click()
   const fileChooser = await fileChooserPromise
-  await fileChooser.setFiles(path.join(__dirname, "../files", "sample.csv"))
+  await fileChooser.setFiles(
+    path.join(import.meta.dirname, "../files", "sample.csv"),
+  )
 })
 
 test(`Filter dialog filters rows`, async ({ page }) => {
