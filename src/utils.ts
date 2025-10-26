@@ -1308,6 +1308,10 @@ function searchMatch(cell: any, search: string): boolean {
   )
 }
 
+export function showAsEmpty(v: any): boolean {
+  return v === "" || v === null || v === undefined
+}
+
 export interface FilterValue {
   value: string
   included: boolean

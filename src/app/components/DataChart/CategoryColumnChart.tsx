@@ -12,20 +12,23 @@ import {
 } from "../../../components/ui/card"
 import { ColumnInfos } from "../ValueInspector"
 import {
+  CHART_COLOR_EMPTY,
+  CHART_COLOR_OTHERS,
+  CHART_LABEL_EMPTY,
+  CHART_LABEL_OTHERS,
   CHART_LABELS_COLORS,
   CHART_SERIES_COLORS,
   ChartAnimationDuration,
-  darkenHexColor,
   EMPTY_LABEL,
 } from "./chartUtils"
+import { showAsEmpty } from "@/utils"
 
 interface CategoryColumnChartProps {
   columnInfo: ColumnInfos
 }
 
 const MAX_CHART_VALUES = 10
-const OTHERS_COLOR = "#E5E7EB"
-const OTHERS_LABEL_COLOR = darkenHexColor(OTHERS_COLOR, 0.3) // Slight darker for better readability
+
 const groupOtherValues = true
 const MinSharePctForLabel = 2.5
 
@@ -73,18 +76,48 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
   const showLabelFor = data.map((_, i) =>
     i === 0 ? true : _.percentage >= MinSharePctForLabel,
   )
+
+  // console.log(col.columnName, col.columnType)
+
+  const getValueColor = (
+    columnType: string,
+    valueName: string,
+    seriesIndex: number,
+    forLabel: boolean = false,
+  ) => {
+    console.log(columnType, valueName, seriesIndex)
+
+    const ColorSeries = forLabel ? CHART_LABELS_COLORS : CHART_SERIES_COLORS
+
+    // Special coloring for Other & "(empty)"
+    if (valueName === "Other")
+      return forLabel ? CHART_LABEL_OTHERS : CHART_COLOR_OTHERS
+
+    if (showAsEmpty(valueName))
+      return forLabel ? CHART_LABEL_EMPTY : CHART_COLOR_EMPTY
+
+    if (columnType === "Boolean") {
+      if (valueName === "true") return ColorSeries[ColorSeries.length - 2]
+      if (valueName === "false") return ColorSeries[ColorSeries.length - 1]
+    }
+    // not a strict boolean value — fall back to series color
+    return ColorSeries[
+      typeof seriesIndex === "number" ? seriesIndex % ColorSeries.length : 0
+    ]
+  }
+
   const chartConfig = Object.fromEntries(
     data.map((d, i) => [
       d.name,
       {
         label: d.name,
-        color:
-          d.name === "Other"
-            ? OTHERS_COLOR
-            : CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length],
+        color: getValueColor(col.columnType, d.name, i),
       },
     ]),
   )
+
+  // console.log(chartConfig)
+
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="items-center pb-0">
@@ -114,12 +147,9 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
               animationDuration={ChartAnimationDuration}
               animationBegin={0}
               labelLine={(props: any) => {
-                const { index, points } = props
+                const { name, index, points } = props
                 if (showLabelFor[index] && points && points.length === 2) {
-                  const color =
-                    data[index].name === "Other"
-                      ? OTHERS_COLOR
-                      : CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length]
+                  const color = getValueColor(col.columnType, name, index, true)
                   const [start, end] = points
                   const dx = end.x - start.x
                   const dy = end.y - start.y
@@ -144,17 +174,12 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
                 const { name, index, cx, cy, midAngle, outerRadius } = props
                 if (!showLabelFor[index]) return null
 
-                // return name
-
                 const RADIAN = Math.PI / 180
-                // Default recharts label position: just outside the arc
                 const radius = outerRadius + 18
                 const x = cx + radius * Math.cos(-midAngle * RADIAN)
                 const y = cy + radius * Math.sin(-midAngle * RADIAN)
-                const color =
-                  data[index].name === "Other"
-                    ? OTHERS_LABEL_COLOR
-                    : CHART_LABELS_COLORS[index % CHART_LABELS_COLORS.length]
+                const color = getValueColor(col.columnType, name, index, true)
+
                 return (
                   <text
                     x={x}
@@ -171,11 +196,7 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
               {data.map((entry, i) => (
                 <Cell
                   key={`cell-${i}`}
-                  fill={
-                    entry.name === "Other"
-                      ? OTHERS_COLOR
-                      : CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]
-                  }
+                  fill={getValueColor(col.columnType, entry.name, i)}
                 />
               ))}
             </Pie>

@@ -1,14 +1,26 @@
 // Chart color palette for consistent chart coloring
+
+export const CHART_COLOR_RED = "#fd7f6f" // coral red
+export const CHART_COLOR_GREEN = "#b2e061" // light lime green
+export const CHART_COLOR_EMPTY = "#c2c2c2" // neutral gray
+export const CHART_LABEL_EMPTY = darkenHexColor(CHART_COLOR_EMPTY, 0.3) // Slight darker for better readability
+
+export const CHART_COLOR_OTHERS = "#E5E7EB"
+export const CHART_LABEL_OTHERS = darkenHexColor(CHART_COLOR_OTHERS, 0.3) // Slight darker for better readability
+
 export const CHART_SERIES_COLORS = [
-  "#7eb0d5",
-  "#b2e061",
-  "#bd7ebe",
-  "#ffb55a",
-  "#ffee65",
-  "#beb9db",
-  "#fdcce5",
-  "#8bd3c7",
-  "#fd7f6f",
+  "#7eb0d5", // sky blue
+  "#ffb55a", // amber / orange
+  "#bd7ebe", // orchid purple
+  "#8bd3c7", // mint teal
+  "#fdcce5", // light pink
+  "#ffee65", // lemon yellow
+  "#beb9db", // lavender
+  "#ffd1a6", // pastel apricot
+  "#c1f0ea", // pastel aqua
+  // IMPORTANT that those two come last for boolean/semantic color picking
+  CHART_COLOR_GREEN,
+  CHART_COLOR_RED,
 ]
 
 export const CHART_LABELS_COLORS = CHART_SERIES_COLORS.map((c) =>
