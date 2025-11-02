@@ -287,6 +287,9 @@ export const PivotChart: React.FC<PivotChartProps> = ({
     ],
   ]
 
+  const yAxisIsNonNumeric =
+    columnInfos.find((ci) => ci.columnName === yField)?.columnType !== "Number"
+
   return (
     <Card className="flex flex-row gap-0 py-0 overflow-hidden">
       {/* Left controls column */}
@@ -353,10 +356,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               onValueChange={(val) =>
                 setAggregation(val as (typeof AGGREGATIONS)[number])
               }
-              disabled={
-                columnInfos.find((ci) => ci.columnName === yField)
-                  ?.columnType !== "Number"
-              }
+              disabled={yAxisIsNonNumeric}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Aggregation" />
@@ -377,7 +377,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               onValueChange={(val) =>
                 setChartType(val as (typeof CHART_TYPES)[number])
               }
-              disabled={noNumericColumns}
+              disabled={yAxisIsNonNumeric}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Chart Type" />
