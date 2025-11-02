@@ -33,7 +33,7 @@ export interface TransformerAddedEvent {
   columnIndex: number
   transformerFunctionCode: string
   asNewColumn: boolean
-  newColumnName: string
+  newColumnName?: string
 }
 
 interface TransformerSampleResult {
@@ -423,12 +423,13 @@ export const DataTable = (props: {
           onTransformerCodeChange={handleTransformerCodeChanged}
           onApply={() => {
             if (!transformerValidation?.compilationError) {
+              const asNewColumn = targetType === "new"
               props.onTransformerAdded({
                 columnIndex: popoverColumnIndex!,
                 transformerFunctionCode: transformerFunctionCode,
                 // transformer,
-                asNewColumn: targetType === "new",
-                newColumnName: newColName,
+                asNewColumn: asNewColumn,
+                newColumnName: asNewColumn ? newColName : undefined,
               })
               handleTransformModalClose()
             } else {
