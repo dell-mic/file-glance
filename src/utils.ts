@@ -173,7 +173,7 @@ export function generateSampleData(numRows: number): {
     "Pet Type",
     "Number of Siblings",
     "Favorite Cuisine",
-    "Notes",
+    "Tags", // Changed from "Notes" to "Tags"
   ]
   const firstNames = [
     "John",
@@ -309,6 +309,28 @@ export function generateSampleData(numRows: number): {
     "Japanese",
     "Spanish",
   ]
+  const tagPool = [
+    "remote",
+    "spicy",
+    "traveler",
+    "retired",
+    "pet-lover",
+    "artist",
+    "manager",
+    "engineer",
+    "foodie",
+    "sports",
+    "music",
+    "family",
+    "student",
+    "senior",
+    "junior",
+    "lead",
+    "contractor",
+    "full-time",
+    "part-time",
+    "freelancer",
+  ]
 
   const data = []
   for (let i = 1; i <= numRows; i++) {
@@ -345,18 +367,20 @@ export function generateSampleData(numRows: number): {
       numberOfSiblings = getRandomInt(0, 4) // Slightly shifted
     }
     const favoriteCuisine = getRandomElement(cuisines)
-    const note = getRandomElement([
-      "",
-      "",
-      "",
-      "Loves spicy food",
-      "Works remotely",
-      "Enjoys painting",
-      "Frequent traveler",
-      "Close to retirement",
-    ])
-
-    const notePrefix = getRandomElement(["Careful: ", "Hint: ", ""])
+    // Generate tags: random array, sometimes empty, sometimes null
+    let tags: string[] | null
+    const tagRand = Math.random()
+    if (tagRand < 0.2) {
+      tags = [] // 20% empty array
+    } else if (tagRand < 0.3) {
+      tags = null // 10% null
+    } else {
+      // 70%: 1-4 random tags
+      const numTags = getRandomInt(1, 4)
+      tags = Array.from({ length: numTags }, () => getRandomElement(tagPool))
+      // Remove duplicates
+      tags = Array.from(new Set(tags))
+    }
 
     data.push({
       id,
@@ -377,7 +401,7 @@ export function generateSampleData(numRows: number): {
       petType,
       numberOfSiblings,
       favoriteCuisine,
-      note: note ? notePrefix + note : note,
+      tags,
     })
   }
   return { data, headerRow }

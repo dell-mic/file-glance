@@ -163,12 +163,12 @@ export const Row = (
               booleanFalse = true
             } else if (v instanceof Date) {
               isDate = true
-            } else if (Array.isArray(v)) {
+            } else if (isNonEmptyArray(v)) {
               isArray = true
             }
           }
 
-          if (_valueAsStringFormatted || isNonEmptyArray(v)) {
+          if (_valueAsStringFormatted || isArray) {
             valueCell = _valueAsStringFormatted
           } else {
             valueCell = "empty"

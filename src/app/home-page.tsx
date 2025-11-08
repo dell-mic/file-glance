@@ -937,10 +937,17 @@ export default function Home() {
     return project
   }
 
-  const getExportData = (): any[][] => {
+  interface ExportOptions {
+    stringifyArrays?: boolean
+  }
+
+  const getExportData = (options?: Partial<ExportOptions>): any[][] => {
+    const stringifyArrays = options?.stringifyArrays ?? false
     // Need to filter columns as they are still part of displayed data for index consistency
     return [displayedHeader, ...displayedDataFiltered].map((row) =>
-      row.filter((v, i) => !hiddenColumns.includes(i)),
+      row
+        .filter((v, i) => !hiddenColumns.includes(i))
+        .map((v) => (stringifyArrays && Array.isArray(v) ? String(v) : v)),
     )
   }
 
