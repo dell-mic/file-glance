@@ -69,11 +69,19 @@ import MiddleEllipsis from "@/components/ui/MiddleEllipsis"
 import VisualView from "./components/VisualView"
 import { Button } from "@/components/ui/button"
 
+interface FileMetaData {
+  name: string
+  lastModified: number
+  size: number
+}
+
 export default function Home() {
   const { toast } = useToast()
 
   const [dragging, setDragging] = React.useState(false)
-  const [currentFile, setCurrentFile] = React.useState<File | null>(null)
+  const [currentFile, setCurrentFile] = React.useState<FileMetaData | null>(
+    null,
+  )
 
   const [openAccordions, setOpenAccordions] = React.useState<number[]>([])
   const [hiddenColumns, setHiddenColumns] = React.useState<number[]>([])
@@ -225,8 +233,16 @@ export default function Home() {
     [toast],
   )
 
-  const parseFile = useCallback(
-    async (file: File, hideEmptyColumns: boolean) => {
+  const parseFiles = useCallback(
+    async (files: File[] | File, hideEmptyColumns: boolean) => {
+      if (!Array.isArray(files)) {
+        files = [files]
+      }
+
+      if (!files.filter(Boolean).length) {
+        throw "At least 1 file expected, but received: " + files
+      }
+
       console.time("parseFile")
       //Reset all properties to initial state
       setHiddenColumns([])
@@ -247,127 +263,153 @@ export default function Home() {
       let _headerRow: string[] = []
       let isHeaderSet = false
       let errorMessage = ""
+      let longestRowLength = 0
 
       // Import full project (no postprocessing needed / return early)
-      if (file.name.toLowerCase().endsWith(".fg")) {
-        const data = await file.arrayBuffer()
+      if (files[0].name.toLowerCase().endsWith(".fg")) {
+        const data = await files[0].arrayBuffer()
         const project = await decompressString(data)
         importProject(project)
         return
       }
 
-      // Parse data/content from file (including some postprocessing)
-      if (file.name.toLowerCase().endsWith(".xlsx")) {
-        const fileAsArrayBuffer = await file.arrayBuffer()
-        const workbook = XLSX.read(fileAsArrayBuffer, { cellDates: true })
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-        // Get the range of the sheet
-        const ref = firstSheet["!ref"]
-        if (!ref) {
-          data = []
-        } else {
-          const range = XLSX.utils.decode_range(ref)
-          const rows: any[][] = []
-          for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
-            const row: any[] = []
-            for (let colIdx = range.s.c; colIdx <= range.e.c; colIdx++) {
-              const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx })
-              const cell: CellObject = firstSheet[cellRef]
-              if (!cell) {
-                row.push("")
-              } else if (cell.t === "d" && cell.v instanceof Date) {
-                row.push(cell.v)
-              } else if (cell.t === "n") {
-                row.push(cell.v)
-              } else if (cell.t === "b") {
-                row.push(!!cell.v)
-              } else if (cell.t === "e") {
-                row.push(null)
-              } else {
-                row.push(cell.v)
-              }
-            }
-            rows.push(row)
-          }
-          data = rows
+      for (const file of files) {
+        if (errorMessage) {
+          break
         }
-      } else if (file.name.toLowerCase().endsWith(".json")) {
-        const contentAsText: string = await readFileToString(file)
 
-        const parsedContent: any = JSON.parse(contentAsText)
+        // Parse data/content from file (including some postprocessing)
+        if (file.name.toLowerCase().endsWith(".xlsx")) {
+          const fileAsArrayBuffer = await file.arrayBuffer()
+          const workbook = XLSX.read(fileAsArrayBuffer, { cellDates: true })
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+          // Get the range of the sheet
+          const ref = firstSheet["!ref"]
+          if (!ref) {
+            data = []
+          } else {
+            const range = XLSX.utils.decode_range(ref)
+            const rows: any[][] = []
+            for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
+              const row: any[] = []
+              for (let colIdx = range.s.c; colIdx <= range.e.c; colIdx++) {
+                const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx })
+                const cell: CellObject = firstSheet[cellRef]
+                if (!cell) {
+                  row.push("")
+                } else if (cell.t === "d" && cell.v instanceof Date) {
+                  row.push(cell.v)
+                } else if (cell.t === "n") {
+                  row.push(cell.v)
+                } else if (cell.t === "b") {
+                  row.push(!!cell.v)
+                } else if (cell.t === "e") {
+                  row.push(null)
+                } else {
+                  row.push(cell.v)
+                }
+              }
+              rows.push(row)
+            }
 
-        const arrayData = findArrayProp(parsedContent)
+            // If we have multiple files w/ header, drop header row except first
+            if (isHeaderSet) {
+              rows.shift()
+            }
 
-        if (arrayData) {
-          const jsonAsTable = jsonToTable(arrayData)
-          data = jsonAsTable.data
-          _headerRow = jsonAsTable.headerRow
+            data = data.concat(rows)
+          }
+        } else if (file.name.toLowerCase().endsWith(".json")) {
+          const contentAsText: string = await readFileToString(file)
+
+          const parsedContent: any = JSON.parse(contentAsText)
+
+          const arrayData = findArrayProp(parsedContent)
+
+          if (arrayData) {
+            const jsonAsTable = jsonToTable(arrayData)
+            data = data.concat(jsonAsTable.data)
+            _headerRow = jsonAsTable.headerRow
+            isHeaderSet = true
+            setDataFormatAlwaysIncludesHeader(true)
+            setDataIncludesHeaderRow(true)
+          } else {
+            data = []
+            _headerRow = []
+            errorMessage = "No array in JSON found"
+          }
+        } else if (file.name.toLowerCase().endsWith(".md")) {
+          const contentAsText: string = await readFileToString(file)
+
+          const markdownParsingResult = parseMarkdownTable(contentAsText)
+          data = data.concat(markdownParsingResult.rows)
+          _headerRow = markdownParsingResult.headerRow
           isHeaderSet = true
           setDataFormatAlwaysIncludesHeader(true)
           setDataIncludesHeaderRow(true)
+          // console.log(
+          //   "Parsed as markdown with headers:",
+          //   markdownParsingResult.headerRow,
+          // )
         } else {
-          data = []
-          _headerRow = []
-          errorMessage = "No array in JSON found"
-        }
-      } else if (file.name.toLowerCase().endsWith(".md")) {
-        const contentAsText: string = await readFileToString(file)
+          const contentAsText: string = await readFileToString(file)
 
-        const markdownParsingResult = parseMarkdownTable(contentAsText)
-        data = markdownParsingResult.rows
-        _headerRow = markdownParsingResult.headerRow
-        isHeaderSet = true
-        setDataFormatAlwaysIncludesHeader(true)
-        setDataIncludesHeaderRow(true)
-        // console.log(
-        //   "Parsed as markdown with headers:",
-        //   markdownParsingResult.headerRow,
-        // )
-      } else {
-        const contentAsText: string = await readFileToString(file)
+          // Assume somehow-Separated text
+          console.time("detectDelimiter")
+          const delimiter = detectDelimiter(contentAsText)
+          console.timeEnd("detectDelimiter")
+          console.log("detected delimiter: ", delimiter)
+          if (delimiter) {
+            try {
+              const content = parse(contentAsText, {
+                delimiter,
+                bom: true,
+                skip_empty_lines: true,
+                relax_column_count: true,
+                relax_quotes: true,
+              })
 
-        // Assume somehow-Separated text
-        console.time("detectDelimiter")
-        const delimiter = detectDelimiter(contentAsText)
-        console.timeEnd("detectDelimiter")
-        console.log("detected delimiter: ", delimiter)
-        if (delimiter) {
-          try {
-            data = parse(contentAsText, {
-              delimiter,
-              bom: true,
-              skip_empty_lines: true,
-              relax_column_count: true,
-              relax_quotes: true,
-            })
-          } catch (err) {
-            console.error(err)
-            errorMessage = "Parsing failed"
-          }
-        } else {
-          errorMessage = "No delimiter detected"
-        }
+              // If we have multiple files w/ header, drop header row except first
+              if (isHeaderSet) {
+                content.shift()
+              }
 
-        // console.log(data)
-      }
-
-      if (data.length) {
-        const longestRowLength = maxBy(data, (d) => d.length)!.length
-        if (!isHeaderSet) {
-          console.time("hasHeader")
-          const headerDetected = hasHeader(data)
-          console.timeEnd("hasHeader")
-          console.log("headerDetected", headerDetected)
-          setDataIncludesHeaderRow(headerDetected)
-          // header row detection and synthetic generation if not present
-          if (headerDetected) {
-            _headerRow = data.shift()!
-            _headerRow = generateHeaderRow(longestRowLength, _headerRow)
+              data = data.concat(content)
+            } catch (err) {
+              console.error(err)
+              errorMessage = "Parsing failed"
+            }
           } else {
-            _headerRow = generateHeaderRow(longestRowLength)
+            errorMessage = "No delimiter detected"
           }
+
+          // console.log(data)
         }
 
+        if (!errorMessage && data.length) {
+          const currentMaxLineLength = maxBy(data, (d) => d.length)!.length
+          if (currentMaxLineLength > longestRowLength) {
+            longestRowLength = currentMaxLineLength
+          }
+          if (!isHeaderSet) {
+            console.time("hasHeader")
+            const headerDetected = hasHeader(data)
+            console.timeEnd("hasHeader")
+            console.log("headerDetected", headerDetected)
+            setDataIncludesHeaderRow(headerDetected)
+            // header row detection and synthetic generation if not present
+            if (headerDetected) {
+              isHeaderSet = true
+              _headerRow = data.shift()!
+              _headerRow = generateHeaderRow(longestRowLength, _headerRow)
+            } else {
+              _headerRow = generateHeaderRow(longestRowLength)
+            }
+          }
+        }
+      } // files loop
+
+      if (!errorMessage && data.length) {
         // Fill shorter rows with null values if needed
         for (const row of data) {
           if (row.length < longestRowLength) {
@@ -376,11 +418,18 @@ export default function Home() {
         }
 
         toast({
-          title: file.name + " parsed",
+          title: files.map((_) => _.name).join(", ") + " parsed",
           description: data.length + " lines found",
           variant: "success",
         })
-        setData(file, _headerRow, data, hideEmptyColumns)
+
+        const filesMetaData: FileMetaData = {
+          name: files[0].name, // TODO: Better naming for multiple files?
+          lastModified: Math.max(...files.map((f) => f.lastModified)),
+          size: files.reduce((sum, f) => sum + f.size, 0),
+        }
+
+        setData(filesMetaData, _headerRow, data, hideEmptyColumns)
       } else {
         console.error(errorMessage)
         toast({
@@ -410,9 +459,9 @@ export default function Home() {
 
       // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
       const syntheticFile = generateSyntheticFile(text, syntheticFileName)
-      parseFile(syntheticFile, hideEmptyColumns)
+      parseFiles(syntheticFile, hideEmptyColumns)
     },
-    [parseFile],
+    [parseFiles],
   )
 
   const onGenerateSampleData = (rowsAmount = 1337) => {
@@ -440,7 +489,7 @@ export default function Home() {
   }
 
   const setData = (
-    file: File | null,
+    file: FileMetaData | null,
     headerRow: string[],
     data: string[][],
     hideEmptyColumns: boolean,
@@ -496,7 +545,7 @@ export default function Home() {
         importTransformer(contentAsText)
         trackEvent("Transformer", "Drop")
       } else {
-        parseFile(firstFile, true)
+        parseFiles(files, true)
         trackEvent("File", "Drop")
       }
     }
@@ -510,8 +559,7 @@ export default function Home() {
     e.stopPropagation()
 
     if (files.length) {
-      const firstFile = files[0]
-      parseFile(firstFile, true)
+      parseFiles(files, true)
     }
 
     trackEvent("File", "Select")

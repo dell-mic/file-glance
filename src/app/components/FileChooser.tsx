@@ -35,6 +35,7 @@ export const FileChooser = (props: {
         </div>
         <input
           type="file"
+          multiple
           className="hidden"
           onChange={props.handleFileSelected}
         />
