@@ -651,7 +651,7 @@ export function postProcessCode(inputCode: string): string {
 }
 
 export function detectDelimiter(input: string): string | null {
-  const supportedDelimiters = [",", "\t", ";", "|"] // Note: Order matters in case of equal occurrence count!
+  const supportedDelimiters = [",", "\t", ";", "|", "~", "#"] // Note: Order matters in case of equal occurrence count!
   const counts: Record<string, number> = {}
   const linesToTest = input
     .split("\n")
