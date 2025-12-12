@@ -1071,7 +1071,9 @@ export default function Home() {
         onSelect: () => {
           const fileName = getExportFileName("xlsx")
           const workbook = XLSX.utils.book_new()
-          const worksheet = XLSX.utils.aoa_to_sheet(getExportData())
+          const worksheet = XLSX.utils.aoa_to_sheet(
+            getExportData({ stringifyArrays: true }),
+          )
           XLSX.utils.book_append_sheet(
             workbook,
             worksheet,
