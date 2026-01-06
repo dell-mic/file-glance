@@ -1,4 +1,4 @@
-export const title = "FileGlance - tool for working with tabular data"
+export const title = "FileGlance — tabular data tooling for developers"
 
 export const description =
-  "Powerful tool for viewing, filtering, and transforming tabular data files using JavaScript."
+  "Powerful tool for viewing, filtering, and transforming tabular data files using JavaScript directly in the browser."
