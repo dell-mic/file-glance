@@ -167,8 +167,8 @@ export function generateSampleData(numRows: number): {
     "Happiness Score",
     "Favorite Emoji",
     "Date Joined",
-    "Last Purchase Amount",
-    "Favorite Color",
+    // "Last Purchase Amount",
+    // "Favorite Color",
     "Has Pet",
     "Pet Type",
     "Number of Siblings",
@@ -299,7 +299,7 @@ export function generateSampleData(numRows: number): {
     "🔧",
     "📰",
   ]
-  const colors = ["Blue", "Red", "Green", "Yellow", "Purple", "Orange", "Pink"]
+  // const colors = ["Blue", "Red", "Green", "Yellow", "Purple", "Orange", "Pink"]
   const cuisines = [
     "Italian",
     "Indian",
@@ -358,8 +358,8 @@ export function generateSampleData(numRows: number): {
     }
     const favoriteEmoji = getRandomElement(emojis)
     const dateJoined = `${getRandomInt(2017, new Date().getFullYear() - 1)}-${getRandomInt(1, 12).toString().padStart(2, "0")}-${getRandomInt(1, 28).toString().padStart(2, "0")}`
-    const lastPurchaseAmount = getRandomInt(0, 1000).toFixed(2)
-    const favoriteColor = getRandomElement(colors)
+    // const lastPurchaseAmount = getRandomInt(0, 1000).toFixed(2)
+    // const favoriteColor = getRandomElement(colors)
     const hasPet = getRandomElement([true, false])
     const petType = "" // Simluate empty column
     let numberOfSiblings = getRandomInt(0, 4)
@@ -395,8 +395,8 @@ export function generateSampleData(numRows: number): {
       happinessScore,
       favoriteEmoji,
       dateJoined,
-      lastPurchaseAmount,
-      favoriteColor,
+      // lastPurchaseAmount,
+      // favoriteColor,
       hasPet,
       petType,
       numberOfSiblings,

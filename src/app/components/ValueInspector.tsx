@@ -3,6 +3,7 @@ import Accordion from "../../components/ui/Accordion"
 import React from "react"
 import MiddleEllipsis from "../../components/ui/MiddleEllipsis"
 import { ColumnFilter, FilterValue } from "@/utils"
+import TipsCarousel from "./TipsCarousel/TipsCarousel"
 
 export const ValuesInspector = (props: {
   filters: ColumnFilter[]
@@ -158,6 +159,8 @@ export const ValuesInspector = (props: {
           </Accordion>
         )
       })}
+
+      <TipsCarousel></TipsCarousel>
     </div>
   )
 }
