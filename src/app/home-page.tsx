@@ -527,13 +527,87 @@ export default function Home() {
     }
   }
 
+  const readDirectoryRecursively = async (
+    dirEntry: FileSystemDirectoryEntry,
+  ): Promise<File[]> => {
+    const files: File[] = []
+    const reader = dirEntry.createReader()
+
+    return new Promise((resolve) => {
+      const readEntries = () => {
+        reader.readEntries(async (entries) => {
+          if (entries.length === 0) {
+            resolve(files)
+            return
+          }
+
+          for (const entry of entries) {
+            // Skip files/folders starting with a dot
+            if (entry.name.startsWith(".")) {
+              continue
+            }
+
+            if (entry.isDirectory) {
+              const subDirEntry = entry as FileSystemDirectoryEntry
+              const subFiles = await readDirectoryRecursively(subDirEntry)
+              files.push(...subFiles)
+            } else if (entry.isFile) {
+              const fileEntry = entry as FileSystemFileEntry
+              const file = await new Promise<File>((resolveFile) => {
+                fileEntry.file((f) => resolveFile(f))
+              })
+              files.push(file)
+            }
+          }
+
+          // Continue reading if there are more entries
+          readEntries()
+        })
+      }
+
+      readEntries()
+    })
+  }
+
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
     setDragging(false)
 
-    const files = e.dataTransfer ? [...e.dataTransfer.files] : []
+    let files: File[] = []
+
+    // Collect all entries synchronously (dataTransfer is only available in sync context)
+    const entries: (FileSystemEntry | null)[] = []
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      for (let i = 0; i < e.dataTransfer.items.length; i++) {
+        const item = e.dataTransfer.items[i]
+        if (item.kind === "file") {
+          entries.push(item.webkitGetAsEntry())
+        }
+      }
+    }
+
+    // Fallback if items API didn't work
+    if (entries.length === 0 && e.dataTransfer?.files) {
+      files = [...e.dataTransfer.files]
+    } else {
+      // Now process entries asynchronously
+      for (const entry of entries) {
+        if (!entry) continue
+        if (entry.isDirectory) {
+          const dirEntry = entry as FileSystemDirectoryEntry
+          const dirFiles = await readDirectoryRecursively(dirEntry)
+          files.push(...dirFiles)
+        } else if (entry.isFile) {
+          const fileEntry = entry as FileSystemFileEntry
+          const file = await new Promise<File>((resolve) => {
+            fileEntry.file((f) => resolve(f))
+          })
+          files.push(file)
+        }
+      }
+    }
 
     console.log("dropped files:", files)
     if (files.length) {
