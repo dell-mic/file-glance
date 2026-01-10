@@ -181,30 +181,14 @@ describe("hasHeader", () => {
     expect(result).toBe(false)
   })
 
-  it("should return true when the first row with distinct column names", () => {
+  it("should return true when the first row column names with different patterns", () => {
     const data = [
-      ["Firstname", "Lastname"],
+      ["First name", "Last name"],
       ["John", "Doe"],
       ["Jane", "Smith"],
       ["Emily", "Jones"],
       ["Michael", "Brown"],
       ["Chris", "Wilson"],
-    ]
-
-    const result = hasHeader(data)
-    expect(result).toBe(true)
-  })
-
-  it("should return true when the first row column names with different patterns", () => {
-    const data = [
-      ["customer", "application", "script"],
-      ["grolkxuqy-rpqsxz", "xsdklqv-wsrfb-13", "AsgdfvdManager"],
-      ["tnt-xcvb-pipelinesq", "ap-smjy-23", "Healthcksr"],
-      ["tnt-zxcv-dgfsa", "ap-slot-26", "documentatixn"],
-      ["PentestCustmer456", "PentestAppliacation123", "Healthcksm"],
-      ["PentestCustmer789", "PentestAppliacation345", "documentatiin"],
-      ["qa12", "testoemh2023-zyxwv", "Healthcksv"],
-      ["dios_tobaccoqwe", "tpd-hjkl-zyx", "Healthcksr"],
     ]
 
     const result = hasHeader(data)

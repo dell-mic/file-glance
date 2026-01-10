@@ -598,9 +598,9 @@ function stringDistance(a: string, b: string): number {
 
 export function normalizeString(input: string): string {
   return input
-    .replace(/[A-Z]/g, "A") // Replace all uppercase letters with 'A'
-    .replace(/[a-z]/g, "a") // Replace all lowercase letters with 'a'
-    .replace(/[0-9]/g, "0") // Replace all digits with '0'
+    .replace(/[A-Z]+/g, "A") // Replace all uppercase letters with 'A'
+    .replace(/[a-z]+/g, "a") // Replace all lowercase letters with 'a'
+    .replace(/[0-9]+/g, "0") // Replace all digits with '0'
 }
 
 export const saveFile = async (blob: Blob, name: string) => {
