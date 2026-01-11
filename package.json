@@ -34,6 +34,7 @@
     "csv-parse": "6.1.0",
     "csv-stringify": "6.6.0",
     "dom-to-image": "2.6.0",
+    "embla-carousel-react": "8.6.0",
     "jschardet": "3.1.4",
     "lodash-es": "4.17.21",
     "lucide-react": "0.561.0",
