@@ -1,7 +1,7 @@
 import "./embla.css"
 
-import React from "react"
-import { EmblaOptionsType } from "embla-carousel"
+import React, { useEffect } from "react"
+// import { EmblaOptionsType } from "embla-carousel"
 import { DotButton, useDotButton } from "./EmblaCarouselDotButton"
 import useEmblaCarousel from "embla-carousel-react"
 import Kbd from "./Kbd"
@@ -64,7 +64,7 @@ const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
     {
       content: (
         <>
-          <Kbd>{modKey}</Kbd> click on a value to copy it to the clipboard
+          <Kbd>{modKey}</Kbd> click on a value to copy it to the clipboard.
         </>
       ),
     },
@@ -84,8 +84,16 @@ const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
   const { selectedIndex, scrollSnaps, onDotButtonClick } =
     useDotButton(emblaApi)
 
+  // Select a random tip on very first render only (without animation)
+  useEffect(() => {
+    if (emblaApi) {
+      const randomIndex = Math.floor(Math.random() * tips.length)
+      emblaApi.scrollTo(randomIndex, true)
+    }
+  }, [emblaApi, tips.length])
+
   return (
-    <section className="embla">
+    <section data-testid="tips-carousel" className="embla">
       <div className="embla__viewport" ref={emblaRef}>
         <div className="embla__container">
           {slides.map((index) => (

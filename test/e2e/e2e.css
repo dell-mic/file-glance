@@ -3,3 +3,8 @@
   /* Hide all toasts because depends on timing whether they are still visible  */
   display: none !important;
 }
+
+[data-testid="tips-carousel"] {
+  /* Hide tips carousel because of random initial tip selection */
+  visibility: hidden !important;
+}
