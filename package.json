@@ -39,7 +39,7 @@
     "lodash-es": "4.17.21",
     "lucide-react": "0.561.0",
     "monaco-editor": "0.55.1",
-    "next": "15.5.9",
+    "next": "16.1.1",
     "prismjs": "1.30.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -62,11 +62,12 @@
     "@types/lodash-es": "4.17.12",
     "@types/node": "24.10.4",
     "@types/prismjs": "1.26.5",
-    "@types/react": "19.2.7",
+    "@types/react": "19.2.8",
     "@types/react-dom": "19.2.3",
     "@types/react-window": "1.8.8",
+    "baseline-browser-mapping": "^2.9.14",
     "eslint": "9.39.2",
-    "eslint-config-next": "16.0.10",
+    "eslint-config-next": "16.1.1",
     "postcss": "8.5.6",
     "prettier": "3.7.4",
     "serve": "14.2.5",
@@ -80,7 +81,7 @@
     "last 2 safari versions"
   ],
   "overrides": {
-    "@types/react": "19.2.7",
+    "@types/react": "19.2.8",
     "@types/react-dom": "19.2.3"
   }
 }
