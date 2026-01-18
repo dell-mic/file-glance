@@ -13,7 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select"
-import { applyFilterFunction, compileFilterCode, createRowProxy } from "@/utils"
+import {
+  applyFilterFunction,
+  compileFilterCode,
+  createRowProxy,
+  renderValuePreview,
+} from "@/utils"
 import Editor from "@/components/ui/Editor"
 
 interface ColumnInfos {
@@ -47,10 +52,10 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   if (columnValueCounts[0]) {
     exampleFilterFunctionCode = `// (row: any[], rowIndex: number, cache = {}) => boolean\n`
     exampleFilterFunctionCode += `// For example: \n`
-    exampleFilterFunctionCode += `return row[\"${columnValueCounts[0].columnName}\"] === ${JSON.stringify(columnValueCounts[0].columnValues[0]?.value)}`
+    exampleFilterFunctionCode += `return row[\"${columnValueCounts[0].columnName}\"] === ${renderValuePreview(columnValueCounts[0].columnValues[0]?.value)}`
   }
   if (columnValueCounts[1]) {
-    exampleFilterFunctionCode += ` || row[\"${columnValueCounts[1].columnName}\"] === ${JSON.stringify(columnValueCounts[1].columnValues[columnValueCounts[1].columnValues.length - 1]?.value)}`
+    exampleFilterFunctionCode += ` || row[\"${columnValueCounts[1].columnName}\"] === ${renderValuePreview(columnValueCounts[1].columnValues[columnValueCounts[1].columnValues.length - 1]?.value)}`
   }
 
   // Calculate topX based on displayedData length
@@ -155,7 +160,7 @@ return rowIndex < ${topX}`)
       <div>
         <h2 className="m-auto text-2xl text-gray-700 mb-4">Filter Rows</h2>
         <Select onValueChange={handleFilterSelected}>
-          <SelectTrigger className="w-[180px] mb-2">
+          <SelectTrigger className="w-45 mb-2">
             <SelectValue placeholder="Filter function" />
           </SelectTrigger>
           <SelectContent>

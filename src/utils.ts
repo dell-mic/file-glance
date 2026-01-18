@@ -47,6 +47,19 @@ export function valueAsStringSimplified(v: any): string {
   }
 }
 
+export function renderValuePreview(v: any) {
+  // JSON.stringify does not support bigint type
+  if (typeof v === "bigint") {
+    return v.toString() + "n"
+  } else {
+    return JSON.stringify(v)
+  }
+}
+
+export function isNumericColumn(c: ColumnInfos) {
+  return c.columnType === "Number" || c.columnType === "BigInt"
+}
+
 // Proxy wrapper for each row to allow access by header name
 export function createRowProxy(row: any[], headers: string[]) {
   return new Proxy(row, {

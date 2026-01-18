@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Modal } from "../../components/ui/Modal"
-import { tryParseJSONObject } from "@/utils"
+import { renderValuePreview, tryParseJSONObject } from "@/utils"
 import Editor from "@/components/ui/Editor"
 
 interface TransformerValidation {
@@ -214,11 +214,11 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
             </thead>
             <tbody>
               {transformerValidation?.sampleResults.map((sample, index) => {
-                const sampleRender = JSON.stringify(sample.value)
+                const sampleRender = renderValuePreview(sample.value)
 
                 const resultRender = sample.error
                   ? sample.error
-                  : JSON.stringify(sample.result)
+                  : renderValuePreview(sample.result)
                 return (
                   <tr
                     key={index}

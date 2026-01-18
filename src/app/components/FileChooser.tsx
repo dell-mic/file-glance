@@ -31,7 +31,7 @@ export const FileChooser = (props: {
             <span className="font-medium whitespace-nowrap">drag & drop</span>{" "}
             or <span className="font-medium whitespace-nowrap">paste</span>
           </p>
-          <p className=" text-gray-500">CSV, TSV, XLSX, JSON</p>
+          <p className=" text-gray-500">CSV, TSV, XLSX, JSON, PARQUET</p>
         </div>
         <input
           type="file"

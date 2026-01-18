@@ -71,8 +71,12 @@ const cellClass = cva(
         true: "text-blue-900",
         false: "",
       },
+      isBigInt: {
+        true: "text-indigo-900",
+        false: "",
+      },
       booleanTrue: {
-        true: "text-green-900",
+        true: "text-green-800",
         false: "",
       },
       booleanFalse: {
@@ -149,6 +153,7 @@ export const Row = (
           const isTypedValue = typeof v !== "string"
 
           let isNumber = false
+          let isBigInt = false
           let isDate = false
           let isArray = false
           let booleanTrue = false
@@ -165,6 +170,8 @@ export const Row = (
               isDate = true
             } else if (isNonEmptyArray(v)) {
               isArray = true
+            } else if (typeof v === "bigint") {
+              isBigInt = true
             }
           }
 
@@ -223,6 +230,7 @@ export const Row = (
                 title={title}
                 className={cellClass({
                   isNumber,
+                  isBigInt,
                   isArray,
                   isDate,
                   booleanTrue,

@@ -7,6 +7,9 @@ import { maxBy, omit } from "lodash-es"
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
 import { stringify as stringifyCSV } from "csv-stringify/browser/esm/sync"
+import { parquetRead, parquetMetadataAsync, parquetSchema } from "hyparquet"
+import { compressors } from "hyparquet-compressors"
+
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { FileChooser } from "./components/FileChooser"
 import FilterDialog from "./components/FilterDialog"
@@ -159,7 +162,11 @@ export default function Home() {
       console.timeEnd("displayedDataWorker")
       setDisplayedHeader(event.data.displayedHeader)
       // setDisplayedData(event.data.displayedData)
-      setDisplayedDataFiltered(event.data.displayedDataFiltered)
+      setDisplayedDataFiltered(
+        event.data.displayedDataFiltered.map((row) =>
+          createRowProxy(row, event.data.displayedHeader),
+        ),
+      )
       setColumnInfos(event.data.columnInfos)
       setCalculationInProgress(false)
     }
@@ -351,6 +358,46 @@ export default function Home() {
           //   "Parsed as markdown with headers:",
           //   markdownParsingResult.headerRow,
           // )
+        } else if (file.name.toLowerCase().endsWith(".parquet")) {
+          const fileAsArrayBuffer = await file.arrayBuffer()
+          const metadata = await parquetMetadataAsync(fileAsArrayBuffer)
+          // Get total number of rows (convert bigint to number)
+          // const numRows = Number(metadata.num_rows)
+          // Get nested table schema
+          const schema = parquetSchema(metadata)
+          // Get top-level column header names
+          const columnNames = schema.children.map((e) => e.element.name)
+          // console.log("columnNames", columnNames)
+
+          await parquetRead({
+            metadata,
+            compressors,
+            file: fileAsArrayBuffer,
+            onComplete: (_data) => {
+              // console.log("parquetRead - onComplete")
+              data = data.concat(_data)
+            },
+          })
+
+          _headerRow = columnNames
+          isHeaderSet = true
+          setDataFormatAlwaysIncludesHeader(true)
+          setDataIncludesHeaderRow(true)
+
+          // // Altearntive: Proceed like regular JSON parsing the
+          // // TODO: Might be not most efficient way? Might be improved by using low level parquetRead()?
+
+          // const _data = await parquetReadObjects({
+          //   file: await file.arrayBuffer(),
+          // })
+          // console.log("Parquet data:", _data)
+
+          // const jsonAsTable = jsonToTable(_data)
+          // data = data.concat(jsonAsTable.data)
+          // _headerRow = jsonAsTable.headerRow
+          // isHeaderSet = true
+          // setDataFormatAlwaysIncludesHeader(true)
+          // setDataIncludesHeaderRow(true)
         } else {
           const contentAsText: string = await readFileToString(file)
 

@@ -100,10 +100,10 @@ const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
             <div className="embla__slide" key={index}>
               <div className="embla__slide__number">
                 <div className="mx-4">
-                  <div className="text-2xl text-gray-500 mb-4">
+                  <div className="text-xl text-gray-500 mb-4">
                     💡 Tip #{index + 1}
                   </div>
-                  <div className="text-gray-500 leading-6">
+                  <div className="text-md text-gray-500 leading-6">
                     {tips[index].content}
                   </div>
                 </div>

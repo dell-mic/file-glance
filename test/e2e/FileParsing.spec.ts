@@ -14,6 +14,7 @@ const files = [
   "sample.json",
   "long_values.csv",
   "sample.fg",
+  "titanic.parquet",
 ]
 
 files.forEach((file) => {

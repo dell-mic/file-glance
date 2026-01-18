@@ -15,7 +15,12 @@ import {
   LineChart as LineIcon,
   PieChart as PieIcon,
 } from "lucide-react"
-import { ArrowUpNarrowWide, ArrowDownNarrowWide, Download } from "lucide-react"
+import {
+  ArrowUpNarrowWide,
+  ArrowDownNarrowWide,
+  Download,
+  AlertTriangle,
+} from "lucide-react"
 import domtoimage from "dom-to-image"
 import {
   BarChart,
@@ -36,7 +41,11 @@ import {
 } from "./DataChart/chartUtils"
 
 import { ColumnInfos } from "./ValueInspector"
-import { saveFile, cleanForFileName } from "../../utils"
+import {
+  saveFile,
+  cleanForFileName,
+  isNumericColumn as fnIsNumericColumn,
+} from "../../utils"
 import { MenuPopover } from "../../components/ui/Popover"
 import { Button } from "../../components/ui/button"
 
@@ -53,6 +62,7 @@ type SORT_ORDERS = "asc" | "desc"
 const ChartElementId = "pivotChartArea"
 
 const MaxGroupsDisplayed = 50
+
 export const PivotChart: React.FC<PivotChartProps> = ({
   columnInfos,
   data,
@@ -61,10 +71,10 @@ export const PivotChart: React.FC<PivotChartProps> = ({
   const [popoverAnchorElement, setPopoverAnchorElement] =
     useState<HTMLElement | null>(null)
   const numericColumns = useMemo(
-    () => columnInfos.filter((c) => c.columnType === "Number"),
+    () => columnInfos.filter((c) => fnIsNumericColumn(c)),
     [columnInfos],
   )
-  const noNumericColumns = numericColumns.length === 0
+  // const noNumericColumns = numericColumns.length === 0
 
   // Helper to pick a good initial xField value
   function pickInitialXField(cols: ColumnInfos[]): string {
@@ -90,6 +100,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
       "client",
       "status",
       "stage",
+      "sex",
     ]
     for (const name of preferredNames) {
       const found = cols.find((c) => c.columnName.toLowerCase() === name)
@@ -163,16 +174,24 @@ export const PivotChart: React.FC<PivotChartProps> = ({
       // Sorting
       if (sortField !== "None") {
         const key = sortField === "X-Value" ? xField : yValues[0] // sort by first y value's count
-        result = orderBy(result, [key], [sortOrder])
+        result = orderBy(result, [Number(key)], [sortOrder])
       }
 
       return { chartData: result, _groupedYValues: yValues }
     } else {
       // Group by xField
       const groups: Record<string, any[]> = {}
+      const xIndex = columnInfos.find(
+        (ci) => ci.columnName === xField,
+      )!.columnIndex
+      const yIndex = columnInfos.find(
+        (ci) => ci.columnName === yField,
+      )!.columnIndex
       for (const row of data) {
-        const x = row[xField as keyof typeof row]
-        const yRaw = row[yField as keyof typeof row]
+        const _row = row.map((_) => (typeof _ === "bigint" ? Number(_) : _))
+
+        const x = _row[xIndex]
+        const yRaw = _row[yIndex]
         if (
           x == null ||
           x === undefined ||
@@ -210,7 +229,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
 
       if (sortField !== "None") {
         const key = sortField === "X-Value" ? xField : yField
-        result = orderBy(result, [key], [sortOrder])
+        result = orderBy(result, [Number(key)], [sortOrder])
       }
       return { chartData: result }
     }
@@ -223,6 +242,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
     data,
     sortOrder,
     aggregation,
+    columnInfos,
   ])
 
   const pieData = useMemo(() => {
@@ -287,8 +307,8 @@ export const PivotChart: React.FC<PivotChartProps> = ({
     ],
   ]
 
-  const yAxisIsNonNumeric =
-    columnInfos.find((ci) => ci.columnName === yField)?.columnType !== "Number"
+  const yColumnInfo = columnInfos.find((ci) => ci.columnName === yField)
+  const yAxisIsNonNumeric = yColumnInfo && !fnIsNumericColumn(yColumnInfo)
 
   return (
     <Card className="flex flex-row gap-0 py-0 overflow-hidden">
@@ -324,8 +344,9 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               value={yField}
               onValueChange={(newVal) => {
                 if (
-                  columnInfos.find((ci) => ci.columnName === newVal)
-                    ?.columnType !== "Number"
+                  !fnIsNumericColumn(
+                    columnInfos.find((ci) => ci.columnName === newVal)!,
+                  )
                 ) {
                   setAggregation("Count")
                 }
@@ -346,6 +367,14 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                 ))}
               </SelectContent>
             </Select>
+            {yColumnInfo?.columnType === "BigInt" && (
+              <div className="flex items-start gap-2 mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  BigInt is not fully supported and will be downcast to Number
+                </span>
+              </div>
+            )}
           </div>
           <div>
             <Label className="font-medium text-xs mb-1">
