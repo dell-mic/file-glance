@@ -304,11 +304,15 @@ export const DataTable = (props: {
         text: "Copy values (unique, JS array)",
         icon: <ClipboardDocumentListIcon />,
         onSelect: async () => {
-          await navigator.clipboard.writeText(
-            JSON.stringify(
-              uniq(props.rows.map((row) => row[popoverColumnIndex!])),
-            ),
-          )
+          const stringifiedArray = `[${uniq(
+            props.rows.map((row) => {
+              const value = row[popoverColumnIndex!]
+              return typeof value === "bigint"
+                ? value.toString() + "n"
+                : JSON.stringify(value)
+            }),
+          ).join(",")}]`
+          await navigator.clipboard.writeText(stringifiedArray)
           toast({
             title: "Values copied to clipboard",
           })
