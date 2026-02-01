@@ -44,6 +44,7 @@ import {
   applyFilters,
   countValues,
   createRowProxy,
+  parseLineSeparatedJson,
 } from "@/utils"
 
 import { description, title } from "@/constants"
@@ -401,33 +402,43 @@ export default function Home() {
         } else {
           const contentAsText: string = await readFileToString(file)
 
-          // Assume somehow-Separated text
-          console.time("detectDelimiter")
-          const delimiter = detectDelimiter(contentAsText)
-          console.timeEnd("detectDelimiter")
-          console.log("detected delimiter: ", delimiter)
-          if (delimiter) {
-            try {
-              const content = parse(contentAsText, {
-                delimiter,
-                bom: true,
-                skip_empty_lines: true,
-                relax_column_count: true,
-                relax_quotes: true,
-              })
-
-              // If we have multiple files w/ header, drop header row except first
-              if (isHeaderSet) {
-                content.shift()
-              }
-
-              data = data.concat(content)
-            } catch (err) {
-              console.error(err)
-              errorMessage = "Parsing failed"
-            }
+          // Try line separated JSON first (will fail early if no JSON)
+          const lsJsonResult = parseLineSeparatedJson(contentAsText)
+          if (lsJsonResult && lsJsonResult.data.length > 0) {
+            data = data.concat(lsJsonResult.data)
+            _headerRow = lsJsonResult.headerRow
+            isHeaderSet = true
+            setDataFormatAlwaysIncludesHeader(true)
+            setDataIncludesHeaderRow(true)
           } else {
-            errorMessage = "No delimiter detected"
+            // Otherwise: Assume somehow-Separated text
+            console.time("detectDelimiter")
+            const delimiter = detectDelimiter(contentAsText)
+            console.timeEnd("detectDelimiter")
+            console.log("detected delimiter: ", delimiter)
+            if (delimiter) {
+              try {
+                const content = parse(contentAsText, {
+                  delimiter,
+                  bom: true,
+                  skip_empty_lines: true,
+                  relax_column_count: true,
+                  relax_quotes: true,
+                })
+
+                // If we have multiple files w/ header, drop header row except first
+                if (isHeaderSet) {
+                  content.shift()
+                }
+
+                data = data.concat(content)
+              } catch (err) {
+                console.error(err)
+                errorMessage = "Parsing failed"
+              }
+            } else {
+              errorMessage = "No delimiter detected"
+            }
           }
 
           // console.log(data)

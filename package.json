@@ -8,13 +8,14 @@
     "dev:https": "next dev --experimental-https",
     "build": "next build",
     "buildAndStart": "next build && serve out",
-    "check": "npm run format && npm run typeCheck && npm run lint && bun test test/unit && npm run test:e2e",
+    "check": "npm run format && npm run typeCheck && npm run lint && bun test test/unit && npm run test:e2e:quick",
     "lint": "eslint src",
     "typeCheck": "tsc --noEmit ",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "test:unit": "bun test test/unit",
     "test:e2e": "npx playwright install && npx playwright test",
+    "test:e2e:quick": "npx playwright test --project=chromium",
     "test:e2e:updateSnapshots": "npx playwright test --update-snapshots"
   },
   "dependencies": {

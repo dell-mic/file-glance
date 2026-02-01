@@ -80,27 +80,76 @@ export function trackEvent(category: string, event: string) {
   }
 }
 
+// Helper function to flatten a nested object
+function flattenObject(obj: any, prefix = "") {
+  return Object.keys(obj).reduce((acc: any, k) => {
+    const pre = prefix.length ? prefix + "." : ""
+    if (
+      typeof obj[k] === "object" &&
+      obj[k] !== null &&
+      !Array.isArray(obj[k])
+    ) {
+      Object.assign(acc, flattenObject(obj[k], pre + k))
+    } else {
+      acc[pre + k] = obj[k]
+    }
+    return acc
+  }, {})
+}
+
+export function parseLineSeparatedJson(input: string): {
+  data: any[][]
+  headerRow: string[]
+} | null {
+  const lines = input.split("\n")
+  const jsonObjects: any[] = []
+  const allKeys = new Set<string>()
+  let firstValidLineFound = false
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    // Skip empty lines
+    if (trimmed === "") {
+      continue
+    }
+
+    // Try to parse the line as JSON
+    const parsed = tryParseJSONObject(trimmed)
+
+    // If parsing failed and it's the first non-empty line, abort
+    if (parsed === false) {
+      if (!firstValidLineFound) {
+        return null
+      }
+      // Otherwise, ignore non-JSON lines
+      continue
+    }
+
+    firstValidLineFound = true
+
+    const flattened = flattenObject(parsed)
+    jsonObjects.push(flattened)
+    Object.keys(flattened).forEach((key) => allKeys.add(key))
+  }
+
+  // Return null if no valid JSON objects were found
+  if (jsonObjects.length === 0) {
+    return null
+  }
+
+  const headerRow = Array.from(allKeys)
+
+  // Convert objects to rows using the header row
+  const data = jsonObjects.map((obj) => headerRow.map((header) => obj[header]))
+
+  return { data, headerRow }
+}
+
 export function jsonToTable(jsonArray: Array<any>): {
   data: any[][]
   headerRow: string[]
 } {
-  // Helper function to flatten a nested object
-  function flattenObject(obj: any, prefix = "") {
-    return Object.keys(obj).reduce((acc: any, k) => {
-      const pre = prefix.length ? prefix + "." : ""
-      if (
-        typeof obj[k] === "object" &&
-        obj[k] !== null &&
-        !Array.isArray(obj[k])
-      ) {
-        Object.assign(acc, flattenObject(obj[k], pre + k))
-      } else {
-        acc[pre + k] = obj[k]
-      }
-      return acc
-    }, {})
-  }
-
   const flatArray = jsonArray.map((item) => flattenObject(item))
 
   const header = Array.from(
