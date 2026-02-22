@@ -36,11 +36,11 @@
     "csv-stringify": "6.6.0",
     "dom-to-image": "2.6.0",
     "embla-carousel-react": "8.6.0",
-    "hyparquet": "1.24.1",
+    "hyparquet": "1.25.0",
     "hyparquet-compressors": "1.1.1",
     "jschardet": "3.1.4",
     "lodash-es": "4.17.23",
-    "lucide-react": "0.563.0",
+    "lucide-react": "0.575.0",
     "monaco-editor": "0.55.1",
     "next": "16.1.6",
     "prismjs": "1.30.0",
@@ -52,29 +52,29 @@
     "react-virtualized-auto-sizer": "1.0.26",
     "react-window": "1.8.11",
     "recharts": "2.15.4",
-    "tailwind-merge": "3.4.0",
+    "tailwind-merge": "3.5.0",
     "tailwindcss-animate": "1.0.7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.3",
-    "@playwright/test": "1.58.1",
-    "@tailwindcss/postcss": "4.1.18",
+    "@playwright/test": "1.58.2",
+    "@tailwindcss/postcss": "4.2.0",
     "@types/bun": "latest",
     "@types/dom-to-image": "2.6.7",
     "@types/lodash-es": "4.17.12",
-    "@types/node": "24.10.9",
-    "@types/prismjs": "1.26.5",
-    "@types/react": "19.2.10",
+    "@types/node": "24.10.13",
+    "@types/prismjs": "1.26.6",
+    "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@types/react-window": "1.8.8",
-    "baseline-browser-mapping": "2.9.19",
-    "eslint": "9.39.2",
+    "baseline-browser-mapping": "2.10.0",
+    "eslint": "9.39.3",
     "eslint-config-next": "16.1.6",
     "postcss": "8.5.6",
     "prettier": "3.8.1",
     "serve": "14.2.5",
-    "tailwindcss": "4.1.18",
+    "tailwindcss": "4.2.0",
     "typescript": "5.9.3"
   },
   "browserslist": [
@@ -84,7 +84,7 @@
     "last 2 safari versions"
   ],
   "overrides": {
-    "@types/react": "19.2.10",
+    "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3"
   }
 }
