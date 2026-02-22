@@ -17,6 +17,7 @@ interface MenuItem {
   text: string
   icon: React.ReactElement
   onSelect: () => void
+  disabled?: boolean
 }
 
 interface MenuPopoverProps extends Omit<PopoverProps, "children"> {
@@ -136,14 +137,21 @@ export const MenuPopover: React.FC<MenuPopoverProps> = (props) => {
                 <button
                   key={mi}
                   data-testid={`menuEntry-${menuEntry.text}`}
-                  className="flex items-center w-full text-sm text-left text-gray-700 py-2 pl-2 pr-4 hover:bg-gray-100 hover:text-gray-950"
+                  disabled={menuEntry.disabled}
+                  className={`flex items-center w-full text-sm text-left py-2 pl-2 pr-4 whitespace-nowrap ${
+                    menuEntry.disabled
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-950"
+                  }`}
                   onPointerDown={() => {
-                    menuEntry.onSelect()
-                    props.onSelect(menuEntry)
+                    if (!menuEntry.disabled) {
+                      menuEntry.onSelect()
+                      props.onSelect(menuEntry)
+                    }
                   }}
                 >
                   <span className="mr-3 size-5">{menuEntry.icon}</span>
-                  <span className="whitespace-nowrap">{menuEntry.text}</span>
+                  <span>{menuEntry.text}</span>
                 </button>
               ))}
             </div>

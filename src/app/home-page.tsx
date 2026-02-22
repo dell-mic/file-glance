@@ -1119,15 +1119,22 @@ export default function Home() {
 
   interface ExportOptions {
     stringifyArrays?: boolean
+    maxValueLength?: number
   }
 
   const getExportData = (options?: Partial<ExportOptions>): any[][] => {
     const stringifyArrays = options?.stringifyArrays ?? false
+    const maxValueLength = options?.maxValueLength
     // Need to filter columns as they are still part of displayed data for index consistency
     return [displayedHeader, ...displayedDataFiltered].map((row) =>
       row
         .filter((v, i) => !hiddenColumns.includes(i))
-        .map((v) => (stringifyArrays && Array.isArray(v) ? String(v) : v)),
+        .map((v) => (stringifyArrays && Array.isArray(v) ? String(v) : v))
+        .map((v) =>
+          maxValueLength && typeof v === "string"
+            ? (v as string).substring(0, maxValueLength)
+            : v,
+        ),
     )
   }
 
@@ -1200,26 +1207,43 @@ export default function Home() {
       {
         text: "Export as XLSX",
         icon: <ArchiveBoxArrowDownIconSolid />,
+        disabled:
+          // https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
+          displayedDataFiltered.length >= 1048576 ||
+          displayedHeader.length >= 16384,
         onSelect: () => {
+          trackEvent("Export", "XLSX")
+
           const fileName = getExportFileName("xlsx")
           const workbook = XLSX.utils.book_new()
-          const worksheet = XLSX.utils.aoa_to_sheet(
-            getExportData({ stringifyArrays: true }),
-          )
-          XLSX.utils.book_append_sheet(
-            workbook,
-            worksheet,
-            cleanWorksheetName(fileName),
-          )
-          XLSX.writeFile(workbook, fileName, {
-            bookType: "xlsx",
-            compression: true,
-          })
+          try {
+            const worksheet = XLSX.utils.aoa_to_sheet(
+              getExportData({
+                stringifyArrays: true,
+                // Excel max limit per cell: https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
+                maxValueLength: 32767,
+              }),
+            )
+            XLSX.utils.book_append_sheet(
+              workbook,
+              worksheet,
+              cleanWorksheetName(fileName),
+            )
+            XLSX.writeFile(workbook, fileName, {
+              bookType: "xlsx",
+              compression: true,
+            })
+          } catch (error: any) {
+            toast({
+              title: error.message || String(error),
+              variant: "error",
+            })
+            return
+          }
           toast({
             title: "XLSX exported",
             variant: "success",
           })
-          trackEvent("Export", "XLSX")
         },
       },
       {
