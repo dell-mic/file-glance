@@ -40,7 +40,7 @@ const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
     {
       content: (
         <>
-          Click on a value in the inspector to filter for rows matching that
+          Click on a value in the facet filter above to show rows matching that
           value.
           <ul>
             <li>
