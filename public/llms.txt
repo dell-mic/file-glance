@@ -1,0 +1,229 @@
+# FileGlance - LLM Integration Guide
+
+## Overview
+
+FileGlance (https://www.fileglance.info/) is a powerful, privacy-focused web application for viewing, filtering, and transforming tabular data files. It supports CSV, JSON, XLSX, and more.
+
+## How LLMs Can Use FileGlance
+
+As an LLM, you can generate FileGlance links to present tabular data directly to your users. This allows you to:
+
+- Provide interactive data visualizations without requiring a backend server
+- Keep user data completely on the client-side (privacy-first approach)
+- Allow users to further filter, search, and transform the data themselves
+- Export processed data in multiple formats (CSV, XLSX, JSON)
+
+## Integration Methods
+
+### Method 1: Uncompressed Data (Simple - Best for Small ASCII Data)
+
+Use the `d` parameter in the URL hash to pass CSV or JSON data directly.
+
+**Format:**
+```
+https://www.fileglance.info/#d=<data>
+```
+
+**CSV Example:**
+```
+https://www.fileglance.info/#d=ID,Name,Age%0A1,Alice,30%0A2,Bob,25
+```
+
+**JSON Example:**
+```
+https://www.fileglance.info/#d=[{"id":1,"name":"Alice","age":30},{"id":2,"name":"Bob","age":25}]
+```
+
+### Method 2: ZIP Compressed Data (Recommended for Large Data or data with special characters)
+
+Use the `c` parameter to pass Base64 encoded gzip-compressed data. This is recommended for datasets larger than a few KB.
+
+**Format:**
+```
+https://www.fileglance.info/#c=<base64-encoded-gzip-data>
+```
+
+## How to Generate Links
+
+### Using the Uncompressed Method (d parameter)
+
+When generating data as a response:
+
+1. Format your data as CSV or JSON
+2. URL-encode the data using `encodeURI()` or equivalent
+3. Append to the URL: `https://www.fileglance.info/#d=` + encoded_data
+
+#### JavaScript Example
+
+```javascript
+// Using CSV
+const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+const url = "https://www.fileglance.info/#d=" + encodeURIComponent(csv)
+console.log(url)
+// Output: https://www.fileglance.info/#d=ID%2CName%2CAge%0A1%2CAlice%2C30%0A2%2CBob%2C25
+
+// Using JSON
+const data = [
+  { id: 1, name: "Alice", age: 30 },
+  { id: 2, name: "Bob", age: 25 }
+]
+const json = JSON.stringify(data)
+const url = "https://www.fileglance.info/#d=" + encodeURIComponent(json)
+console.log(url)
+
+// Open in browser
+window.open(url, "_blank")
+```
+
+#### Python Example
+
+```python
+import webbrowser
+import urllib.parse
+
+# Using CSV
+csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+url = "https://www.fileglance.info/#d=" + urllib.parse.quote(csv)
+print(url)
+webbrowser.open(url)
+
+# Using JSON
+import json
+data = [
+    {"id": 1, "name": "Alice", "age": 30},
+    {"id": 2, "name": "Bob", "age": 25}
+]
+json_str = json.dumps(data)
+url = "https://www.fileglance.info/#d=" + urllib.parse.quote(json_str)
+print(url)
+webbrowser.open(url)
+```
+
+**Example output you can provide to users:**
+
+For CSV data:
+```
+Here's your data: https://www.fileglance.info/#d=Name,Score,Grade%0AAlice,95,A%0ABob,87,B%0ACharlie,92,A
+```
+
+### Using the Compressed Method (c parameter)
+
+For larger datasets:
+
+1. Format your data as CSV or JSON
+2. Compress using gzip
+3. Encode as Base64
+4. Append to the URL: `https://www.fileglance.info/#c=` + base64_encoded_gzip
+
+#### JavaScript Example
+
+```javascript
+// Browser Environment
+const csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+
+const byteArray = new TextEncoder().encode(csv)
+const cs = new CompressionStream("gzip")
+const writer = cs.writable.getWriter()
+writer.write(byteArray)
+writer.close()
+
+const gzipped = await new Response(cs.readable).arrayBuffer()
+const base64Gzipped = btoa(String.fromCharCode(...new Uint8Array(gzipped)))
+const url = "https://www.fileglance.info/#c=" + base64Gzipped
+
+console.log(url)
+window.open(url, "_blank")
+```
+
+#### Python Example
+
+```python
+import zlib
+import base64
+import webbrowser
+
+# Using CSV
+csv = "ID,Name,Age\n1,Alice,30\n2,Bob,25"
+
+# Compress and encode
+gzipped = zlib.compress(csv.encode('utf-8'))
+base64_gzipped = base64.b64encode(gzipped).decode('utf-8')
+
+url = "https://www.fileglance.info/#c=" + base64_gzipped
+print(url)
+webbrowser.open(url)
+
+# Using JSON
+import json
+data = [
+    {"id": 1, "name": "Alice", "age": 30},
+    {"id": 2, "name": "Bob", "age": 25}
+]
+json_str = json.dumps(data)
+
+gzipped = zlib.compress(json_str.encode('utf-8'))
+base64_gzipped = base64.b64encode(gzipped).decode('utf-8')
+
+url = "https://www.fileglance.info/#c=" + base64_gzipped
+print(url)
+webbrowser.open(url)
+```
+
+## Features Available on Generated Links
+
+Users who access your FileGlance links can:
+
+- **View & Explore**: Automatically detects encoding, delimiters, headers
+- **Filter**: Apply quick filters or create complex filter functions using custom JavaScript
+- **Transform**: Apply custom JavaScript transformations to values
+- **Search**: Full-text search across all data
+- **Sort**: Sort by any column
+- **Visualize**: See histograms and statistics for numeric columns
+- **Export**: Download filtered/transformed data as CSV, XLSX, or JSON
+- **Statistics**: View column statistics (average, median, min, max for numeric data)
+
+## Important: Privacy Considerations
+
+⚠️ **Important Privacy Notice:**
+
+- Data embedded in URLs is NOT encrypted
+- If you share a URL (via email, messaging, etc.), the data may be transmitted through intermediaries
+- The data IS NOT sent to any server - it remains completely on the user's device
+- Only share FileGlance links containing data that is safe to expose in a URL
+
+**Best Practices:**
+
+- Only use for non-sensitive, anonymized, or public data
+- Avoid embedding personal information, passwords, or credentials
+- Inform users that URL data may be visible in browser history and network logs
+- For sensitive data, consider using the compressed method which provides slightly better obfuscation
+
+## Use Cases for LLMs
+
+1. **Data Analysis Results**: Present analysis results that users can further explore
+2. **Sample Datasets**: Show sample data before users upload their own
+3. **Query Results**: Display database query results for interactive exploration
+4. **Comparison Tables**: Generate comparison matrices from your analysis
+5. **Statistics Reports**: Present statistical breakdowns with visualization
+6. **Generated Datasets**: Create synthetic or generated data for demonstrations
+
+## Example: Generating a Link in Your Response
+
+```
+Based on your question, here's a summary of quarterly sales data:
+
+[Click to explore the data →](https://www.fileglance.info/#d=Quarter,Revenue,Growth%0AQ1,50000,5%25%0AQ2,55000,10%25%0AQ3,61000,11%25%0AQ4,73000,20%25)
+
+You can filter by quarter, search for specific metrics, or export the data.
+```
+
+## Technical Details
+
+- **Framework**: Built with Next.js and React
+- **Client-Side**: All processing happens in the browser
+- **File Formats Supported**: CSV, TSV, JSON, XLSX, and more
+- **Progressive Web App**: Can work offline after first load
+
+## More Information
+
+Visit https://www.fileglance.info/ for the live application, or check the GitHub repository for source code and additional documentation.
