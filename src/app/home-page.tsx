@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef } from "react"
 
-import { maxBy, omit } from "lodash-es"
+import { maxBy, omit, debounce } from "lodash-es"
 
 import * as XLSX from "xlsx"
 import { parse } from "csv-parse/browser/esm/sync"
@@ -108,6 +108,7 @@ export default function Home() {
   const [allRows, setAllRows] = React.useState<any[][]>([])
   const [filters, setFilters] = React.useState<Array<ColumnFilter>>([])
   const [transformers, setTransformers] = React.useState<Array<Transformer>>([])
+  const [searchInputValue, setSearchInputValue] = React.useState<string>("")
   const [search, setSearch] = React.useState<string>("")
   const [parsingState, setParsingState] = React.useState<
     "initial" | "parsing" | "finished"
@@ -202,6 +203,37 @@ export default function Home() {
     setIsMac(isMacOS())
   }, [])
 
+  // Debounced search handler (for large files)
+  const debouncedSetSearchRef = useRef(
+    debounce((value: string) => {
+      setSearch(value)
+    }, 250),
+  ).current
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSetSearchRef.cancel?.()
+    }
+  }, [debouncedSetSearchRef])
+
+  // Determine if we should debounce based on file size
+  const shouldDebounce = allRows.length > 10000
+
+  // Handle search input change with conditional debouncing
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      console.log(`search: '${value}', debounced: ${shouldDebounce}`)
+      setSearchInputValue(value)
+      if (shouldDebounce) {
+        debouncedSetSearchRef(value)
+      } else {
+        setSearch(value)
+      }
+    },
+    [shouldDebounce, debouncedSetSearchRef],
+  )
+
   const importProject = useCallback(
     (p: ProjectExport | string): void => {
       try {
@@ -237,7 +269,9 @@ export default function Home() {
         }
 
         setFilters(validateFiltersImport(project.filters))
-        setSearch(project.search || "")
+        const projectSearch = project.search || ""
+        setSearchInputValue(projectSearch)
+        setSearch(projectSearch)
         setHiddenColumns(project.hiddenColumns || [])
         setSortSetting(project.sortSetting || null)
         // eslint-disable-next-line react-hooks/immutability
@@ -280,6 +314,7 @@ export default function Home() {
       setHiddenColumns([])
       setOpenAccordions([])
       setTransformers([])
+      setSearchInputValue("")
       setSearch("")
       setFilters([])
       setFilterFunctionCode("")
@@ -1386,6 +1421,7 @@ export default function Home() {
       title="Clear all filters"
       onPointerDown={() => {
         setFilters([])
+        setSearchInputValue("")
         setSearch("")
         setFilterFunctionCode("")
         setAppliedFilterFunctionCode(null)
@@ -1585,9 +1621,9 @@ export default function Home() {
                       type="search"
                       data-testid="searchInput"
                       className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
-                      value={search}
+                      value={searchInputValue}
                       onChange={(e) => {
-                        setSearch(e.target.value)
+                        handleSearchChange(e.target.value)
                       }}
                       onPaste={(e) => {
                         e.stopPropagation()
