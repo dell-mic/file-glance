@@ -4,8 +4,8 @@
         Header set Cache-Control "max-age=604800, public"
     </FilesMatch>
 
-    # MONTH
-    <FilesMatch "\.(js|css|woff2)$">
+    # YEAR
+    <FilesMatch "\.(js|css|woff|woff2)$">
         Header set Cache-Control "max-age=31536000"
     </FilesMatch>
 
