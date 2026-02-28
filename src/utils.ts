@@ -80,6 +80,13 @@ export function trackEvent(category: string, event: string) {
   }
 }
 
+export function isMacOS(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false
+  }
+  return /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
+}
+
 // Helper function to flatten a nested object
 function flattenObject(obj: any, prefix = "") {
   return Object.keys(obj).reduce((acc: any, k) => {

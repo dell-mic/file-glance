@@ -5,6 +5,7 @@ import React, { useEffect } from "react"
 import { DotButton, useDotButton } from "./EmblaCarouselDotButton"
 import useEmblaCarousel from "embla-carousel-react"
 import Kbd from "./Kbd"
+import { isMacOS } from "@/utils"
 
 export interface TipItem {
   content: React.ReactNode
@@ -15,11 +16,9 @@ interface TipsCarouselProps {
 }
 
 const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
-  const isMacOS =
-    typeof window !== "undefined" &&
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-  const modKey = isMacOS ? "Cmd" : "Ctrl"
-  const altKey = isMacOS ? "Option" : "Alt"
+  const isMacOSValue = isMacOS()
+  const modKey = isMacOSValue ? "Cmd" : "Ctrl"
+  const altKey = isMacOSValue ? "Option" : "Alt"
 
   const defaultTips: TipItem[] = [
     {

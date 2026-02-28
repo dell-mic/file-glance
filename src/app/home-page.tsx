@@ -45,6 +45,7 @@ import {
   countValues,
   createRowProxy,
   parseLineSeparatedJson,
+  isMacOS,
 } from "@/utils"
 
 import { description, title } from "@/constants"
@@ -95,6 +96,9 @@ export default function Home() {
   const [popoverAnchorElement, setPopoverAnchorElement] =
     React.useState<HTMLElement | null>(null)
   const exportButtonRef = React.useRef(null)
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
+
+  const [isMac, setIsMac] = React.useState(false)
 
   const [dataFormatAlwaysIncludesHeader, setDataFormatAlwaysIncludesHeader] =
     React.useState<boolean>(false)
@@ -176,6 +180,26 @@ export default function Home() {
       displayedDataWorkerRef.current = null
       displayedDataWorker.terminate()
     }
+  }, [])
+
+  // Handle Cmd/Ctrl + K to focus search field
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [])
+
+  // Detect OS for hotkey display
+  useEffect(() => {
+    setIsMac(isMacOS())
   }, [])
 
   const importProject = useCallback(
@@ -1557,6 +1581,7 @@ export default function Home() {
                   </ToggleGroup>
                   <div className="flex gap-1">
                     <input
+                      ref={searchInputRef}
                       type="search"
                       data-testid="searchInput"
                       className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
@@ -1567,7 +1592,7 @@ export default function Home() {
                       onPaste={(e) => {
                         e.stopPropagation()
                       }}
-                      placeholder="Search"
+                      placeholder={`Search (${isMac ? "Cmd" : "Ctrl"}+K)`}
                     ></input>
 
                     <Button
