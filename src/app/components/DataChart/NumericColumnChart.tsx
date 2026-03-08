@@ -2,7 +2,6 @@ import React from "react"
 import { ChartContainer } from "../../../components/ui/chart"
 import { BarChart, Bar, Tooltip as RechartsTooltip } from "recharts"
 import {
-  Card,
   CardHeader,
   CardTitle,
   CardDescription,

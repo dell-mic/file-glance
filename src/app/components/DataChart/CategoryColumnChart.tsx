@@ -3,7 +3,6 @@ import "./CategoryColumnChart.css"
 import { ChartContainer, ChartTooltip } from "../../../components/ui/chart"
 import { PieChart, Pie, Cell } from "recharts"
 import {
-  Card,
   CardHeader,
   CardTitle,
   CardDescription,
