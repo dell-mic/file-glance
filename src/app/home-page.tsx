@@ -345,8 +345,21 @@ export default function Home() {
           break
         }
 
+        const lowerFileName = file.name.toLowerCase()
+
+        // Helper function to check if file is a spreadsheet format supported by XLSX library
+        const isXlsxSupportedFormat = (fileName: string): boolean => {
+          return (
+            fileName.endsWith(".xlsx") ||
+            fileName.endsWith(".xls") ||
+            fileName.endsWith(".xlsm") ||
+            fileName.endsWith(".xlsb") ||
+            fileName.endsWith(".ods") // OpenDocument Spreadsheet
+          )
+        }
+
         // Parse data/content from file (including some postprocessing)
-        if (file.name.toLowerCase().endsWith(".xlsx")) {
+        if (isXlsxSupportedFormat(lowerFileName)) {
           const fileAsArrayBuffer = await file.arrayBuffer()
           const workbook = XLSX.read(fileAsArrayBuffer, { cellDates: true })
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
@@ -386,7 +399,7 @@ export default function Home() {
 
             data = data.concat(rows)
           }
-        } else if (file.name.toLowerCase().endsWith(".json")) {
+        } else if (lowerFileName.endsWith(".json")) {
           const contentAsText: string = await readFileToString(file)
 
           const parsedContent: any = JSON.parse(contentAsText)
@@ -405,7 +418,7 @@ export default function Home() {
             _headerRow = []
             errorMessage = "No array in JSON found"
           }
-        } else if (file.name.toLowerCase().endsWith(".md")) {
+        } else if (lowerFileName.endsWith(".md")) {
           const contentAsText: string = await readFileToString(file)
 
           const markdownParsingResult = parseMarkdownTable(contentAsText)
@@ -418,7 +431,7 @@ export default function Home() {
           //   "Parsed as markdown with headers:",
           //   markdownParsingResult.headerRow,
           // )
-        } else if (file.name.toLowerCase().endsWith(".parquet")) {
+        } else if (lowerFileName.endsWith(".parquet")) {
           const fileAsArrayBuffer = await file.arrayBuffer()
           const metadata = await parquetMetadataAsync(fileAsArrayBuffer)
           // Get total number of rows (convert bigint to number)
