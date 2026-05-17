@@ -47,6 +47,7 @@ import {
   parseLineSeparatedJson,
   isMacOS,
 } from "@/utils"
+import { extractZipFile } from "@/utils/zipExtractor"
 
 import { description, title } from "@/constants"
 import { ArchiveBoxArrowDownIcon as ArchiveBoxArrowDownIconSolid } from "@heroicons/react/24/solid"
@@ -307,6 +308,32 @@ export default function Home() {
 
       if (!files.filter(Boolean).length) {
         throw "At least 1 file expected, but received: " + files
+      }
+
+      // Extract ZIP files first
+      const extractedFiles: File[] = []
+      const nonZipFiles: File[] = []
+
+      for (const file of files) {
+        if (file.name.toLowerCase().endsWith(".zip")) {
+          try {
+            const zipContents = await extractZipFile(file)
+            extractedFiles.push(...zipContents)
+          } catch (error) {
+            console.error(`Failed to extract ZIP file ${file.name}:`, error)
+            throw `Failed to extract ZIP file: ${error}`
+          }
+        } else {
+          nonZipFiles.push(file)
+        }
+      }
+
+      // Merge extracted files with non-ZIP files
+      if (extractedFiles.length > 0) {
+        files = [...nonZipFiles, ...extractedFiles]
+        console.log(
+          `Extracted ${extractedFiles.length} files from ZIP archive(s)`,
+        )
       }
 
       console.time("parseFile")
