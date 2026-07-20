@@ -531,10 +531,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                         <XAxis dataKey={xField} />
                         <YAxis />
                         <Tooltip
-                          formatter={(value: any, name: string) => [
-                            value,
-                            name,
-                          ]}
+                          formatter={(value: any, name: any) => [value, name]}
                         />
                         {/* One <Bar> per yField value */}
                         {_groupedYValues!
@@ -566,7 +563,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                     <XAxis dataKey={xField} />
                     <YAxis />
                     <Tooltip
-                      formatter={(value) => [
+                      formatter={(value: any) => [
                         value.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         }),
@@ -594,7 +591,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                   <XAxis dataKey={xField} />
                   <YAxis />
                   <Tooltip
-                    formatter={(value) => [
+                    formatter={(value: any) => [
                       value.toLocaleString(undefined, {
                         maximumFractionDigits: 2,
                       }),

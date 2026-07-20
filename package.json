@@ -51,7 +51,7 @@
     "react-split": "2.0.14",
     "react-virtualized-auto-sizer": "2.0.3",
     "react-window": "2.3.0",
-    "recharts": "2.15.4",
+    "recharts": "3.9.2",
     "seek-bzip": "2.0.0",
     "tailwind-merge": "3.6.0",
     "tailwindcss-animate": "1.0.7",

@@ -201,8 +201,8 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
             </Pie>
             <ChartTooltip
               formatter={(
-                value: number,
-                name: string,
+                value: any,
+                name: any,
                 item: any,
                 index: number,
                 props: any,

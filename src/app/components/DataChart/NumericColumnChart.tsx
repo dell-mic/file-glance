@@ -127,8 +127,8 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
                   return `Bucket ${Number(label) + 1}: ${name}`
                 }
               }}
-              formatter={(value: number, name: string, props: any) => [
-                <b key={props.payload.name} className="text-sm">
+              formatter={(value: any, name: any, item: any) => [
+                <b key={item.payload.name} className="text-sm">
                   {value.toLocaleString(undefined, {
                     maximumFractionDigits: 1,
                   })}
