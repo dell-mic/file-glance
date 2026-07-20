@@ -1,6 +1,7 @@
 import { orderBy, sum, uniq } from "lodash-es"
-import React, { createRef, useEffect, useState, useMemo, useRef } from "react"
-import AutoSizer from "react-virtualized-auto-sizer"
+import React, { useEffect, useState, useMemo, useRef } from "react"
+import { AutoSizer } from "react-virtualized-auto-sizer"
+import { List, useListRef } from "react-window"
 
 import {
   ClipboardDocumentCheckIcon,
@@ -17,12 +18,11 @@ import "./DataTable.css"
 import { ColumnInfos } from "../ValueInspector"
 import { MenuPopover } from "../../../components/ui/Popover"
 import useWindowDimensions from "../../../hooks/useWindowDimensions"
-import { innerElementType, Row, StickyList } from "./VirtualizedList"
+import { Row, StickyRow } from "./VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
 import { getScrollbarWidth, SortSetting } from "@/utils"
 import TransformDialog from "../TransformDialog"
 import useKeyPress from "@/hooks/useKeyPress"
-import { FixedSizeList } from "react-window"
 
 export interface SortEvent {
   columnIndex: number
@@ -72,7 +72,7 @@ export const DataTable = (props: {
 
   const scrollbarWidth = useMemo(() => getScrollbarWidth(), [])
 
-  const listRef = createRef<FixedSizeList>()
+  const listRef = useListRef(null)
 
   // console.log(rows)
   const rows = [props.headerRow, ...props.rows]
@@ -112,7 +112,7 @@ export const DataTable = (props: {
   // Adjust scroll position when selected column near out of displayed range
   useEffect(() => {
     if (
-      listRef?.current &&
+      listRef.current &&
       selectedRow !== null &&
       navigationDirection !== null
     ) {
@@ -120,8 +120,8 @@ export const DataTable = (props: {
         navigationDirection === "up"
           ? Math.max(selectedRow - OverScanScroll, 0)
           : Math.min(selectedRow + OverScanScroll, rows.length - 1)
-      listRef.current.scrollToItem(scrollToRow)
-      // console.log("listRef.current.scrollToItem", scrollToRow, selectedRow, listRef, navigationDirection, rows.length)
+      listRef.current.scrollToRow({ index: scrollToRow })
+      // console.log("listRef.current.scrollToRow", scrollToRow, selectedRow, listRef, navigationDirection, rows.length)
     }
     // TODO: Fix linting complaint / maybe refactor to useCallback?
   }, [selectedRow, navigationDirection, rows.length])
@@ -443,63 +443,65 @@ export const DataTable = (props: {
         />
       )}
       {/* TODO: Last line hidden in case of horizontal scrolling */}
-      <AutoSizer disableWidth>
-        {({ height }) => (
-          // @ts-ignore
-          <StickyList
-            className=""
-            ref={listRef}
-            innerElementType={innerElementType}
-            stickyIndices={[0]}
-            height={height}
-            itemCount={rows.length}
-            itemSize={RowHeight}
+      <AutoSizer
+        renderProp={({ height }) => (
+          <List
+            listRef={listRef}
+            rowCount={rows.length}
+            rowHeight={RowHeight}
+            rowComponent={Row}
             overscanCount={50}
-            width={tableWidth}
-            hiddenColumns={hiddenColumns}
-            rows={rows}
-            selectedRow={selectedRow}
-            headerRow={props.headerRow}
-            columnsWidths={sColumnWidths}
-            sortSetting={props.sortSetting}
-            isMetaPressed={isMetaPressed}
-            onHeaderPressed={({ columnIndex }) => {
-              let newSortOrder: SortEvent["sortOrder"] = "asc"
-              if (props.sortSetting?.columnIndex === columnIndex) {
-                if (props.sortSetting?.sortOrder === "desc") {
-                  newSortOrder = "unsorted"
-                } else if (props.sortSetting?.sortOrder === "asc") {
-                  newSortOrder = "desc"
-                }
-              }
-
-              props.onSortingChange({
-                columnIndex: columnIndex,
-                sortOrder: newSortOrder,
-              })
-              setPopoverAnchorElement(null)
+            rowProps={{
+              stickyIndices: [0],
+              hiddenColumns,
+              rows,
+              selectedRow,
+              headerRow: props.headerRow,
+              columnsWidths: sColumnWidths,
+              sortSetting: props.sortSetting,
+              isMetaPressed,
+              onValueCellPressed: ({ value }) => {
+                navigator.clipboard.writeText("" + value)
+                toast({
+                  title: "Value copied to clipboard",
+                })
+              },
+              onRowSelected: ({ rowIndex }) => {
+                setSelectedRow(rowIndex !== selectedRow ? rowIndex : null)
+                setNavigationDirection(null)
+              },
             }}
-            onHeaderMenuPressed={({ columnIndex, headerElement }) => {
-              setPopoverAnchorElement(headerElement)
-              setPopoverColumnIndex(columnIndex)
-            }}
-            onValueCellPressed={({ value }) => {
-              //console.log(`'${value}'`)
-              navigator.clipboard.writeText("" + value)
-              toast({
-                title: "Value copied to clipboard",
-              })
-            }}
-            onRowSelected={({ rowIndex }) => {
-              // console.log(rowIndex, rowData)
-              setSelectedRow(rowIndex !== selectedRow ? rowIndex : null)
-              setNavigationDirection(null)
-            }}
+            style={{ width: tableWidth, height: height ?? 0 }}
           >
-            {Row}
-          </StickyList>
+            <StickyRow
+              headerRow={props.headerRow}
+              hiddenColumns={hiddenColumns}
+              columnsWidths={sColumnWidths}
+              sortSetting={props.sortSetting}
+              onHeaderPressed={({ columnIndex }) => {
+                let newSortOrder: SortEvent["sortOrder"] = "asc"
+                if (props.sortSetting?.columnIndex === columnIndex) {
+                  if (props.sortSetting?.sortOrder === "desc") {
+                    newSortOrder = "unsorted"
+                  } else if (props.sortSetting?.sortOrder === "asc") {
+                    newSortOrder = "desc"
+                  }
+                }
+
+                props.onSortingChange({
+                  columnIndex: columnIndex,
+                  sortOrder: newSortOrder,
+                })
+                setPopoverAnchorElement(null)
+              }}
+              onHeaderMenuPressed={({ columnIndex, headerElement }) => {
+                setPopoverAnchorElement(headerElement)
+                setPopoverColumnIndex(columnIndex)
+              }}
+            />
+          </List>
         )}
-      </AutoSizer>
+      />
     </div>
   )
 }

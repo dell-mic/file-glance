@@ -1,6 +1,6 @@
-import React, { createContext, forwardRef } from "react"
+import React from "react"
 
-import { FixedSizeList } from "react-window"
+import type { RowComponentProps } from "react-window"
 
 import {
   ArrowUpIcon as ArrowUpIconMicro,
@@ -17,50 +17,46 @@ import {
 import { cva } from "class-variance-authority"
 import { cloneDeep } from "lodash-es"
 
-// Sticky heaader row adopted from: https://codesandbox.io/s/0mk3qwpl4l?file=/src/index.js
-// See also: https://github.com/bvaughn/react-window?tab=readme-ov-file
-const StickyListContext = createContext([])
-StickyListContext.displayName = "StickyListContext"
+// See: https://github.com/bvaughn/react-window
 
-// TODO:Make TS happy one day
+export interface RowProps {
+  stickyIndices: number[]
+  hiddenColumns: number[]
+  rows: any[]
+  selectedRow: number | null
+  headerRow: string[]
+  columnsWidths: string[]
+  sortSetting: SortSetting | null
+  isMetaPressed: boolean
+  onValueCellPressed: ({
+    value,
+    valueAsString,
+  }: {
+    value: any
+    valueAsString: string
+  }) => void
+  onRowSelected: ({
+    rowIndex,
+    rowData,
+  }: {
+    rowIndex: number
+    rowData: any[]
+  }) => void
+}
 
-// @ts-ignore
-const ItemWrapper = ({ data, index, style }) => {
-  const {
-    ItemRenderer,
-    stickyIndices,
-    hiddenColumns,
-    rows,
-    selectedRow,
-    headerRow,
-    columnsWidths,
-    sortSetting,
-    isMetaPressed,
-    onHeaderPressed,
-    onHeaderMenuPressed,
-    onValueCellPressed,
-    onRowSelected,
-  } = data
-  if (stickyIndices && stickyIndices.includes(index)) {
-    return null
-  }
-  return (
-    <ItemRenderer
-      index={index}
-      style={style}
-      rows={rows}
-      selectedRow={selectedRow}
-      hiddenColumns={hiddenColumns}
-      headerRow={headerRow}
-      columnsWidths={columnsWidths}
-      isMetaPressed={isMetaPressed}
-      sortSetting={sortSetting}
-      onHeaderPressed={onHeaderPressed}
-      onHeaderMenuPressed={onHeaderMenuPressed}
-      onValueCellPressed={onValueCellPressed}
-      onRowSelected={onRowSelected}
-    />
-  )
+export interface StickyRowProps {
+  headerRow: string[]
+  hiddenColumns: number[]
+  columnsWidths: string[]
+  sortSetting: SortSetting | null
+  onHeaderPressed: ({ columnIndex }: { columnIndex: number }) => void
+  onHeaderMenuPressed: ({
+    columnIndex,
+    headerElement,
+  }: {
+    columnIndex: number
+    headerElement: HTMLElement
+  }) => void
 }
 
 const cellClass = cva(
@@ -116,18 +112,25 @@ const rowClasses = cva("flex flex-row", {
   },
 })
 
-export const Row = (
-  // @ts-ignore
-  // prettier-ignore
-  { index, style, rows, selectedRow, headerRow, hiddenColumns, columnsWidths, onValueCellPressed, onRowSelected, isMetaPressed },
-) => {
-  // const rowClasses = "flex flex-row" + (index % 2 === 0 ? " bg-gray-100" : "")
-  // console.log("row index:", index)
-  // console.log("row:", rows[index])
+export const Row = ({
+  index,
+  style,
+  stickyIndices,
+  rows,
+  selectedRow,
+  headerRow,
+  hiddenColumns,
+  columnsWidths,
+  isMetaPressed,
+  onValueCellPressed,
+  onRowSelected,
+}: RowComponentProps<RowProps>) => {
+  if (stickyIndices.includes(index)) {
+    return null
+  }
+
   return (
     <div
-      // TODO: Regular tab index vs custom highlight of selected row?
-      // tabIndex={0}
       className={rowClasses({
         isOdd: index % 2 === 0,
       })}
@@ -265,20 +268,15 @@ export const Row = (
   )
 }
 
-// @ts-ignore
-const StickyRow = ({
-  style,
+export const StickyRow = ({
   headerRow,
   hiddenColumns,
   columnsWidths,
   sortSetting,
   onHeaderPressed,
   onHeaderMenuPressed,
-}: VirtualizedListProps & { index: number }) => {
-  // const buttonRef = React.useRef<HTMLButtonElement>(null)
-
+}: StickyRowProps) => {
   const cellRef = React.useRef<Array<HTMLElement | null>>([])
-  // you can access the elements with itemsRef.current[n]
 
   React.useEffect(() => {
     cellRef.current = cellRef.current.slice(0, headerRow.length)
@@ -299,7 +297,10 @@ const StickyRow = ({
   }
 
   return (
-    <div className="sticky flex flex-row" style={style}>
+    <div
+      className="sticky flex flex-row"
+      style={{ top: 0, left: 0, width: "100%", height: 20 }}
+    >
       {headerRow.map((v: string, vi: number) => {
         return hiddenColumns.includes(vi) ? null : (
           <div
@@ -335,7 +336,6 @@ const StickyRow = ({
               className="px-1 text-gray-800 hidden group-hover:block hover:text-black"
               onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
                 if (!e.button) {
-                  // console.log(e)
                   e.stopPropagation()
                   onHeaderMenuPressed({
                     columnIndex: vi,
@@ -353,140 +353,4 @@ const StickyRow = ({
       })}
     </div>
   )
-}
-
-// @ts-ignore
-export const innerElementType = forwardRef(({ children, ...rest }, ref) => (
-  <StickyListContext.Consumer>
-    {/* @ts-ignore */}
-    {({
-      stickyIndices,
-      hiddenColumns,
-      headerRow,
-      columnsWidths,
-      sortSetting,
-      onHeaderPressed,
-      onHeaderMenuPressed,
-    }: VirtualizedListProps) => (
-      // @ts-ignore
-      <div ref={ref} {...rest}>
-        {stickyIndices.map((index: number) => (
-          // @ts-ignore
-          <StickyRow
-            index={index}
-            key={index}
-            hiddenColumns={hiddenColumns}
-            headerRow={headerRow}
-            columnsWidths={columnsWidths}
-            sortSetting={sortSetting}
-            onHeaderPressed={onHeaderPressed}
-            onHeaderMenuPressed={onHeaderMenuPressed}
-            style={{ top: index * 20, left: 0, width: "100%", height: 20 }}
-          />
-        ))}
-        {children}
-      </div>
-    )}
-  </StickyListContext.Consumer>
-))
-innerElementType.displayName = "ListInner"
-
-export const StickyList = ({
-  // @ts-ignore
-  children,
-  stickyIndices,
-  hiddenColumns,
-  rows,
-  selectedRow,
-  headerRow,
-  columnsWidths,
-  sortSetting,
-  isMetaPressed,
-  onHeaderPressed,
-  onHeaderMenuPressed,
-  onValueCellPressed,
-  onRowSelected,
-  ...rest
-}: VirtualizedListProps) => (
-  <StickyListContext.Provider
-    value={{
-      // @ts-ignore
-      ItemRenderer: children,
-      stickyIndices,
-      hiddenColumns,
-      rows,
-      selectedRow,
-      headerRow,
-      columnsWidths,
-      sortSetting,
-      isMetaPressed,
-      onHeaderPressed,
-      onHeaderMenuPressed,
-      onValueCellPressed,
-      onRowSelected,
-    }}
-  >
-    {/* @ts-ignore */}
-    <FixedSizeList
-      itemData={{
-        ItemRenderer: children,
-        stickyIndices,
-        hiddenColumns,
-        rows,
-        selectedRow,
-        headerRow,
-        columnsWidths,
-        sortSetting,
-        isMetaPressed,
-        onHeaderPressed,
-        onHeaderMenuPressed,
-        onValueCellPressed,
-        onRowSelected,
-      }}
-      {...rest}
-    >
-      {ItemWrapper}
-    </FixedSizeList>
-  </StickyListContext.Provider>
-)
-
-interface VirtualizedListProps {
-  className?: string
-  style?: any
-  innerElementType: React.ElementType
-  stickyIndices: number[]
-  height: number
-  itemCount: number
-  itemSize: number
-  overscanCount: number
-  width: string
-  hiddenColumns: number[]
-  rows: any[]
-  selectedRow: number | null
-  headerRow: string[]
-  columnsWidths: string[]
-  sortSetting: SortSetting | null
-  isMetaPressed: boolean
-  onHeaderPressed: ({ columnIndex }: { columnIndex: number }) => void
-  onHeaderMenuPressed: ({
-    columnIndex,
-    headerElement,
-  }: {
-    columnIndex: number
-    headerElement: HTMLElement
-  }) => void
-  onValueCellPressed: ({
-    value,
-    valueAsString,
-  }: {
-    value: any
-    valueAsString: string
-  }) => void
-  onRowSelected: ({
-    rowIndex,
-    rowData,
-  }: {
-    rowIndex: number
-    rowData: any[]
-  }) => void
 }
