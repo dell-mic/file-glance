@@ -13,6 +13,8 @@ import { compressors } from "hyparquet-compressors"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { FileChooser } from "./components/FileChooser"
 import FilterDialog from "./components/FilterDialog"
+import FilterExplanation from "./components/FilterExplanation"
+import { describeFilters } from "@/filterDescription"
 import {
   base64GzippedToString,
   detectDelimiter,
@@ -1185,11 +1187,6 @@ export default function Home() {
   if (allRows.length) {
     fileInfos.push(`${allRows.length.toLocaleString()} rows`)
   }
-  if (isFiltered) {
-    fileInfos.push(`${displayedDataFiltered.length.toLocaleString()} filtered`)
-  } else {
-    fileInfos.push("all shown")
-  }
 
   const getExportFileName = (newEnding: string): string => {
     const currentFileName = currentFile!.name.substring(
@@ -1575,6 +1572,23 @@ export default function Home() {
                     </div>
                     <span className="text-gray-500 text-sm ml-1.5">
                       {fileInfos.join(", ")}
+                      {fileInfos.length > 0 && ", "}
+                      {isFiltered ? (
+                        <FilterExplanation
+                          filteredCount={displayedDataFiltered.length}
+                          totalCount={allRows.length}
+                          clauses={describeFilters(
+                            displayedHeader.length
+                              ? displayedHeader
+                              : headerRow,
+                            filters,
+                            search,
+                            appliedFilterFunctionCode,
+                          )}
+                        />
+                      ) : (
+                        "all shown"
+                      )}
                     </span>
                     <span>{clearFilterButton}</span>
 

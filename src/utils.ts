@@ -411,7 +411,7 @@ export function generateSampleData(numRows: number): {
     const phoneNumber = "555-" + getRandomInt(1000, 9999)
     const country = getRandomElement(countries)
     const city = getRandomElement(countryCities[country])
-    const jobTitle = getRandomElement(jobTitles)
+    const jobTitle = Math.random() < 0.1 ? "" : getRandomElement(jobTitles) // 10% empty values
     const baseSalary = getRandomIntNormal(50000, 150000)
     // Adjust salary by country factor for some variance in charts
     const countrySalaryFactor: Record<string, number> = {
@@ -1267,6 +1267,24 @@ export function findEmptyColumns(data: any[][]): number[] {
   return emptyCols
 }
 
+/**
+ * Parses a search string into an optional column scope and the actual term.
+ * "columnName:value" searches only that column; anything else searches all columns.
+ */
+export function parseSearch(
+  search: string,
+  displayedHeader: string[],
+): { columnIndex: number | null; term: string } {
+  const searchSplits = search.split(":")
+  const searchColumnIndex = displayedHeader.findIndex(
+    (header) => header === searchSplits[0],
+  )
+  const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
+  return isColumnSearch
+    ? { columnIndex: searchColumnIndex, term: searchSplits.slice(1).join(":") }
+    : { columnIndex: null, term: search }
+}
+
 export function applyFilters(
   displayedData: any[][],
   displayedHeader: string[],
@@ -1351,12 +1369,11 @@ export function applyFilters(
       })
     : displayedData
 
-  const searchSplits = search.split(":")
-  const searchColumnIndex = displayedHeader.findIndex(
-    (header) => header === searchSplits[0],
+  const { columnIndex: searchColumnIndex, term: searchValue } = parseSearch(
+    search,
+    displayedHeader,
   )
-  const isColumnSearch = searchSplits.length > 1 && searchColumnIndex > -1
-  const searchValue = isColumnSearch ? searchSplits.slice(1).join(":") : search
+  const isColumnSearch = searchColumnIndex !== null
 
   filteredData = search.length
     ? filteredData.filter((row) =>
