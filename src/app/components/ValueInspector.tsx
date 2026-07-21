@@ -2,10 +2,16 @@ import { orderBy } from "lodash-es"
 import Accordion from "../../components/ui/Accordion"
 import React from "react"
 import MiddleEllipsis from "../../components/ui/MiddleEllipsis"
-import { ColumnFilter, FilterValue } from "@/utils"
+import { ColumnFilter, FilterValue, isMacOS } from "@/utils"
 import TipsCarousel from "./TipsCarousel/TipsCarousel"
 import { MenuPopover } from "../../components/ui/Popover"
 import { Button } from "@/components/ui/button"
+import { Kbd } from "@/components/ui/kbd"
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip"
 import { AdjustmentsHorizontalIcon } from "@heroicons/react/24/outline"
 
 export const ValuesInspector = (props: {
@@ -21,6 +27,10 @@ export const ValuesInspector = (props: {
   hiddenColumns: number[]
   onToggleColumnVisibility: (index: number) => void
 }) => {
+  const isMacOSValue = isMacOS()
+  const modKey = isMacOSValue ? "⌘" : "Ctrl"
+  const altKey = isMacOSValue ? "⌥" : "Alt"
+
   const [valuesDisplayed, setValuesDisplayed] = React.useState<number[]>([])
   const [sortConfig, setSortConfig] = React.useState<
     Record<number, { field: "name" | "count"; direction: "asc" | "desc" }> & {
@@ -58,8 +68,8 @@ export const ValuesInspector = (props: {
         const columnValues = orderBy(
           column.columnValues,
           currentSort.field === "count"
-            ? ["valueCountTotal", "valueName"]
-            : ["valueName"],
+            ? ["valueCountTotal", (cv) => cv.valueName.toLowerCase()]
+            : [(cv) => cv.valueName.toLowerCase()],
           currentSort.field === "count"
             ? [currentSort.direction, "asc"]
             : [currentSort.direction],
@@ -229,41 +239,95 @@ export const ValuesInspector = (props: {
                           opacity: columnValue.valueCountFiltered ? 1 : 0.7,
                         }}
                       >
-                        <a
-                          href="#"
-                          className={`text-blue-500 shrink grow-0 overflow-hidden ${
-                            columnValue.valueName ? "" : "font-mono"
-                          } ${isFilteredValue ? "font-medium" : ""}`}
-                          title={columnValue.valueName}
-                          onClick={(e) => e.preventDefault()}
-                          onPointerDown={(e) => {
-                            e.preventDefault()
-                            // Do not react to secondary buttons (>0)
-                            if (e.button) {
-                              return
-                            }
-                            props.onFilterToggle(
-                              column.columnIndex,
-                              {
-                                value: columnValue.valueName,
-                                included: !e.altKey,
-                              },
-                              e.metaKey,
-                            )
-                          }}
-                        >
-                          <MiddleEllipsis>
-                            {isExcludeFilter && (
-                              <span
-                                className="mr-0.5 text-red-700"
-                                style={{ fontWeight: "bold" }}
-                              >
-                                ¬
-                              </span>
-                            )}
-                            <span>{columnValue.valueName || "empty"}</span>
-                          </MiddleEllipsis>
-                        </a>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <a
+                              href="#"
+                              className={`text-blue-500 shrink grow-0 overflow-hidden ${
+                                columnValue.valueName ? "" : "font-mono"
+                              } ${isFilteredValue ? "font-medium" : ""}`}
+                              onClick={(e) => e.preventDefault()}
+                              onPointerDown={(e) => {
+                                e.preventDefault()
+                                // Do not react to secondary buttons (>0)
+                                if (e.button) {
+                                  return
+                                }
+                                props.onFilterToggle(
+                                  column.columnIndex,
+                                  {
+                                    value: columnValue.valueName,
+                                    included: !e.altKey,
+                                  },
+                                  e.metaKey,
+                                )
+                              }}
+                            >
+                              <MiddleEllipsis>
+                                {isExcludeFilter && (
+                                  <span
+                                    className="mr-0.5 text-red-700"
+                                    style={{ fontWeight: "bold" }}
+                                  >
+                                    ¬
+                                  </span>
+                                )}
+                                <span>{columnValue.valueName || "empty"}</span>
+                              </MiddleEllipsis>
+                            </a>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            align="center"
+                            sideOffset={4}
+                          >
+                            <div className="font-medium break-all">
+                              {columnValue.valueName || "(empty)"}
+                            </div>
+                            <div className="border-t border-gray-200 my-2" />
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <div>
+                                <Kbd>Click</Kbd> — filter by this value
+                              </div>
+                              <div>
+                                <Kbd>{altKey}-click</Kbd> — exclude this value
+                              </div>
+                              <div>
+                                <Kbd>{modKey}-click</Kbd> — add to / remove from
+                                current selection
+                              </div>
+                            </div>
+                            <div className="border-t border-gray-200 mt-2 pt-2 text-xs text-gray-500 space-y-1">
+                              {isEffectivelyFiltered ? (
+                                <>
+                                  <div>
+                                    <b>
+                                      {columnValue.valueCountFiltered.toLocaleString()}
+                                    </b>{" "}
+                                    /{" "}
+                                    {columnValue.valueCountTotal.toLocaleString()}{" "}
+                                    — rows with this value after active filters
+                                    / total rows with this value
+                                  </div>
+                                  {columnValue.valueCountFiltered === 0 && (
+                                    <div className="italic">
+                                      Greyed values have no rows matching the
+                                      active filters.
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <div>
+                                  <b>
+                                    {columnValue.valueCountTotal.toLocaleString()}
+                                  </b>{" "}
+                                  — rows containing this value (no filters
+                                  active)
+                                </div>
+                              )}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
                         <span className="text-gray-500 ml-2 shrink-0">
                           {displayedValueCounts}
                         </span>

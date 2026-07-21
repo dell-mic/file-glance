@@ -4,7 +4,7 @@ import React, { useEffect } from "react"
 // import { EmblaOptionsType } from "embla-carousel"
 import { DotButton, useDotButton } from "./EmblaCarouselDotButton"
 import useEmblaCarousel from "embla-carousel-react"
-import Kbd from "./Kbd"
+import { Kbd } from "@/components/ui/kbd"
 import { isMacOS } from "@/utils"
 
 export interface TipItem {
@@ -17,8 +17,8 @@ interface TipsCarouselProps {
 
 const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
   const isMacOSValue = isMacOS()
-  const modKey = isMacOSValue ? "Cmd" : "Ctrl"
-  const altKey = isMacOSValue ? "Option" : "Alt"
+  const modKey = isMacOSValue ? "⌘" : "Ctrl"
+  const altKey = isMacOSValue ? "⌥" : "Alt"
 
   const defaultTips: TipItem[] = [
     {

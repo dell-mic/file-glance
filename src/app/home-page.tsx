@@ -14,6 +14,7 @@ import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { FileChooser } from "./components/FileChooser"
 import FilterDialog from "./components/FilterDialog"
 import FilterExplanation from "./components/FilterExplanation"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { describeFilters } from "@/filterDescription"
 import {
   base64GzippedToString,
@@ -1483,371 +1484,384 @@ export default function Home() {
   ) : null
 
   return (
-    <div
-      ref={drop}
-      className="h-screen p-2"
-      // onDragEnter={handleDragEnter}
-      // onDragOver={handleDragOver}
-      // onDrop={handleDrop}
-      onPaste={(e) => {
-        // Do not want to replace current data in case of accidental paste
-        if (!currentFile) {
-          const contentAsText = e.clipboardData.getData("text")
-          // console.log(contentAsText)
-          parseText(contentAsText, "CLIPBOARD", true)
-          trackEvent("File", "Paste")
-        }
-      }}
-    >
-      {(() => {
-        switch (parsingState) {
-          case "initial":
-            return (
-              <div>
-                <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
-                <div className="text-2xl text-gray-500 m-4">{description}</div>
-                <Link
-                  href="/about"
-                  className="text-xl text-gray-500 font-medium py-2 px-4 rounded-sm transition-colors duration-200 no-underline hover:text-blue-900 hover:underline"
-                >
-                  📖 Learn more ...
-                </Link>
-                <div className="flex flex-col items-center">
-                  <FileChooser
-                    handleFileSelected={handleFileSelected}
-                    isDragging={dragging}
-                  ></FileChooser>
-
-                  <span className="text-3xl text-gray-500 hidden sm:block">
-                    Just want to play around?
-                  </span>
-
-                  <button
-                    onClick={(e) => {
-                      setParsingState("parsing")
-                      setTimeout(() => {
-                        onGenerateSampleData(e.metaKey ? 133_700 : 1337)
-                      }, 50)
-                      trackEvent("Button", "GenerateSampleData")
-                    }}
-                    className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer hidden sm:inline-block"
+    <TooltipProvider delayDuration={500} skipDelayDuration={150}>
+      <div
+        ref={drop}
+        className="h-screen p-2"
+        // onDragEnter={handleDragEnter}
+        // onDragOver={handleDragOver}
+        // onDrop={handleDrop}
+        onPaste={(e) => {
+          // Do not want to replace current data in case of accidental paste
+          if (!currentFile) {
+            const contentAsText = e.clipboardData.getData("text")
+            // console.log(contentAsText)
+            parseText(contentAsText, "CLIPBOARD", true)
+            trackEvent("File", "Paste")
+          }
+        }}
+      >
+        {(() => {
+          switch (parsingState) {
+            case "initial":
+              return (
+                <div>
+                  <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
+                  <div className="text-2xl text-gray-500 m-4">
+                    {description}
+                  </div>
+                  <Link
+                    href="/about"
+                    className="text-xl text-gray-500 font-medium py-2 px-4 rounded-sm transition-colors duration-200 no-underline hover:text-blue-900 hover:underline"
                   >
-                    📂 Load sample data
-                  </button>
+                    📖 Learn more ...
+                  </Link>
+                  <div className="flex flex-col items-center">
+                    <FileChooser
+                      handleFileSelected={handleFileSelected}
+                      isDragging={dragging}
+                    ></FileChooser>
 
-                  <span className="text-xl text-gray-500 mt-8">
-                    Found a bug? Feedback? Ideas?
-                  </span>
+                    <span className="text-3xl text-gray-500 hidden sm:block">
+                      Just want to play around?
+                    </span>
 
-                  <button
-                    onClick={onClickFeedbackCta}
-                    className="text-lg hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer"
-                  >
-                    ✉️ Let me know!
-                  </button>
+                    <button
+                      onClick={(e) => {
+                        setParsingState("parsing")
+                        setTimeout(() => {
+                          onGenerateSampleData(e.metaKey ? 133_700 : 1337)
+                        }, 50)
+                        trackEvent("Button", "GenerateSampleData")
+                      }}
+                      className="text-2xl hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer hidden sm:inline-block"
+                    >
+                      📂 Load sample data
+                    </button>
+
+                    <span className="text-xl text-gray-500 mt-8">
+                      Found a bug? Feedback? Ideas?
+                    </span>
+
+                    <button
+                      onClick={onClickFeedbackCta}
+                      className="text-lg hover:bg-gray-100 text-gray-600 font-medium py-2 px-4 rounded-sm transition-colors duration-200 cursor-pointer"
+                    >
+                      ✉️ Let me know!
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )
-          case "parsing":
-            return (
-              <div className="flex h-screen">
-                <div className="m-auto text-2xl text-gray-500">
-                  <span>parsing</span>
-                  <span> {currentFile?.name || ""} </span>
-                  <span>...</span>
+              )
+            case "parsing":
+              return (
+                <div className="flex h-screen">
+                  <div className="m-auto text-2xl text-gray-500">
+                    <span>parsing</span>
+                    <span> {currentFile?.name || ""} </span>
+                    <span>...</span>
+                  </div>
                 </div>
-              </div>
-            )
-          case "finished":
-            return (
-              <React.Fragment>
-                <div className="mb-2 flex flex-row items-center justify-between">
-                  <div className="flex flex-row items-baseline">
-                    <div className="max-w-prose">
-                      <MiddleEllipsis>
-                        <span className="text-2xl" title={currentFile?.name}>
-                          {currentFile?.name || ""}{" "}
-                        </span>
-                      </MiddleEllipsis>
+              )
+            case "finished":
+              return (
+                <React.Fragment>
+                  <div className="mb-2 flex flex-row items-center justify-between">
+                    <div className="flex flex-row items-baseline">
+                      <div className="max-w-prose">
+                        <MiddleEllipsis>
+                          <span className="text-2xl" title={currentFile?.name}>
+                            {currentFile?.name || ""}{" "}
+                          </span>
+                        </MiddleEllipsis>
+                      </div>
+                      <span className="text-gray-500 text-sm ml-1.5">
+                        {fileInfos.join(", ")}
+                        {fileInfos.length > 0 && ", "}
+                        {isFiltered ? (
+                          <FilterExplanation
+                            filteredCount={displayedDataFiltered.length}
+                            totalCount={allRows.length}
+                            clauses={describeFilters(
+                              displayedHeader.length
+                                ? displayedHeader
+                                : headerRow,
+                              filters,
+                              search,
+                              appliedFilterFunctionCode,
+                            )}
+                          />
+                        ) : (
+                          "all shown"
+                        )}
+                      </span>
+                      <span>{clearFilterButton}</span>
+
+                      <span className="flex flex-row items-center ml-3">
+                        <Label
+                          htmlFor="hasHeader"
+                          className="mr-1 text-gray-500 text-sm"
+                        >
+                          Has Header
+                        </Label>
+                        <Switch
+                          id="hasHeader"
+                          data-testid={"switch-hasHeader"}
+                          disabled={
+                            dataFormatAlwaysIncludesHeader || isFiltered
+                          }
+                          checked={dataIncludesHeaderRow}
+                          onCheckedChange={(checked) => {
+                            const longestRowLength = maxBy(
+                              allRows,
+                              (d) => d.length,
+                            )!.length
+                            if (checked) {
+                              // No header row -> With header row
+                              const _headerRow = generateHeaderRow(
+                                longestRowLength,
+                                allRows.shift(),
+                              )
+                              setHeaderRow(_headerRow)
+                              setAllRows(allRows)
+                            } else {
+                              // With header row -> no header row
+                              const _headerRow =
+                                generateHeaderRow(longestRowLength)
+                              setHeaderRow(_headerRow)
+                              setAllRows([headerRow, ...allRows])
+                            }
+                            setDataIncludesHeaderRow(checked)
+                          }}
+                        ></Switch>
+                      </span>
                     </div>
-                    <span className="text-gray-500 text-sm ml-1.5">
-                      {fileInfos.join(", ")}
-                      {fileInfos.length > 0 && ", "}
-                      {isFiltered ? (
-                        <FilterExplanation
-                          filteredCount={displayedDataFiltered.length}
-                          totalCount={allRows.length}
-                          clauses={describeFilters(
-                            displayedHeader.length
-                              ? displayedHeader
-                              : headerRow,
-                            filters,
-                            search,
-                            appliedFilterFunctionCode,
-                          )}
-                        />
-                      ) : (
-                        "all shown"
-                      )}
-                    </span>
-                    <span>{clearFilterButton}</span>
-
-                    <span className="flex flex-row items-center ml-3">
-                      <Label
-                        htmlFor="hasHeader"
-                        className="mr-1 text-gray-500 text-sm"
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      value={viewMode}
+                      onValueChange={(val) => {
+                        if (val)
+                          setViewMode(
+                            val as "visual" | "datatable" | "freeQuery",
+                          )
+                      }}
+                    >
+                      <ToggleGroupItem
+                        value="datatable"
+                        title="Data Table View"
+                        data-testid={"btnTableView"}
                       >
-                        Has Header
-                      </Label>
-                      <Switch
-                        id="hasHeader"
-                        data-testid={"switch-hasHeader"}
-                        disabled={dataFormatAlwaysIncludesHeader || isFiltered}
-                        checked={dataIncludesHeaderRow}
-                        onCheckedChange={(checked) => {
-                          const longestRowLength = maxBy(
-                            allRows,
-                            (d) => d.length,
-                          )!.length
-                          if (checked) {
-                            // No header row -> With header row
-                            const _headerRow = generateHeaderRow(
-                              longestRowLength,
-                              allRows.shift(),
-                            )
-                            setHeaderRow(_headerRow)
-                            setAllRows(allRows)
-                          } else {
-                            // With header row -> no header row
-                            const _headerRow =
-                              generateHeaderRow(longestRowLength)
-                            setHeaderRow(_headerRow)
-                            setAllRows([headerRow, ...allRows])
-                          }
-                          setDataIncludesHeaderRow(checked)
+                        <div className="flex items-center justify-center px-2">
+                          <TableIcon className="inline-block w-4 h-4" />
+                          <span className="hidden 2xl:inline ml-2">Table</span>
+                        </div>
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="visual"
+                        title="Visual View"
+                        data-testid={"btnVisualView"}
+                      >
+                        <div className="flex items-center justify-center px-2">
+                          <BarChart2 className="inline-block mx-1 w-4 h-4" />
+                          <span className="hidden 2xl:inline ml-2">Visual</span>
+                        </div>
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="freeQuery"
+                        title="Code Query View"
+                        data-testid={"btnFreeQueryView"}
+                      >
+                        <div className="flex items-center justify-center px-2">
+                          <Code2 className="inline-block mx-1 w-4 h-4" />
+                          <span className="hidden 2xl:inline ml-2">Code</span>
+                        </div>
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    <div className="flex gap-1">
+                      <input
+                        ref={searchInputRef}
+                        type="search"
+                        data-testid="searchInput"
+                        className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
+                        value={searchInputValue}
+                        onChange={(e) => {
+                          handleSearchChange(e.target.value)
                         }}
-                      ></Switch>
-                    </span>
-                  </div>
-                  <ToggleGroup
-                    type="single"
-                    variant="outline"
-                    value={viewMode}
-                    onValueChange={(val) => {
-                      if (val)
-                        setViewMode(val as "visual" | "datatable" | "freeQuery")
-                    }}
-                  >
-                    <ToggleGroupItem
-                      value="datatable"
-                      title="Data Table View"
-                      data-testid={"btnTableView"}
-                    >
-                      <div className="flex items-center justify-center px-2">
-                        <TableIcon className="inline-block w-4 h-4" />
-                        <span className="hidden 2xl:inline ml-2">Table</span>
-                      </div>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="visual"
-                      title="Visual View"
-                      data-testid={"btnVisualView"}
-                    >
-                      <div className="flex items-center justify-center px-2">
-                        <BarChart2 className="inline-block mx-1 w-4 h-4" />
-                        <span className="hidden 2xl:inline ml-2">Visual</span>
-                      </div>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="freeQuery"
-                      title="Code Query View"
-                      data-testid={"btnFreeQueryView"}
-                    >
-                      <div className="flex items-center justify-center px-2">
-                        <Code2 className="inline-block mx-1 w-4 h-4" />
-                        <span className="hidden 2xl:inline ml-2">Code</span>
-                      </div>
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                  <div className="flex gap-1">
-                    <input
-                      ref={searchInputRef}
-                      type="search"
-                      data-testid="searchInput"
-                      className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
-                      value={searchInputValue}
-                      onChange={(e) => {
-                        handleSearchChange(e.target.value)
-                      }}
-                      onPaste={(e) => {
-                        e.stopPropagation()
-                      }}
-                      placeholder={`Search (${isMac ? "Cmd" : "Ctrl"}+K)`}
-                    ></input>
+                        onPaste={(e) => {
+                          e.stopPropagation()
+                        }}
+                        placeholder={`Search (${isMac ? "⌘" : "Ctrl"}+K)`}
+                      ></input>
 
-                    <Button
-                      data-testid={"btnFilter"}
-                      title="Filter rows"
-                      variant="ghost"
-                      className="py-1 px-2"
-                      style={{
-                        height: "unset",
-                      }}
-                      onPointerDown={() => {
-                        setFilterDialogOpen(true)
-                      }}
-                    >
-                      {appliedFilterFunctionCode ? (
-                        <FunnelIconSolid className="size-5" />
-                      ) : (
-                        <FunnelIcon className="size-5" />
+                      <Button
+                        data-testid={"btnFilter"}
+                        title="Filter rows"
+                        variant="ghost"
+                        className="py-1 px-2"
+                        style={{
+                          height: "unset",
+                        }}
+                        onPointerDown={() => {
+                          setFilterDialogOpen(true)
+                        }}
+                      >
+                        {appliedFilterFunctionCode ? (
+                          <FunnelIconSolid className="size-5" />
+                        ) : (
+                          <FunnelIcon className="size-5" />
+                        )}
+                        <span className="ml-1 hidden 2xl:inline">Filter</span>
+                      </Button>
+                      {filterDialogOpen && (
+                        <FilterDialog
+                          open={filterDialogOpen}
+                          filterFunctionCode={filterFunctionCode}
+                          columnValueCounts={columnInfos}
+                          headerRow={displayedHeader}
+                          displayedData={displayedDataFiltered}
+                          onClose={() => {
+                            setFilterDialogOpen(false)
+                            // Make sure to always show current applied filter when re-opening first (last draft state can still be recovered from history if needed)
+                            if (appliedFilterFunctionCode) {
+                              setFilterFunctionCode(appliedFilterFunctionCode)
+                            }
+                          }}
+                          onFilterCodeChange={(code: string) =>
+                            setFilterFunctionCode(code)
+                          }
+                          onApply={(code) => {
+                            setFilterDialogOpen(false)
+                            setAppliedFilterFunctionCode(code)
+                          }}
+                        />
                       )}
-                      <span className="ml-1 hidden 2xl:inline">Filter</span>
-                    </Button>
-                    {filterDialogOpen && (
-                      <FilterDialog
-                        open={filterDialogOpen}
-                        filterFunctionCode={filterFunctionCode}
-                        columnValueCounts={columnInfos}
+                      <Button
+                        data-testid={"btnExport"}
+                        title="Export data"
+                        variant="ghost"
+                        className="py-1 px-2"
+                        style={{
+                          height: "unset",
+                        }}
+                        ref={exportButtonRef}
+                        onPointerDown={() => {
+                          setPopoverAnchorElement(exportButtonRef.current)
+                        }}
+                      >
+                        <ArrowTopRightOnSquareIcon className="size-5" />
+                        <span className="ml-1 hidden 2xl:inline">Export</span>
+                      </Button>
+                      <MenuPopover
+                        id={"exportPopover"}
+                        menuItems={exportPopoverEntries}
+                        open={Boolean(popoverAnchorElement)}
+                        anchorEl={popoverAnchorElement}
+                        onClose={handlePopoverClose}
+                        onSelect={() => setPopoverAnchorElement(null)}
+                        anchorOrigin={{
+                          vertical: "bottom",
+                          horizontal: "left",
+                        }}
+                      ></MenuPopover>
+                    </div>
+                  </div>
+                  <div
+                    className="flex flex-row h-[calc(100vh-60px)] overflow-clip"
+                    style={{
+                      opacity: calculationInProgress ? 0.7 : undefined,
+                      transition: "opacity 0.3s ease",
+                    }}
+                    data-testid="DataContentWrapper"
+                  >
+                    <ValuesInspector
+                      columnValueCounts={columnInfos}
+                      filters={filters}
+                      onFilterToggle={onFilterToggle}
+                      openAccordions={openAccordions}
+                      onToggleAccordion={(columnIndex: number) => {
+                        setOpenAccordions(
+                          addOrRemove(openAccordions, columnIndex),
+                        )
+                      }}
+                      hiddenColumns={hiddenColumns}
+                      onToggleColumnVisibility={(columnIndex: number) => {
+                        setHiddenColumns(
+                          addOrRemove(hiddenColumns, columnIndex),
+                        )
+                      }}
+                    ></ValuesInspector>
+
+                    {viewMode === "visual" ? (
+                      <VisualView
+                        columnInfos={columnInfos}
+                        hiddenColumns={hiddenColumns}
+                        data={displayedDataFiltered}
+                      />
+                    ) : viewMode === "freeQuery" ? (
+                      <FreeQuery
+                        data={displayedDataFiltered}
                         headerRow={displayedHeader}
-                        displayedData={displayedDataFiltered}
-                        onClose={() => {
-                          setFilterDialogOpen(false)
-                          // Make sure to always show current applied filter when re-opening first (last draft state can still be recovered from history if needed)
-                          if (appliedFilterFunctionCode) {
-                            setFilterFunctionCode(appliedFilterFunctionCode)
+                      />
+                    ) : (
+                      <DataTable
+                        key={currentFile?.name}
+                        headerRow={displayedHeader}
+                        rows={displayedDataFiltered}
+                        columnInfos={columnInfos}
+                        hiddenColumns={hiddenColumns}
+                        sortSetting={sortSetting}
+                        onSortingChange={(e) => {
+                          if (e.sortOrder !== "unsorted") {
+                            setSortSetting(e as SortSetting)
+                          } else {
+                            setSortSetting(null)
                           }
                         }}
-                        onFilterCodeChange={(code: string) =>
-                          setFilterFunctionCode(code)
-                        }
-                        onApply={(code) => {
-                          setFilterDialogOpen(false)
-                          setAppliedFilterFunctionCode(code)
-                        }}
-                      />
-                    )}
-                    <Button
-                      data-testid={"btnExport"}
-                      title="Export data"
-                      variant="ghost"
-                      className="py-1 px-2"
-                      style={{
-                        height: "unset",
-                      }}
-                      ref={exportButtonRef}
-                      onPointerDown={() => {
-                        setPopoverAnchorElement(exportButtonRef.current)
-                      }}
-                    >
-                      <ArrowTopRightOnSquareIcon className="size-5" />
-                      <span className="ml-1 hidden 2xl:inline">Export</span>
-                    </Button>
-                    <MenuPopover
-                      id={"exportPopover"}
-                      menuItems={exportPopoverEntries}
-                      open={Boolean(popoverAnchorElement)}
-                      anchorEl={popoverAnchorElement}
-                      onClose={handlePopoverClose}
-                      onSelect={() => setPopoverAnchorElement(null)}
-                      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                    ></MenuPopover>
-                  </div>
-                </div>
-                <div
-                  className="flex flex-row h-[calc(100vh-60px)] overflow-clip"
-                  style={{
-                    opacity: calculationInProgress ? 0.7 : undefined,
-                    transition: "opacity 0.3s ease",
-                  }}
-                  data-testid="DataContentWrapper"
-                >
-                  <ValuesInspector
-                    columnValueCounts={columnInfos}
-                    filters={filters}
-                    onFilterToggle={onFilterToggle}
-                    openAccordions={openAccordions}
-                    onToggleAccordion={(columnIndex: number) => {
-                      setOpenAccordions(
-                        addOrRemove(openAccordions, columnIndex),
-                      )
-                    }}
-                    hiddenColumns={hiddenColumns}
-                    onToggleColumnVisibility={(columnIndex: number) => {
-                      setHiddenColumns(addOrRemove(hiddenColumns, columnIndex))
-                    }}
-                  ></ValuesInspector>
-
-                  {viewMode === "visual" ? (
-                    <VisualView
-                      columnInfos={columnInfos}
-                      hiddenColumns={hiddenColumns}
-                      data={displayedDataFiltered}
-                    />
-                  ) : viewMode === "freeQuery" ? (
-                    <FreeQuery
-                      data={displayedDataFiltered}
-                      headerRow={displayedHeader}
-                    />
-                  ) : (
-                    <DataTable
-                      key={currentFile?.name}
-                      headerRow={displayedHeader}
-                      rows={displayedDataFiltered}
-                      columnInfos={columnInfos}
-                      hiddenColumns={hiddenColumns}
-                      sortSetting={sortSetting}
-                      onSortingChange={(e) => {
-                        if (e.sortOrder !== "unsorted") {
-                          setSortSetting(e as SortSetting)
-                        } else {
-                          setSortSetting(null)
-                        }
-                      }}
-                      onTransformerAdded={(e) => {
-                        setTransformers([...transformers, e])
-                        setFilters(
-                          filters
-                            .map((f) => {
-                              if (
-                                e.asNewColumn &&
-                                f.columnIndex > e.columnIndex
-                              ) {
-                                return {
-                                  ...f,
-                                  columnIndex: f.columnIndex + 1,
+                        onTransformerAdded={(e) => {
+                          setTransformers([...transformers, e])
+                          setFilters(
+                            filters
+                              .map((f) => {
+                                if (
+                                  e.asNewColumn &&
+                                  f.columnIndex > e.columnIndex
+                                ) {
+                                  return {
+                                    ...f,
+                                    columnIndex: f.columnIndex + 1,
+                                  }
+                                } else {
+                                  return f
                                 }
-                              } else {
-                                return f
-                              }
-                            })
-                            .filter(
-                              (f) =>
-                                !e.asNewColumn ||
-                                f.columnIndex !== e.columnIndex,
-                            ),
-                        )
-                        if (e.asNewColumn) {
-                          setHiddenColumns(
-                            hiddenColumns.map((i) =>
-                              i > e.columnIndex ? i + 1 : i,
-                            ),
+                              })
+                              .filter(
+                                (f) =>
+                                  !e.asNewColumn ||
+                                  f.columnIndex !== e.columnIndex,
+                              ),
                           )
-                          setOpenAccordions(
-                            openAccordions.map((i) =>
-                              i > e.columnIndex ? i + 1 : i,
-                            ),
-                          )
-                        }
-                      }}
-                    ></DataTable>
-                  )}
-                </div>
-              </React.Fragment>
-            )
-        }
-      })()}
-    </div>
+                          if (e.asNewColumn) {
+                            setHiddenColumns(
+                              hiddenColumns.map((i) =>
+                                i > e.columnIndex ? i + 1 : i,
+                              ),
+                            )
+                            setOpenAccordions(
+                              openAccordions.map((i) =>
+                                i > e.columnIndex ? i + 1 : i,
+                              ),
+                            )
+                          }
+                        }}
+                      ></DataTable>
+                    )}
+                  </div>
+                </React.Fragment>
+              )
+          }
+        })()}
+      </div>
+    </TooltipProvider>
   )
 }
 
