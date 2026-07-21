@@ -1,4 +1,4 @@
-import { orderBy, sum, uniq } from "lodash-es"
+import { orderBy, uniq } from "lodash-es"
 import React, { useEffect, useState, useMemo, useRef } from "react"
 import { AutoSizer } from "react-virtualized-auto-sizer"
 import { List, useListRef } from "react-window"
@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getScrollbarWidth, SortSetting } from "@/utils"
 import TransformDialog from "../TransformDialog"
 import useKeyPress from "@/hooks/useKeyPress"
+import { clampColumnWidthPx, computeColumnWidths } from "./columnWidths"
 
 export interface SortEvent {
   columnIndex: number
@@ -126,39 +127,66 @@ export const DataTable = (props: {
     // TODO: Fix linting complaint / maybe refactor to useCallback?
   }, [selectedRow, navigationDirection, rows.length])
 
-  const columnWidths = props.columnInfos.map((cvc) =>
-    !hiddenColumns.includes(cvc.columnIndex)
-      ? estimateColumnWidthPx(cvc.valuesMaxLength)
-      : 0,
-  )
-  const columnWidthSum = sum(columnWidths)
+  // Custom column widths set by the user via drag-resizing the header cells
+  const [customColumnWidths, setCustomColumnWidths] = useState<
+    Record<number, number>
+  >({})
+
+  // Reset custom widths when the column structure changes (e.g. a transformer
+  // inserted a column); sorting/filtering keep the same header names
+  const headerKey = JSON.stringify(props.headerRow)
+  const [prevHeaderKey, setPrevHeaderKey] = useState(headerKey)
+  if (prevHeaderKey !== headerKey) {
+    setPrevHeaderKey(headerKey)
+    setCustomColumnWidths({})
+  }
+
+  const handleColumnResize = ({
+    columnIndex,
+    width,
+  }: {
+    columnIndex: number
+    width: number
+  }) => {
+    setCustomColumnWidths((prev) => ({
+      ...prev,
+      [columnIndex]: clampColumnWidthPx(width),
+    }))
+  }
+
+  const handleColumnResizeReset = ({
+    columnIndex,
+  }: {
+    columnIndex: number
+  }) => {
+    setCustomColumnWidths((prev) => {
+      const next = { ...prev }
+      delete next[columnIndex]
+      return next
+    })
+  }
 
   const leftColumnWidthPx = 380 + 24 // TODO: Hardcoded width for value inspector + padding/scrollbar etc; would better be dynamic
   const headerHeight = 38 + 3 * 8 // TODO: Hardcoded height for header; would better be dynamic
 
-  const remainingWidth = windowWidth - leftColumnWidthPx - columnWidthSum
+  const {
+    widths: columnWidthsPx,
+    tableWidthPx,
+    isOverFlowingHorizontally,
+  } = computeColumnWidths({
+    columns: props.columnInfos,
+    hiddenColumns,
+    customWidths: customColumnWidths,
+    availableWidthPx: windowWidth - leftColumnWidthPx,
+  })
+
   const estimatedTableHeight = windowHeight - headerHeight
   const estimatedRowsDisplayed =
     Math.floor((estimatedTableHeight - scrollbarWidth) / RowHeight) - 1 // Do not count fixed header
-  // console.log("remainingWidth", remainingWidth)
   // console.log("estimatedTableHeight", estimatedTableHeight)
   // console.log("estimatedRowsDisplayed", estimatedRowsDisplayed)
-  const isOverFlowingHorizontally = remainingWidth < 0
 
-  const growthFactor = (remainingWidth * 1.0) / columnWidthSum + 1
-  const MinGrowthFactor = 1
-  const MaxGrowthFactor = 1.77
-  const growFactorEffective = Math.min(
-    Math.max(growthFactor, MinGrowthFactor),
-    MaxGrowthFactor,
-  )
-  // console.log("growthFactor", growthFactor)
-  // console.log("growFactorEffective", growFactorEffective)
-
-  const tableWidth = `${columnWidthSum * growFactorEffective}px`
-  const sColumnWidths = columnWidths.map(
-    (cw) => `${cw * growFactorEffective}px`,
-  )
+  const tableWidth = `${tableWidthPx}px`
 
   const [popoverAnchorElement, setPopoverAnchorElement] =
     React.useState<HTMLElement | null>(null)
@@ -457,7 +485,7 @@ export const DataTable = (props: {
               rows,
               selectedRow,
               headerRow: props.headerRow,
-              columnsWidths: sColumnWidths,
+              columnsWidths: columnWidthsPx,
               sortSetting: props.sortSetting,
               isMetaPressed,
               onValueCellPressed: ({ value }) => {
@@ -476,8 +504,10 @@ export const DataTable = (props: {
             <StickyRow
               headerRow={props.headerRow}
               hiddenColumns={hiddenColumns}
-              columnsWidths={sColumnWidths}
+              columnsWidths={columnWidthsPx}
               sortSetting={props.sortSetting}
+              onColumnResize={handleColumnResize}
+              onColumnResizeReset={handleColumnResizeReset}
               onHeaderPressed={({ columnIndex }) => {
                 let newSortOrder: SortEvent["sortOrder"] = "asc"
                 if (props.sortSetting?.columnIndex === columnIndex) {
@@ -504,16 +534,6 @@ export const DataTable = (props: {
       />
     </div>
   )
-}
-
-function estimateColumnWidthPx(valueMaxLength: number): number {
-  if (valueMaxLength <= 6) {
-    return 64
-  } else if (valueMaxLength <= 15) {
-    return 128
-  } else {
-    return 192
-  }
 }
 
 function sampleValuesFromArray(data: any[]) {

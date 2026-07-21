@@ -35,6 +35,7 @@ It aims to be both:
 - Simple filtering with value facets for exact matches
 - Full-text search across data
 - Basic sorting functionality
+- Adjustable column widths via drag and drop (double-click to reset)
 - Advanced row filtering using custom JavaScript
 - Advanced value transformation using custom JavaScript
 - One-click export to CSV, XLSX, or JSON

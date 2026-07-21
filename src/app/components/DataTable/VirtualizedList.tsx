@@ -25,7 +25,7 @@ export interface RowProps {
   rows: any[]
   selectedRow: number | null
   headerRow: string[]
-  columnsWidths: string[]
+  columnsWidths: number[]
   sortSetting: SortSetting | null
   isMetaPressed: boolean
   onValueCellPressed: ({
@@ -47,7 +47,7 @@ export interface RowProps {
 export interface StickyRowProps {
   headerRow: string[]
   hiddenColumns: number[]
-  columnsWidths: string[]
+  columnsWidths: number[]
   sortSetting: SortSetting | null
   onHeaderPressed: ({ columnIndex }: { columnIndex: number }) => void
   onHeaderMenuPressed: ({
@@ -57,6 +57,14 @@ export interface StickyRowProps {
     columnIndex: number
     headerElement: HTMLElement
   }) => void
+  onColumnResize: ({
+    columnIndex,
+    width,
+  }: {
+    columnIndex: number
+    width: number
+  }) => void
+  onColumnResizeReset: ({ columnIndex }: { columnIndex: number }) => void
 }
 
 const cellClass = cva(
@@ -275,8 +283,16 @@ export const StickyRow = ({
   sortSetting,
   onHeaderPressed,
   onHeaderMenuPressed,
+  onColumnResize,
+  onColumnResizeReset,
 }: StickyRowProps) => {
   const cellRef = React.useRef<Array<HTMLElement | null>>([])
+  const resizeDragRef = React.useRef<{
+    pointerId: number
+    columnIndex: number
+    startX: number
+    startWidth: number
+  } | null>(null)
 
   React.useEffect(() => {
     cellRef.current = cellRef.current.slice(0, headerRow.length)
@@ -309,7 +325,7 @@ export const StickyRow = ({
             ref={(el) => {
               cellRef.current[vi] = el
             }}
-            className="group flex flex-row justify-between p-0.5 bg-gray-200"
+            className="group relative flex flex-row justify-between p-0.5 bg-gray-200"
             style={{
               width: columnsWidths[vi],
             }}
@@ -348,6 +364,46 @@ export const StickyRow = ({
                 <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
               </svg>
             </button>
+
+            <div
+              data-testid={`headerResize_${vi}_${v}`}
+              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none select-none opacity-0 group-hover:opacity-100 hover:bg-blue-400"
+              title="Drag to resize column; double-click to reset"
+              onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
+                if (e.button !== 0) return
+                e.stopPropagation()
+                e.preventDefault()
+                e.currentTarget.setPointerCapture(e.pointerId)
+                resizeDragRef.current = {
+                  pointerId: e.pointerId,
+                  columnIndex: vi,
+                  startX: e.clientX,
+                  startWidth: columnsWidths[vi],
+                }
+              }}
+              onPointerMove={(e: React.PointerEvent<HTMLDivElement>) => {
+                const drag = resizeDragRef.current
+                if (!drag || drag.pointerId !== e.pointerId) return
+                e.stopPropagation()
+                onColumnResize({
+                  columnIndex: drag.columnIndex,
+                  width: drag.startWidth + e.clientX - drag.startX,
+                })
+              }}
+              onPointerUp={(e: React.PointerEvent<HTMLDivElement>) => {
+                if (resizeDragRef.current?.pointerId === e.pointerId) {
+                  e.stopPropagation()
+                  resizeDragRef.current = null
+                }
+              }}
+              onPointerCancel={() => {
+                resizeDragRef.current = null
+              }}
+              onDoubleClick={(e: React.MouseEvent<HTMLDivElement>) => {
+                e.stopPropagation()
+                onColumnResizeReset({ columnIndex: vi })
+              }}
+            />
           </div>
         )
       })}
