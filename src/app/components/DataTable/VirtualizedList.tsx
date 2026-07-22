@@ -64,7 +64,13 @@ export interface StickyRowProps {
     columnIndex: number
     width: number
   }) => void
-  onColumnResizeReset: ({ columnIndex }: { columnIndex: number }) => void
+  onColumnResizeDoubleClick: ({
+    columnIndex,
+    headerFont,
+  }: {
+    columnIndex: number
+    headerFont: string
+  }) => void
 }
 
 const cellClass = cva(
@@ -284,7 +290,7 @@ export const StickyRow = ({
   onHeaderPressed,
   onHeaderMenuPressed,
   onColumnResize,
-  onColumnResizeReset,
+  onColumnResizeDoubleClick,
 }: StickyRowProps) => {
   const cellRef = React.useRef<Array<HTMLElement | null>>([])
   const resizeDragRef = React.useRef<{
@@ -368,7 +374,7 @@ export const StickyRow = ({
             <div
               data-testid={`headerResize_${vi}_${v}`}
               className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none select-none opacity-0 group-hover:opacity-100 hover:bg-blue-400"
-              title="Drag to resize column; double-click to reset"
+              title="Drag to resize column; double-click to fit content / reset"
               onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
                 if (e.button !== 0) return
                 e.stopPropagation()
@@ -401,7 +407,11 @@ export const StickyRow = ({
               }}
               onDoubleClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.stopPropagation()
-                onColumnResizeReset({ columnIndex: vi })
+                onColumnResizeDoubleClick({
+                  columnIndex: vi,
+                  headerFont: window.getComputedStyle(cellRef.current[vi]!)
+                    .font,
+                })
               }}
             />
           </div>

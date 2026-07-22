@@ -20,10 +20,14 @@ import { MenuPopover } from "../../../components/ui/Popover"
 import useWindowDimensions from "../../../hooks/useWindowDimensions"
 import { Row, StickyRow } from "./VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
-import { getScrollbarWidth, SortSetting } from "@/utils"
+import { getScrollbarWidth, SortSetting, valueAsStringFormatted } from "@/utils"
 import TransformDialog from "../TransformDialog"
 import useKeyPress from "@/hooks/useKeyPress"
-import { clampColumnWidthPx, computeColumnWidths } from "./columnWidths"
+import {
+  clampColumnWidthPx,
+  computeColumnWidths,
+  computeContentFitWidthPx,
+} from "./columnWidths"
 
 export interface SortEvent {
   columnIndex: number
@@ -154,16 +158,53 @@ export const DataTable = (props: {
     }))
   }
 
-  const handleColumnResizeReset = ({
+  const textMeasureContextRef = useRef<CanvasRenderingContext2D | null>(null)
+
+  const handleColumnResizeDoubleClick = ({
     columnIndex,
+    headerFont,
   }: {
     columnIndex: number
+    headerFont: string
   }) => {
-    setCustomColumnWidths((prev) => {
-      const next = { ...prev }
-      delete next[columnIndex]
-      return next
-    })
+    if (customColumnWidths[columnIndex] != null) {
+      // Column has a custom width: reset back to automatic width
+      setCustomColumnWidths((prev) => {
+        const next = { ...prev }
+        delete next[columnIndex]
+        return next
+      })
+      return
+    }
+
+    // Column is at its default width: fit the width to its contents
+    if (!textMeasureContextRef.current) {
+      textMeasureContextRef.current = document
+        .createElement("canvas")
+        .getContext("2d")
+    }
+    const ctx = textMeasureContextRef.current
+    if (!ctx) return
+    ctx.font = headerFont
+
+    // Consider only the longest values to bound measureText calls
+    const MaxCandidates = 30
+    const candidates = props.rows
+      .map((row) => valueAsStringFormatted(row[columnIndex]))
+      .sort((a, b) => b.length - a.length)
+      .slice(0, MaxCandidates)
+
+    const HeaderMenuButtonAllowancePx = 20
+    const maxTextWidthPx = Math.max(
+      ctx.measureText(props.headerRow[columnIndex]).width +
+        HeaderMenuButtonAllowancePx,
+      ...candidates.map((text) => ctx.measureText(text).width),
+    )
+
+    setCustomColumnWidths((prev) => ({
+      ...prev,
+      [columnIndex]: computeContentFitWidthPx(maxTextWidthPx),
+    }))
   }
 
   const leftColumnWidthPx = 380 + 24 // TODO: Hardcoded width for value inspector + padding/scrollbar etc; would better be dynamic
@@ -507,7 +548,7 @@ export const DataTable = (props: {
               columnsWidths={columnWidthsPx}
               sortSetting={props.sortSetting}
               onColumnResize={handleColumnResize}
-              onColumnResizeReset={handleColumnResizeReset}
+              onColumnResizeDoubleClick={handleColumnResizeDoubleClick}
               onHeaderPressed={({ columnIndex }) => {
                 let newSortOrder: SortEvent["sortOrder"] = "asc"
                 if (props.sortSetting?.columnIndex === columnIndex) {

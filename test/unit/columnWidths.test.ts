@@ -3,6 +3,8 @@ import { expect, describe, it } from "bun:test"
 import {
   clampColumnWidthPx,
   computeColumnWidths,
+  computeContentFitWidthPx,
+  ContentFitPaddingPx,
   estimateColumnWidthPx,
   MinColumnWidthPx,
   MaxColumnWidthPx,
@@ -29,6 +31,20 @@ describe("clampColumnWidthPx", () => {
     expect(clampColumnWidthPx(10)).toBe(MinColumnWidthPx)
     expect(clampColumnWidthPx(10000)).toBe(MaxColumnWidthPx)
     expect(clampColumnWidthPx(200)).toBe(200)
+  })
+})
+
+describe("computeContentFitWidthPx", () => {
+  it("adds padding to the measured text width", () => {
+    expect(computeContentFitWidthPx(100)).toBe(100 + ContentFitPaddingPx)
+  })
+
+  it("clamps tiny contents to the minimum width", () => {
+    expect(computeContentFitWidthPx(10)).toBe(MinColumnWidthPx)
+  })
+
+  it("clamps huge contents to the maximum width", () => {
+    expect(computeContentFitWidthPx(5000)).toBe(MaxColumnWidthPx)
   })
 })
 

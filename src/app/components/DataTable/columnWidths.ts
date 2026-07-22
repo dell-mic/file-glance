@@ -20,6 +20,16 @@ export function clampColumnWidthPx(width: number): number {
   return Math.min(Math.max(width, MinColumnWidthPx), MaxColumnWidthPx)
 }
 
+// Extra room on top of the measured text width: cell padding (p-0.5 = 2px on
+// each side) plus a small safety margin
+export const ContentFitPaddingPx = 8
+
+// Computes the column width to fit its contents, based on the widest measured
+// text (including any extras like the header menu button allowance)
+export function computeContentFitWidthPx(maxTextWidthPx: number): number {
+  return clampColumnWidthPx(maxTextWidthPx + ContentFitPaddingPx)
+}
+
 export interface ColumnWidthComputationInput {
   columns: Array<{ columnIndex: number; valuesMaxLength: number }>
   hiddenColumns: number[]
