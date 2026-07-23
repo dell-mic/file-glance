@@ -60,14 +60,31 @@ export function isNumericColumn(c: ColumnInfos) {
   return c.columnType === "Number" || c.columnType === "BigInt"
 }
 
+// Cache header->index lookup per headers array so proxy access stays O(1) instead of O(headers) per cell access
+const headerIndexCache = new WeakMap<string[], Map<string, number>>()
+
+function getHeaderIndexMap(headers: string[]): Map<string, number> {
+  let map = headerIndexCache.get(headers)
+  if (!map) {
+    map = new Map()
+    // First occurrence wins, matching previous indexOf semantics (duplicate headers can occur)
+    for (const [i, h] of headers.entries()) {
+      if (!map.has(h)) map.set(h, i)
+    }
+    headerIndexCache.set(headers, map)
+  }
+  return map
+}
+
 // Proxy wrapper for each row to allow access by header name
 export function createRowProxy(row: any[], headers: string[]) {
+  const indexByHeader = getHeaderIndexMap(headers)
   return new Proxy(row, {
     get(target, prop) {
       // console.log(target, prop)
       if (typeof prop === "string") {
-        const idx = headers.indexOf(prop)
-        if (idx !== -1) return target[idx]
+        const idx = indexByHeader.get(prop)
+        if (idx !== undefined) return target[idx]
       }
       return target[prop as any]
     },
@@ -540,6 +557,16 @@ export function hasHeader(data: any[][]): boolean {
     }
 
     return totalDistance / data[0].length
+  }
+
+  // With exactly 2 rows no second-row similarity can be computed (division by 0 -> NaN -> always false);
+  // decide directly: treat first row as header if its value patterns differ from the second row
+  if (data.length === 2) {
+    return data[0].some(
+      (v, i) =>
+        normalizeString(valueAsStringFormatted(v)) !==
+        normalizeString(valueAsStringFormatted(data[1][i])),
+    )
   }
 
   const averageDistanceFirstRow = calculateAverageSimilarity(
@@ -1144,7 +1171,9 @@ export function countValues(
   inputFiltered: any[][],
 ): ColumnInfos[] {
   console.time("countValues")
-  const countsPerColumn: CountMap[] = headers.map((v, i) => ({}))
+  // Null-prototype maps: cell values like "__proto__"/"constructor" must not resolve via the prototype
+  // chain (previously skipped init and wrote NaN onto Object.prototype, losing those counts)
+  const countsPerColumn: CountMap[] = headers.map((v, i) => Object.create(null))
   const typesPerColumn: Set<string>[] = headers.map((v, i) => new Set())
 
   const countConfigs: Array<{

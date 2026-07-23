@@ -297,9 +297,9 @@ function parseLocalFileHeader(
       reader.readUint32LE() // CRC-32
       actualCompressedSize = reader.readUint32LE()
       actualUncompressedSize = reader.readUint32LE()
-      console.log(
-        `Data descriptor found: compressed=${actualCompressedSize}, uncompressed=${actualUncompressedSize}`,
-      )
+      // console.log(
+      //   `Data descriptor found: compressed=${actualCompressedSize}, uncompressed=${actualUncompressedSize}`,
+      // )
     } else {
       // No data descriptor, use scanned size
       actualUncompressedSize = foundSize
@@ -465,13 +465,13 @@ export async function extractZipFile(zipFile: File): Promise<File[]> {
 
   // Find and parse End of Central Directory
   const endOfCDOffset = findEndOfCentralDirectory(buffer)
-  console.log(`End of Central Directory at offset: ${endOfCDOffset}`)
+  // console.log(`End of Central Directory at offset: ${endOfCDOffset}`)
 
   const cd = parseCentralDirectory(reader, endOfCDOffset)
   validateCentralDirectory(cd)
-  console.log(
-    `Central Directory: ${cd.totalEntries} entries, size ${cd.cdSize} bytes at offset ${cd.cdOffset}`,
-  )
+  // console.log(
+  //   `Central Directory: ${cd.totalEntries} entries, size ${cd.cdSize} bytes at offset ${cd.cdOffset}`,
+  // )
 
   const entries = parseCentralDirectoryEntries(reader, cd)
 
@@ -479,20 +479,20 @@ export async function extractZipFile(zipFile: File): Promise<File[]> {
     try {
       // Skip directories
       if (entry.fileName.endsWith("/")) {
-        console.log(`Skipping directory: ${entry.fileName}`)
+        // console.log(`Skipping directory: ${entry.fileName}`)
         continue
       }
 
       // Skip __MACOSX entries (macOS metadata)
       if (entry.fileName.includes("__MACOSX")) {
-        console.log(`Skipping __MACOSX entry: ${entry.fileName}`)
+        // console.log(`Skipping __MACOSX entry: ${entry.fileName}`)
         continue
       }
 
       // Skip dotfiles (hidden files starting with .)
       const fileName = entry.fileName.split("/").pop() || ""
       if (fileName.startsWith(".")) {
-        console.log(`Skipping dotfile: ${entry.fileName}`)
+        // console.log(`Skipping dotfile: ${entry.fileName}`)
         continue
       }
 
@@ -514,9 +514,9 @@ export async function extractZipFile(zipFile: File): Promise<File[]> {
           )
           fileData = new Uint8Array(0)
         } else {
-          console.log(
-            `Decompressing ${header.fileName}: ${header.compressedSize} bytes compressed -> ${header.uncompressedSize} bytes uncompressed`,
-          )
+          // console.log(
+          //   `Decompressing ${header.fileName}: ${header.compressedSize} bytes compressed -> ${header.uncompressedSize} bytes uncompressed`,
+          // )
           try {
             fileData = await decompressDeflate(header.fileData)
           } catch (decompressError) {
@@ -543,9 +543,9 @@ export async function extractZipFile(zipFile: File): Promise<File[]> {
           )
           fileData = new Uint8Array(0)
         } else {
-          console.log(
-            `Decompressing ${header.fileName} with BZIP2: ${header.compressedSize} bytes compressed -> ${header.uncompressedSize} bytes uncompressed`,
-          )
+          // console.log(
+          //   `Decompressing ${header.fileName} with BZIP2: ${header.compressedSize} bytes compressed -> ${header.uncompressedSize} bytes uncompressed`,
+          // )
           fileData = decompressBzip2(header.fileData, header.uncompressedSize)
         }
       } else if (header.compression !== COMPRESSION_STORE) {
@@ -554,7 +554,7 @@ export async function extractZipFile(zipFile: File): Promise<File[]> {
         )
       }
 
-      console.log(`Extracted: ${header.fileName} (${fileData.length} bytes)`)
+      // console.log(`Extracted: ${header.fileName} (${fileData.length} bytes)`)
 
       // Create File object - convert Uint8Array to ArrayBuffer for compatibility
       const fileBuffer = fileData.buffer.slice(
@@ -583,7 +583,7 @@ export async function extractZipFile(zipFile: File): Promise<File[]> {
     throw new Error("No files found in ZIP")
   }
 
-  console.log(`Successfully extracted ${files.length} files from ZIP`)
+  // console.log(`Successfully extracted ${files.length} files from ZIP`)
   return files
 }
 

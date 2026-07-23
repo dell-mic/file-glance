@@ -86,10 +86,9 @@ test(`Column fit to content is clamped to the maximum width`, async ({
   )
   await page.waitForSelector('[data-testid="DataTable"]', { state: "visible" })
 
-  // Note: hasHeader detection treats the first row as data here, so the
-  // columns get auto-generated names
-  const header = page.getByTestId("header_0_col_01")
-  const resizeHandle = page.getByTestId("headerResize_0_col_01")
+  // Note: hasHeader detection treats the first row as header here (2-row file)
+  const header = page.getByTestId("header_0_col1")
+  const resizeHandle = page.getByTestId("headerResize_0_col1")
 
   const initialWidth = (await header.boundingBox())!.width
 

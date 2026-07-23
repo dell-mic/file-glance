@@ -21,6 +21,7 @@ addEventListener(
       search,
       sortSetting,
       appliedFilterFunctionCode,
+      requestId,
     } = event.data
 
     // console.log("DisplayedDataWorker received:", event.data)
@@ -74,6 +75,7 @@ addEventListener(
     )
 
     postMessage({
+      requestId, // Echoed back so the main thread can ignore stale responses
       displayedHeader,
       // displayedData,
       displayedDataFiltered,
@@ -156,6 +158,7 @@ export interface DisplayedDataWorkerInput {
   search: string
   sortSetting: SortSetting | null
   appliedFilterFunctionCode: string | null
+  requestId: number
 }
 
 interface CompiledTransformer extends Transformer {

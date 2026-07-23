@@ -195,6 +195,36 @@ describe("hasHeader", () => {
     expect(result).toBe(true)
   })
 
+  it("should return true for a 2-row file with header (previously NaN bug always returned false)", () => {
+    const data = [
+      ["name", "age"],
+      ["alice", "42"],
+    ]
+
+    const result = hasHeader(data)
+    expect(result).toBe(true)
+  })
+
+  it("should return false for a 2-row file without header", () => {
+    const data = [
+      ["alice", "42"],
+      ["bob", "37"],
+    ]
+
+    const result = hasHeader(data)
+    expect(result).toBe(false)
+  })
+
+  it("should return false for a 2-row file of same-pattern data rows", () => {
+    const data = [
+      ["1", "2"],
+      ["3", "4"],
+    ]
+
+    const result = hasHeader(data)
+    expect(result).toBe(false)
+  })
+
   it("should return false when pattern from first row exist exactly in data", () => {
     const data =
       `amelia.clark@example.com,2025-01-14 14:04:48 +0100,origin/feature/87626-monitoring-log-all-succesful-authentication-events,#87626: Add exception to monitoringMessage and persist only in finally block

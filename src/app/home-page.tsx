@@ -152,6 +152,10 @@ export default function Home() {
   }
 
   const displayedDataWorkerRef = useRef<Worker>(null)
+  // Monotonic request id so stale worker responses (from superseded state) can be ignored
+  const workerRequestIdRef = useRef(0)
+
+  const workerCalcStartRef = useRef(0)
   const [calculationInProgress, setCalculationInProgress] =
     React.useState(false)
 
@@ -163,13 +167,18 @@ export default function Home() {
 
     displayedDataWorker.onmessage = (
       event: MessageEvent<{
+        requestId: number
         displayedHeader: string[]
         displayedDataFiltered: any[][]
         columnInfos: ColumnInfos[]
       }>,
     ) => {
+      // Ignore responses for superseded requests (e.g. a newer file was loaded in the meantime)
+      if (event.data.requestId !== workerRequestIdRef.current) return
       // console.log("response from displayedDataWorker", event.data)
-      console.timeEnd("displayedDataWorker")
+      console.log(
+        `displayedDataWorker: ${(performance.now() - workerCalcStartRef.current).toFixed(1)}ms`,
+      )
       setDisplayedHeader(event.data.displayedHeader)
       // setDisplayedData(event.data.displayedData)
       setDisplayedDataFiltered(
@@ -362,6 +371,11 @@ export default function Home() {
       let errorMessage = ""
       let longestRowLength = 0
 
+      // Append in place: repeated concat would re-copy all accumulated rows per file (O(n^2) for many files)
+      const appendRows = (rows: any[][]) => {
+        for (const row of rows) data.push(row)
+      }
+
       // Import full project (no postprocessing needed / return early)
       if (files[0].name.toLowerCase().endsWith(".fg")) {
         const data = await files[0].arrayBuffer()
@@ -427,7 +441,7 @@ export default function Home() {
               rows.shift()
             }
 
-            data = data.concat(rows)
+            appendRows(rows)
           }
         } else if (lowerFileName.endsWith(".json")) {
           const contentAsText: string = await readFileToString(file)
@@ -438,7 +452,7 @@ export default function Home() {
 
           if (arrayData) {
             const jsonAsTable = jsonToTable(arrayData)
-            data = data.concat(jsonAsTable.data)
+            appendRows(jsonAsTable.data)
             _headerRow = jsonAsTable.headerRow
             isHeaderSet = true
             setDataFormatAlwaysIncludesHeader(true)
@@ -452,7 +466,7 @@ export default function Home() {
           const contentAsText: string = await readFileToString(file)
 
           const markdownParsingResult = parseMarkdownTable(contentAsText)
-          data = data.concat(markdownParsingResult.rows)
+          appendRows(markdownParsingResult.rows)
           _headerRow = markdownParsingResult.headerRow
           isHeaderSet = true
           setDataFormatAlwaysIncludesHeader(true)
@@ -478,7 +492,7 @@ export default function Home() {
             file: fileAsArrayBuffer,
             onComplete: (_data) => {
               // console.log("parquetRead - onComplete")
-              data = data.concat(_data)
+              appendRows(_data)
             },
           })
 
@@ -507,7 +521,7 @@ export default function Home() {
           // Try line separated JSON first (will fail early if no JSON)
           const lsJsonResult = parseLineSeparatedJson(contentAsText)
           if (lsJsonResult && lsJsonResult.data.length > 0) {
-            data = data.concat(lsJsonResult.data)
+            appendRows(lsJsonResult.data)
             _headerRow = lsJsonResult.headerRow
             isHeaderSet = true
             setDataFormatAlwaysIncludesHeader(true)
@@ -533,7 +547,7 @@ export default function Home() {
                   content.shift()
                 }
 
-                data = data.concat(content)
+                appendRows(content)
               } catch (err) {
                 console.error(err)
                 errorMessage = "Parsing failed"
@@ -604,6 +618,21 @@ export default function Home() {
     [importProject, toast],
   )
 
+  // Surface async parse failures (e.g. ZIP extraction, malformed JSON) as toast instead of
+  // dying as unhandled promise rejections / getting stuck in "parsing" state
+  const handleParseError = useCallback(
+    (e: unknown) => {
+      console.error(e)
+      toast({
+        title: "File not supported!",
+        description: String(e),
+        variant: "error",
+      })
+      setParsingState("initial")
+    },
+    [toast],
+  )
+
   const parseText = useCallback(
     (text: string, syntheticFileName: string, hideEmptyColumns: boolean) => {
       setParsingState("parsing")
@@ -619,9 +648,9 @@ export default function Home() {
 
       // TODO: A bit hacky and inefficient, but easy way to re-use existing parseFile method
       const syntheticFile = generateSyntheticFile(text, syntheticFileName)
-      parseFiles(syntheticFile, hideEmptyColumns)
+      parseFiles(syntheticFile, hideEmptyColumns).catch(handleParseError)
     },
-    [parseFiles],
+    [parseFiles, handleParseError],
   )
 
   const onGenerateSampleData = (rowsAmount = 1337) => {
@@ -678,12 +707,10 @@ export default function Home() {
     document.title = file.name
     setTimeout(() => (document.title = file.name), 200)
 
-    // TODO: More efficient way to find empty columns?
-    const emptyColumns = findEmptyColumns(data)
-
     // Hide empty columns initially
+    // Only scan when the result is actually used (O(rows*cols) otherwise wasted)
     if (hideEmptyColumns) {
-      setHiddenColumns(emptyColumns)
+      setHiddenColumns(findEmptyColumns(data))
     }
   }
 
@@ -779,7 +806,7 @@ export default function Home() {
         importTransformer(contentAsText)
         trackEvent("Transformer", "Drop")
       } else {
-        parseFiles(files, true)
+        parseFiles(files, true).catch(handleParseError)
         trackEvent("File", "Drop")
       }
     }
@@ -793,7 +820,7 @@ export default function Home() {
     e.stopPropagation()
 
     if (files.length) {
-      parseFiles(files, true)
+      parseFiles(files, true).catch(handleParseError)
     }
 
     trackEvent("File", "Select")
@@ -955,15 +982,23 @@ export default function Home() {
   // }, [headerRow, transformers])
 
   useEffect(() => {
-    if (!allRows?.length) return
+    // Bump request id on every recalculation (also invalidates in-flight worker responses)
+    const requestId = ++workerRequestIdRef.current
+    if (!allRows?.length) {
+      // No calculation will complete for this run (in-flight worker responses were
+      // invalidated by the requestId bump above), so don't leave the flag stuck.
+      setCalculationInProgress(false)
+      return
+    }
 
     // Run all user-space JS code in worker
     if (transformers.length || !!appliedFilterFunctionCode) {
-      console.time("displayedDataWorker")
+      workerCalcStartRef.current = performance.now()
       setCalculationInProgress(true)
       // Avoid UI lag due to copy/serializing of large data
       setTimeout(() => {
         displayedDataWorkerRef.current?.postMessage({
+          requestId,
           allRows,
           transformers,
           headerRow,
@@ -975,8 +1010,9 @@ export default function Home() {
       }, 1)
     } else {
       // For simple cases do filtering in main thread (todo: also limit for non-large files?)
+      // No user-space code in this branch, so filtering/counting runs on plain arrays (proxies would add per-cell overhead)
       const displayedDataFiltered = applyFilters(
-        allRows.map((row) => createRowProxy(row, headerRow)),
+        allRows,
         headerRow,
         filters,
         search,
@@ -986,8 +1022,15 @@ export default function Home() {
 
       const columnInfos = countValues(headerRow, allRows, displayedDataFiltered)
       setDisplayedHeader(headerRow)
-      setDisplayedDataFiltered(displayedDataFiltered)
+      // Wrap rows only once afterwards to still allow access by header name in user code (e.g. FreeQuery)
+      setDisplayedDataFiltered(
+        displayedDataFiltered.map((row) => createRowProxy(row, headerRow)),
+      )
       setColumnInfos(columnInfos)
+      // Sync the flag with the worker branch's onmessage. Without this, a stale
+      // worker response (ignored by the requestId guard) could leave the flag
+      // stuck at `true` and the UI dimmed indefinitely.
+      setCalculationInProgress(false)
     }
   }, [
     allRows,
@@ -1617,12 +1660,14 @@ export default function Home() {
                             )!.length
                             if (checked) {
                               // No header row -> With header row
+                              // slice(1) instead of shift(): keep state immutable — a same-reference
+                              // setAllRows would silently bail out of the re-render
                               const _headerRow = generateHeaderRow(
                                 longestRowLength,
-                                allRows.shift(),
+                                allRows[0],
                               )
                               setHeaderRow(_headerRow)
-                              setAllRows(allRows)
+                              setAllRows(allRows.slice(1))
                             } else {
                               // With header row -> no header row
                               const _headerRow =
@@ -1819,26 +1864,22 @@ export default function Home() {
                         }}
                         onTransformerAdded={(e) => {
                           setTransformers([...transformers, e])
+                          // Shift filters on columns after the inserted one; filters on the original
+                          // column intentionally survive (asNewColumn leaves that column untouched)
                           setFilters(
-                            filters
-                              .map((f) => {
-                                if (
-                                  e.asNewColumn &&
-                                  f.columnIndex > e.columnIndex
-                                ) {
-                                  return {
-                                    ...f,
-                                    columnIndex: f.columnIndex + 1,
-                                  }
-                                } else {
-                                  return f
+                            filters.map((f) => {
+                              if (
+                                e.asNewColumn &&
+                                f.columnIndex > e.columnIndex
+                              ) {
+                                return {
+                                  ...f,
+                                  columnIndex: f.columnIndex + 1,
                                 }
-                              })
-                              .filter(
-                                (f) =>
-                                  !e.asNewColumn ||
-                                  f.columnIndex !== e.columnIndex,
-                              ),
+                              } else {
+                                return f
+                              }
+                            }),
                           )
                           if (e.asNewColumn) {
                             setHiddenColumns(

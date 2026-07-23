@@ -79,8 +79,11 @@ export const DataTable = (props: {
 
   const listRef = useListRef(null)
 
-  // console.log(rows)
-  const rows = [props.headerRow, ...props.rows]
+  // Memoized: re-copying the full dataset on every render (selection, resize drags, ...) is too expensive for large files
+  const rows = useMemo(
+    () => [props.headerRow, ...props.rows],
+    [props.headerRow, props.rows],
+  )
   const hiddenColumns = props.hiddenColumns
 
   const RowHeight = 20 // px
