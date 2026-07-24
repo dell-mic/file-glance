@@ -96,7 +96,8 @@ test(`Code tab sees transformed and filtered data, accessible by index and proxi
 
   await page.getByTestId("btnFreeQueryView").click()
 
-  // First output render loads Monaco from the CDN: allow extra time.
+  // First output render loads the local Monaco chunk and boots its
+  // workers: allow extra time.
   // (First USA row is "1,John Doe,29,...". Note: Monaco renders spaces as
   // non-breaking spaces, hence \s in the patterns below.)
   await runQueryAndExpect(page, "return data.length", /^15$/, 15000)

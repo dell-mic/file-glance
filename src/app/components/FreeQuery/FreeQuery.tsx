@@ -13,8 +13,8 @@ import "prismjs/components/prism-json"
 import "prismjs/themes/prism.css"
 import "./FreeQuery.css"
 import { toast } from "@/hooks/use-toast"
-import MonacoEditor, { loader } from "@monaco-editor/react"
 import Editor from "@/components/ui/Editor"
+import MonacoEditor from "@/components/ui/MonacoEditor"
 
 interface FreeQueryProps {
   data: any[][]
@@ -26,20 +26,10 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
   const [output, setOutput] = React.useState<string>("")
   const [outputType, setOutputType] = React.useState<string>("")
 
-  //   TODO: How to use monaco with local/npm files only in the future?
-  //   React.useEffect(() => {
-  //     let monaco: typeof import("monaco-editor") | undefined
-  //     if (typeof window !== "undefined") {
-  //       import("monaco-editor").then((monacoModule) => {
-  //         monaco = monacoModule
-  //         loader.config({ monaco })
-  //         loader.init()
-  //       })
-  //     }
-  //   }, [])
-
+  // Start loading the (large) Monaco chunk in the background so the first
+  // query result doesn't have to wait for the download.
   React.useEffect(() => {
-    loader.init()
+    import("@/components/ui/MonacoEditorLocal")
   }, [])
 
   const handleRun = () => {

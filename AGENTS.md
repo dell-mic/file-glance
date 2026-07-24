@@ -8,6 +8,7 @@ Compact guide for AI agents working in this repo. Verify against `package.json` 
 - `next.config.mjs` sets `output: "export"` with `trailingSlash: true`. The build emits a static site to `out/`. Do not add server-side API routes, server actions, or middleware — they will not run in the exported site.
 - Real app entrypoint: `src/app/page.tsx` → `src/app/home-page.tsx`. Heavy work runs in Web Workers under `src/worker/` (`displayedDataWorker.ts`, `transformerValidationWorker.ts`).
 - Path alias `@/*` → `./src/*` (see `tsconfig.json`). shadcn/ui primitives live in `src/components/ui` (config in `components.json`).
+- For a Monaco code editor, use `src/components/ui/MonacoEditor.tsx` (locally bundled, no CDN; lazily loaded, SSR-safe). Never import `monaco-editor` or `@monaco-editor/react` directly elsewhere — worker setup lives in `MonacoEditorLocal.tsx` + `src/worker/monaco*Worker.ts`. Language workers are bundled for `json` and `typescript`/`javascript`; other languages fall back to the base editor worker (no language smarts) unless a worker is added in `getWorker`.
 - `xlsx` is installed from the SheetJS CDN tarball (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`), not npm. Keep it that way when bumping.
 - Tailwind v4 via `@tailwindcss/postcss` (not the v3 CLI chain) plus `tailwindcss-animate`. `tailwind.config.ts` still exists for content globs / theme extras.
 
