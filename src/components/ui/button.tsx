@@ -40,7 +40,15 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { className, variant, size, asChild = false, onPointerDown, ...props },
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      onPointerDown,
+      disabled,
+      ...props
+    },
     ref,
   ) => {
     const Comp = asChild ? Slot : "button"
@@ -48,7 +56,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        disabled={disabled}
         onPointerDown={(e) => {
+          // Pointer events are (unlike click) still dispatched on disabled
+          // buttons by browsers, so never invoke the handler when disabled
+          if (disabled) return
           // Do not react to secondary buttons
           if (!e.button && onPointerDown) {
             onPointerDown(e)

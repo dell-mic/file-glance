@@ -8,3 +8,10 @@
   /* Hide tips carousel because of random initial tip selection */
   visibility: hidden !important;
 }
+
+nextjs-portal,
+#__next-build-watcher {
+  /* Hide the Next.js dev tools overlay so e2e screenshots also pass when the
+     reused server on :3000 happens to be `next dev` instead of the export */
+  display: none !important;
+}

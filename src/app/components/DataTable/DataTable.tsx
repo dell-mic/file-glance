@@ -90,6 +90,12 @@ export const DataTable = (props: {
   const OverScanScroll = 5
 
   useEffect(() => {
+    // Start loading the (large) Monaco chunk in the background so opening the
+    // transform dialog doesn't have to wait for the download.
+    import("@/components/ui/MonacoEditorLocal")
+  }, [])
+
+  useEffect(() => {
     const transformerValidationWorker = new Worker(
       new URL(
         "../../../worker/transformerValidationWorker.ts",

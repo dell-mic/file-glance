@@ -1,8 +1,4 @@
 import React from "react"
-import { highlight, languages } from "prismjs"
-import "prismjs/components/prism-clike"
-import "prismjs/components/prism-javascript"
-import "prismjs/themes/prism.css"
 
 import {
   Select,
@@ -17,8 +13,8 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Modal } from "../../components/ui/Modal"
-import { renderValuePreview, tryParseJSONObject } from "@/utils"
-import Editor from "@/components/ui/Editor"
+import { renderValuePreview } from "@/utils"
+import CodeEditor from "@/components/ui/CodeEditor"
 
 interface TransformerValidation {
   compilationError: string | null
@@ -45,6 +41,18 @@ interface TransformDialogProps {
 
 const TransformerFunctionCodeHistoryKey = "transformerFunctionCodeHistory"
 const MaxHistoryEntries = 50
+
+// Variables available in the transformer function body, for autocomplete
+const transformerParamsLib = {
+  uri: "ts:fileglance/transformer-params.d.ts",
+  content: `declare var value: any
+declare var originalValue: any
+declare var columnIndex: number
+declare var rowIndex: number
+declare var headerName: string
+declare var allRows: any[][]
+`,
+}
 
 const TransformDialog: React.FC<TransformDialogProps> = ({
   open,
@@ -166,26 +174,25 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
             <SelectItem value="custom">Custom</SelectItem>
           </SelectContent>
         </Select>
-        <Editor
+        <pre
           data-testid={`transformCodeHints`}
-          className="w-full font-mono text-sm"
-          value={
+          className="w-full font-mono text-sm p-[5px] whitespace-pre-wrap"
+        >
+          {
             "// (value, columnIndex, rowIndex, headerName, allRows, originalValue) =>"
           }
-          highlight={(code) => highlight(code, languages.js, "js")}
-          padding={5}
-          disabled={true}
-          onValueChange={() => {}}
-        />
-        <Editor
+        </pre>
+        <CodeEditor
           data-testid={`transformCodeInput`}
           className="w-full min-h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm mb-2"
           value={transformerFunctionCode}
-          highlight={(code) => highlight(code, languages.js, "js")}
-          padding={5}
           onValueChange={onTransformerCodeChange}
           localStorageHistoryKey={TransformerFunctionCodeHistoryKey}
-        ></Editor>
+          maxHistoryEntries={MaxHistoryEntries}
+          grayBackground
+          path="inmemory://model/transformer.js"
+          extraLib={transformerParamsLib}
+        />
         <div className="h-52 w-full mt-4">
           <h3 className="text-xl">Preview</h3>
           {transformerValidation?.compilationError && (
@@ -254,23 +261,7 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
           </Button>
           <Button
             data-testid="btnTransformApply"
-            onPointerDown={() => {
-              try {
-                const existingHistory: string[] =
-                  tryParseJSONObject(
-                    localStorage.getItem(TransformerFunctionCodeHistoryKey) ||
-                      "[]",
-                  ) || []
-                existingHistory.unshift(transformerFunctionCode)
-                localStorage.setItem(
-                  TransformerFunctionCodeHistoryKey,
-                  JSON.stringify(existingHistory.slice(0, MaxHistoryEntries)),
-                )
-              } catch (e) {
-                console.error(e)
-              }
-              onApply()
-            }}
+            onPointerDown={onApply}
           >
             Apply
           </Button>

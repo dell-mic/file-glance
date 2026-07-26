@@ -5,20 +5,23 @@ import { postProcessCode, saveFile } from "@/utils"
 import { Download } from "lucide-react"
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline"
 import { PlayIcon } from "@heroicons/react/20/solid"
-import { highlight, languages } from "prismjs"
 import Split from "react-split"
-import "prismjs/components/prism-clike"
-import "prismjs/components/prism-javascript"
-import "prismjs/components/prism-json"
-import "prismjs/themes/prism.css"
 import "./FreeQuery.css"
 import { toast } from "@/hooks/use-toast"
-import Editor from "@/components/ui/Editor"
+import CodeEditor from "@/components/ui/CodeEditor"
 import MonacoEditor from "@/components/ui/MonacoEditor"
 
 interface FreeQueryProps {
   data: any[][]
   headerRow: string[]
+}
+
+// Variables available in the query function body, for autocomplete
+const freeQueryParamsLib = {
+  uri: "ts:fileglance/freequery-params.d.ts",
+  content: `declare var data: any[][]
+declare var headers: string[]
+`,
 }
 
 export function FreeQuery({ data, headerRow }: FreeQueryProps) {
@@ -115,33 +118,25 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
       >
         <div className="flex flex-col min-w-0 px-1">
           <span className="text-sm font-medium">Query Code</span>
-          <div className="flex-1 relative overflow-hidden">
-            <Editor
+          <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
+            <pre
               data-testid={`queryCodeHints`}
-              className="w-full font-mono text-sm"
-              value={"(data: any[][], headers: string[]) =>"}
-              highlight={(code) => highlight(code, languages.js, "js")}
-              padding={5}
-              disabled={true}
-              onValueChange={() => {}}
-            />
-            <Editor
+              className="w-full font-mono text-sm p-[5px] whitespace-pre-wrap"
+            >
+              {"(data: any[][], headers: string[]) =>"}
+            </pre>
+            <CodeEditor
+              data-testid={`queryCodeInput`}
+              fillContainer
+              className="flex-1 min-h-0 w-full font-mono text-sm border border-gray-200 rounded-md"
+              contentPadding={16}
               value={query}
-              onValueChange={(code) => setQuery(code)}
-              highlight={(code) =>
-                highlight(code, languages.javascript, "javascript")
-              }
-              padding={16}
-              className="font-mono min-h-1/4 text-sm border border-gray-200 rounded-md"
+              onValueChange={setQuery}
               placeholder={`// Example:\nreturn data.filter(row => row["${headerRow[0]}"] === ${JSON.stringify(data[0][0])})`}
-              style={{ overflow: "auto" }}
-              onKeyDown={(e: React.KeyboardEvent) => {
-                if (e.metaKey && e.key === "Enter") {
-                  e.preventDefault()
-                  handleRun()
-                }
-              }}
+              onRunShortcut={handleRun}
               localStorageHistoryKey="freeQueryCodeHistory"
+              path="inmemory://model/freeQuery.js"
+              extraLib={freeQueryParamsLib}
             />
           </div>
         </div>
@@ -158,6 +153,7 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
               <MonacoEditor
                 width="100%"
                 className="flex-1 font-mono text-sm"
+                wrapperProps={{ "data-testid": "queryOutput" }}
                 language={outputType === "object" ? "json" : "text"}
                 value={output}
                 options={{

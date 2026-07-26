@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import path from "path"
+import { fillCodeEditor } from "./utils"
 
 test.beforeEach(async ({ page }) => {
   await page.goto("http://localhost:3000/")
@@ -16,10 +17,11 @@ test(`Transform column`, async ({ page }) => {
   await page.getByTestId("header_1_Name").click()
   await page.getByTestId("headerBtn_1_Name").click()
   await page.getByTestId("menuEntry-Transform").click()
-  await page
-    .getByTestId("transformCodeInput")
-    .locator("textarea")
-    .fill("return 'NEW ' + value + ' xxx'")
+  await fillCodeEditor(
+    page,
+    "transformCodeInput",
+    "return 'NEW ' + value + ' xxx'",
+  )
   await page.getByTestId("btnTransformApply").click()
   await expect(page).toHaveScreenshot()
 })
@@ -33,10 +35,11 @@ test(`Transform column as new column`, async ({ page }) => {
   await page.getByTestId("headerBtn_1_Name").click()
   await page.getByTestId("menuEntry-Transform").click()
   await page.getByTestId("transform-new").click()
-  await page
-    .getByTestId("transformCodeInput")
-    .locator("textarea")
-    .fill("return 'NEW ' + value + ' xxx'")
+  await fillCodeEditor(
+    page,
+    "transformCodeInput",
+    "return 'NEW ' + value + ' xxx'",
+  )
   await page.getByTestId("btnTransformApply").click()
   await expect(page).toHaveScreenshot()
 })

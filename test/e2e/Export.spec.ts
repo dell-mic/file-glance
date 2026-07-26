@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test"
 import path from "path"
-import { waitForClipboard } from "./utils"
+import { waitForClipboard, fillCodeEditor } from "./utils"
 
 test.beforeEach(async ({ page }) => {
   await page.goto("http://localhost:3000/")
@@ -27,10 +27,11 @@ test(`Share Link`, async ({ page, context, browserName }) => {
   await page.getByTestId("header_0_Some parameter").click()
   await page.getByTestId("headerBtn_0_Some parameter").click()
   await page.getByTestId("menuEntry-Transform").click()
-  await page
-    .getByTestId("transformCodeInput")
-    .locator("textarea")
-    .fill("return 'NEW ' + value + ' xxx'")
+  await fillCodeEditor(
+    page,
+    "transformCodeInput",
+    "return 'NEW ' + value + ' xxx'",
+  )
   await page.getByTestId("btnTransformApply").click()
 
   // Actual export via link

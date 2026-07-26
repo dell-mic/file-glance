@@ -5,6 +5,10 @@ import Editor, { loader, type EditorProps } from "@monaco-editor/react"
 // Use the locally bundled monaco instance instead of loading it from the CDN.
 loader.config({ monaco })
 
+// Expose the monaco instance for e2e tests (fillCodeEditor in test/e2e/utils.ts
+// drives editor content through monaco's API).
+;(window as unknown as { monaco: typeof monaco }).monaco = monaco
+
 // Serve monaco's workers from local bundles as well. The wrapper entries are
 // needed because Turbopack only compiles `new Worker(new URL(...))` entries
 // from project files, not from node_modules.

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import path from "path"
+import { fillCodeEditor } from "./utils"
 
 test.beforeEach(async ({ page }) => {
   await page.goto("http://localhost:3000/")
@@ -59,10 +60,11 @@ test(`Filter explanation on hover`, async ({ page }) => {
 test(`Filter explanation popover snapshot`, async ({ page }) => {
   // Custom filter function (applied first so dialog validation has matches)
   await page.getByTestId("btnFilter").click()
-  await page
-    .getByTestId("filterCodeInput")
-    .locator("textarea")
-    .fill("return parseInt(row['Salary']) > 100000")
+  await fillCodeEditor(
+    page,
+    "filterCodeInput",
+    "return parseInt(row['Salary']) > 100000",
+  )
   // Wait for debounce and for matching rows count to update
   await page.waitForTimeout(600)
   await expect(page.getByTestId("btnFilterApply")).toBeEnabled()

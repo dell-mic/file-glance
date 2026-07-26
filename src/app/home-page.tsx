@@ -845,6 +845,12 @@ export default function Home() {
     setDragging(false)
   }
 
+  // Start loading the (large) Monaco chunk in the background so opening the
+  // filter dialog doesn't have to wait for the download.
+  React.useEffect(() => {
+    import("@/components/ui/MonacoEditorLocal")
+  }, [])
+
   React.useEffect(() => {
     const dropRef = drop.current
 

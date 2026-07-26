@@ -1,8 +1,4 @@
 import React from "react"
-import { highlight, languages } from "prismjs"
-import "prismjs/components/prism-clike"
-import "prismjs/components/prism-javascript"
-import "prismjs/themes/prism.css"
 import { Button } from "../../components/ui/button"
 import { Modal } from "../../components/ui/Modal"
 import {
@@ -13,13 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select"
-import {
-  applyFilterFunction,
-  compileFilterCode,
-  createRowProxy,
-  renderValuePreview,
-} from "@/utils"
-import Editor from "@/components/ui/Editor"
+import { compileFilterCode, createRowProxy, renderValuePreview } from "@/utils"
+import CodeEditor from "@/components/ui/CodeEditor"
 
 interface ColumnInfos {
   columnName: string
@@ -35,6 +26,17 @@ interface FilterDialogProps {
   onClose: () => void
   onFilterCodeChange: (code: string) => void
   onApply: (code: string) => void
+}
+
+const FilterFunctionCodeHistoryKey = "filterFunctionCodeHistory"
+
+// Variables available in the filter function body, for autocomplete
+const filterParamsLib = {
+  uri: "ts:fileglance/filter-params.d.ts",
+  content: `declare var row: any
+declare var rowIndex: number
+declare var cache: Record<string, any>
+`,
 }
 
 const FilterDialog: React.FC<FilterDialogProps> = ({
@@ -104,10 +106,19 @@ return rowIndex < ${topX}`)
   }
 
   const [filterValidationResult, setFilterValidationResult] = React.useState<{
+    // The code this result was computed for. Validation is debounced, so
+    // Apply must additionally check that the result matches the current code
+    // — otherwise it would stay enabled on a stale result for 500ms and
+    // could apply (and close the dialog with) invalid code.
+    code: string | null
     error: string | null
+    /** First runtime error encountered while test-applying the filter to rows, if any */
+    rowError: string | null
     matchingRowsCount: number
   }>({
+    code: null,
     error: null,
+    rowError: null,
     matchingRowsCount: 0,
   })
 
@@ -116,7 +127,9 @@ return rowIndex < ${topX}`)
     const handler = setTimeout(() => {
       if (!filterFunctionCode) {
         setFilterValidationResult({
+          code: filterFunctionCode,
           error: null,
+          rowError: null,
           matchingRowsCount: 0,
         })
         return
@@ -127,21 +140,32 @@ return rowIndex < ${topX}`)
       )
       if (compiled.error) {
         setFilterValidationResult({
+          code: filterFunctionCode,
           error: compiled.error,
+          rowError: null,
           matchingRowsCount: 0,
         })
       } else {
         const cache = {}
-        const count = displayedData.filter((row, i) =>
-          applyFilterFunction(
-            createRowProxy(row, headerRow),
-            i,
-            compiled.filter!,
-            cache,
-          ),
-        ).length
+        // Evaluate rows directly (instead of via applyFilterFunction) so that
+        // runtime errors can be surfaced here instead of only being logged to
+        // the console. Erroring rows count as non-matching, exactly like
+        // applyFilterFunction treats them.
+        let firstRowError: string | null = null
+        let count = 0
+        displayedData.forEach((row, i) => {
+          try {
+            if (compiled.filter!(createRowProxy(row, headerRow), i, cache)) {
+              count++
+            }
+          } catch (err: any) {
+            if (firstRowError === null) firstRowError = err.toString()
+          }
+        })
         setFilterValidationResult({
+          code: filterFunctionCode,
           error: null,
+          rowError: firstRowError,
           matchingRowsCount: count,
         })
       }
@@ -173,23 +197,22 @@ return rowIndex < ${topX}`)
             <SelectItem value="custom">Custom</SelectItem>
           </SelectContent>
         </Select>
-        <Editor
+        <pre
           data-testid={`exampleFilterCode`}
-          className="w-full font-mono text-sm my-2"
-          value={exampleFilterFunctionCode}
-          highlight={(code) => highlight(code, languages.js, "js")}
-          padding={5}
-          disabled={true}
-          onValueChange={() => {}}
-        />
-        <Editor
+          className="w-full font-mono text-sm my-2 p-[5px] whitespace-pre-wrap"
+        >
+          {exampleFilterFunctionCode}
+        </pre>
+        <CodeEditor
           data-testid={`filterCodeInput`}
           className="w-full min-h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm my-2"
           value={filterFunctionCode}
-          highlight={(code) => highlight(code, languages.js, "js")}
-          padding={5}
-          localStorageHistoryKey="filterFunctionCodeHistory"
           onValueChange={onFilterCodeChange}
+          localStorageHistoryKey={FilterFunctionCodeHistoryKey}
+          grayBackground
+          path="inmemory://model/filter.js"
+          extraLib={filterParamsLib}
+          memberCompletions={{ receiver: "row", values: headerRow }}
         />
         {filterValidationResult.error ? (
           <div className="text-red-600 font-medium">
@@ -201,6 +224,11 @@ return rowIndex < ${topX}`)
             <span className="font-bold">
               {filterValidationResult.matchingRowsCount}
             </span>
+            {filterValidationResult.rowError && (
+              <div className="text-red-600 font-medium">
+                {filterValidationResult.rowError}
+              </div>
+            )}
           </div>
         )}
         <div className="flex justify-end gap-4 mt-4">
@@ -215,6 +243,7 @@ return rowIndex < ${topX}`)
             data-testid="btnFilterApply"
             onPointerDown={() => onApply(filterFunctionCode)}
             disabled={
+              filterValidationResult.code !== filterFunctionCode ||
               !!filterValidationResult.error ||
               filterValidationResult.matchingRowsCount === 0
             }

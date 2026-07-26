@@ -1,5 +1,6 @@
 import { test, expect, Page } from "@playwright/test"
 import path from "path"
+import { fillCodeEditor } from "./utils"
 
 // Fixture: sample.csv has 50 data rows.
 // Country counts: USA 15, Canada 13, UK 11, Australia 11.
@@ -20,10 +21,7 @@ async function transformCountryToLowercase(page: Page) {
   await page.getByTestId("header_5_Country").click()
   await page.getByTestId("headerBtn_5_Country").click()
   await page.getByTestId("menuEntry-Transform").click()
-  await page
-    .getByTestId("transformCodeInput")
-    .locator("textarea")
-    .fill("return value.toLowerCase()")
+  await fillCodeEditor(page, "transformCodeInput", "return value.toLowerCase()")
   await page.getByTestId("btnTransformApply").click()
 }
 
@@ -42,7 +40,7 @@ async function includeUsaRows(page: Page) {
 
 function queryOutput(page: Page) {
   // The query output is rendered in a read-only Monaco editor
-  return page.locator(".monaco-editor .view-lines")
+  return page.getByTestId("queryOutput").locator(".view-lines")
 }
 
 async function runQueryAndExpect(
@@ -53,7 +51,7 @@ async function runQueryAndExpect(
   expected: RegExp,
   timeout?: number,
 ) {
-  await page.getByPlaceholder(/\/\/ Example:/).fill(query)
+  await fillCodeEditor(page, "queryCodeInput", query)
   await page.getByTitle("Run Query (Ctrl/Cmd + Enter)").click()
   await expect(queryOutput(page)).toHaveText(
     expected,
@@ -135,10 +133,7 @@ test(`Transformer as new column: access by shifted index and proxied name`, asyn
   await page.getByTestId("headerBtn_1_Name").click()
   await page.getByTestId("menuEntry-Transform").click()
   await page.getByTestId("transform-new").click()
-  await page
-    .getByTestId("transformCodeInput")
-    .locator("textarea")
-    .fill("return 'NEW ' + value")
+  await fillCodeEditor(page, "transformCodeInput", "return 'NEW ' + value")
   await page.getByTestId("btnTransformApply").click()
 
   // New column "Name Trans" is inserted at index 2, later columns shift by one
