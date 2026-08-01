@@ -1161,6 +1161,7 @@ type ValuInfos = {
   valueCountFiltered: number
   value: any
   originalValue: any
+  preTransformValue: any
 }
 
 type CountMap = Record<string, ValuInfos>
@@ -1169,6 +1170,7 @@ export function countValues(
   headers: string[],
   input: any[][],
   inputFiltered: any[][],
+  originalRows?: any[][],
 ): ColumnInfos[] {
   console.time("countValues")
   // Null-prototype maps: cell values like "__proto__"/"constructor" must not resolve via the prototype
@@ -1194,7 +1196,7 @@ export function countValues(
   ]
 
   for (const countConfig of countConfigs) {
-    for (const row of countConfig.input.values()) {
+    for (const [rowIndex, row] of countConfig.input.entries()) {
       // console.log(row);
       for (const [valueIndex, value] of row.entries()) {
         // const currentColumn = headers[valueIndex];
@@ -1210,11 +1212,25 @@ export function countValues(
 
             // Init count values
             if (!valueCounts) {
+              // For cells a transformer touched, `originalRows[rowIndex][valueIndex]`
+              // holds the pre-transform cell value (captured at first touch);
+              // for untouched cells it's absent, so fall back to `value` (which
+              // is then already pristine). Presence check via `in` so a pristine
+              // null/undefined isn't mistaken for "not captured". Only the
+              // total-count pass is aligned with originalRows (filtered pass
+              // uses different row indices), and init always happens in the
+              // total pass since filtered ⊆ total.
+              const originalRow = originalRows?.[rowIndex]
+              const preTransformValue =
+                originalRow && valueIndex in originalRow
+                  ? originalRow[valueIndex]
+                  : value
               valueCounts = {
                 valueCountTotal: 0,
                 valueCountFiltered: 0,
                 value: flattenedValue, // Preserve original value (w/o converting to string)
                 originalValue: value, // Need to keep the unflattened value for transformer case
+                preTransformValue,
               }
               countsPerColumn[valueIndex][valueCountKey] = valueCounts
             }
@@ -1245,6 +1261,7 @@ export function countValues(
       valueCountFiltered: e[1].valueCountFiltered,
       value: e[1].value,
       originalValue: e[1].originalValue,
+      preTransformValue: e[1].preTransformValue,
     }))
 
     const valuesMaxLength = getMaxStringLength(
@@ -1253,17 +1270,21 @@ export function countValues(
 
     const isEmptyColumn = valuesMaxLength === 0
 
+    // When the filtered pass empties a column's type set (e.g. a filter
+    // excluded every row of that column), fall back to "any" rather than
+    // leaving columnType undefined under the non-null assertion below.
     const columnType =
       typesPerColumn[columnIndex].size === 1
         ? typesPerColumn[columnIndex].values().next().value
         : "any"
+    const safeColumnType = columnType ?? "any"
     return {
       columnIndex,
       columnName,
       columnValues,
       valuesMaxLength,
       isEmptyColumn,
-      columnType: columnType!,
+      columnType: safeColumnType,
     }
   })
 

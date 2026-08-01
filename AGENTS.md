@@ -33,6 +33,10 @@ Compact guide for AI agents working in this repo. Verify against `package.json` 
 - ESLint (flat config, `eslint.config.mjs`): `@typescript-eslint/no-explicit-any`, `ban-ts-comment`, `no-unsafe-function-thing`, `no-empty-object-type` are **off**. `no-unused-vars` is `warn` with `argsIgnorePattern: "^(e|v|i|_)$"`, so single-letter args like `e`, `v`, `i`, `_` are intentional and should not be "cleaned up".
 - Lint scans only `src/`; don't add `out/`, `.next/`, or files outside `src/` to the lint scope.
 
+## Coding conventions
+
+- **Avoid spread / functional / recursive patterns on data of unclear size.** Any code path that touches user-supplied or unbounded data (rows, groups, arrays, nested structures) must assume it could be large. Do not spread arrays into variadic calls (`Math.max(...arr)`, `f(...rows)` — V8's spread argument limit is ~65k–120k, beyond which it throws `RangeError: Maximum call stack size exceeded`), and do not use recursive patterns whose depth tracks input size (same overflow risk). Prefer explicit iterative loops / `reduce` / fixed-arity helpers (e.g. `arr.reduce((a, b) => Math.max(a, b))`, `for...of`). Functional-but-iterative helpers (`map` / `filter` / `reduce`) are fine; recursion whose depth grows with input size is not. Keep this in mind for aggregations, statistics, flatten/unique walks, tree/list traversals, and similar code paths over user data. (This previously bit `PivotChart` aggregation, where `Math.max(...values)` / `Math.min(...values)` over a single large group overflowed the stack.)
+
 ## Deploy & release
 
 - No CI. Releases are manual: `./buildAndDeploy.sh` runs `npm run build` then `./deploy.sh`, which uses `lftp` over FTP (host/user/pass read from `.env`) to mirror `out/` to the remote root. `.env` is gitignored and contains `FTPHOST` / `FTPUSER` / `FTPPASS`; don't commit it.

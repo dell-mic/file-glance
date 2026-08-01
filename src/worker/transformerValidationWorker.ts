@@ -21,24 +21,25 @@ function applyTransformer(
   const { transformer, error } = compileTransformerCode(transformerCode)
 
   if (transformer) {
-    const sampleResults = data.map((value, index) => {
+    const sampleResults = data.map((item, index) => {
       let result
       let error
 
       try {
         result = transformer.apply({}, [
-          value,
+          item.value,
           columnIndex,
           index,
           header,
-          value, // TODO: How to pass actual originalValue?
+          item.value,
+          item.preTransformValue,
         ])
       } catch (err: any) {
         error = err.toString()
       }
 
       return {
-        value,
+        value: item.value,
         result,
         error,
       }

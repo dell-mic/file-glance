@@ -117,6 +117,11 @@ export default function Home() {
   const [parsingState, setParsingState] = React.useState<
     "initial" | "parsing" | "finished"
   >("initial")
+  // Mirror parsingState into a ref so the once-bound drop listener (useEffect
+  // at the drop-registration effect) always reads the current value instead of
+  // the stale "initial" captured on first render.
+  const parsingStateRef = React.useRef(parsingState)
+  parsingStateRef.current = parsingState
   const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
 
   // Calculated values
@@ -799,13 +804,27 @@ export default function Home() {
     console.log("dropped files:", files)
     if (files.length) {
       const firstFile = files[0]
-      if (firstFile.name.endsWith(".fg.json")) {
+      const isTransformer = firstFile.name.endsWith(".fg.json")
+      if (isTransformer) {
+        if (parsingStateRef.current !== "finished") {
+          toast({
+            title: "Transformer ignored — load a data file first to apply it.",
+          })
+          return
+        }
         const contentAsText: string = await readFileToString(firstFile)
 
         // eslint-disable-next-line react-hooks/immutability
         importTransformer(contentAsText)
         trackEvent("Transformer", "Drop")
       } else {
+        if (parsingStateRef.current !== "initial") {
+          toast({
+            title:
+              "Drop ignored — clear the current file first, or drop a .fg.json transformer.",
+          })
+          return
+        }
         parseFiles(files, true).catch(handleParseError)
         trackEvent("File", "Drop")
       }
@@ -820,6 +839,17 @@ export default function Home() {
     e.stopPropagation()
 
     if (files.length) {
+      const firstFile = files[0]
+      // The picker is only mounted in `"initial"` state, and a transformer is
+      // only meaningful with data already loaded, so reject it here with a toast
+      // instead of letting it fall through to parseFiles where .fg.json would
+      // be mis-parsed as ordinary JSON ("No array in JSON found").
+      if (firstFile.name.endsWith(".fg.json")) {
+        toast({
+          title: "Transformer ignored — load a data file first to apply it.",
+        })
+        return
+      }
       parseFiles(files, true).catch(handleParseError)
     }
 
@@ -1825,6 +1855,12 @@ export default function Home() {
                     data-testid="DataContentWrapper"
                   >
                     <ValuesInspector
+                      // Remount on column-structure change (new file loaded or
+                      // an as-new-column transformer inserted) so internal
+                      // index-keyed state (per-column value sort order, "show
+                      // all values" expansion) can't survive misaligned onto the
+                      // shifted columns. Mirrors the headerKey reset in DataTable.
+                      key={JSON.stringify(displayedHeader)}
                       columnValueCounts={columnInfos}
                       filters={filters}
                       onFilterToggle={onFilterToggle}
@@ -1869,7 +1905,17 @@ export default function Home() {
                           }
                         }}
                         onTransformerAdded={(e) => {
-                          setTransformers([...transformers, e])
+                          // An asNewColumn transform inserts a column after e.columnIndex,
+                          // shifting all later columns right by one. Keep existing transformers
+                          // pointed at their column (same shift as filters/hiddenColumns below).
+                          setTransformers([
+                            ...transformers.map((t) =>
+                              e.asNewColumn && t.columnIndex > e.columnIndex
+                                ? { ...t, columnIndex: t.columnIndex + 1 }
+                                : t,
+                            ),
+                            e,
+                          ])
                           // Shift filters on columns after the inserted one; filters on the original
                           // column intentionally survive (asNewColumn leaves that column untouched)
                           setFilters(
@@ -1898,6 +1944,18 @@ export default function Home() {
                                 i > e.columnIndex ? i + 1 : i,
                               ),
                             )
+                            // Keep the sort pointed at the same column (same
+                            // shift rule as filters above; a sort on the
+                            // target column or earlier ones correctly stays).
+                            if (
+                              sortSetting &&
+                              sortSetting.columnIndex > e.columnIndex
+                            ) {
+                              setSortSetting({
+                                ...sortSetting,
+                                columnIndex: sortSetting.columnIndex + 1,
+                              })
+                            }
                           }
                         }}
                       ></DataTable>

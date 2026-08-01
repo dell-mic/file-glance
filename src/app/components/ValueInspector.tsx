@@ -411,6 +411,7 @@ export interface ColumnInfos {
 export interface ColumnValues {
   value: any
   originalValue: any
+  preTransformValue: any
   valueName: string
   valueCountTotal: number
   valueCountFiltered: number

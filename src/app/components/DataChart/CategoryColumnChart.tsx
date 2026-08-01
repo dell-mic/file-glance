@@ -21,6 +21,7 @@ import {
   EMPTY_LABEL,
 } from "./chartUtils"
 import { showAsEmpty } from "@/utils"
+import { buildCategoryChartData } from "@/stats"
 
 interface CategoryColumnChartProps {
   columnInfo: ColumnInfos
@@ -37,39 +38,11 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
   const displayedValues = col.columnValues.filter(
     (v) => v.valueCountFiltered > 0,
   )
-  const sortedValues = [...displayedValues].sort(
-    (a, b) => b.valueCountFiltered - a.valueCountFiltered,
+  const { data, otherCount } = buildCategoryChartData(
+    col,
+    MAX_CHART_VALUES,
+    groupOtherValues,
   )
-  const topValues = sortedValues.slice(0, MAX_CHART_VALUES)
-  const otherValues = sortedValues.slice(MAX_CHART_VALUES)
-  let otherSum = 0
-  let data = []
-  if (groupOtherValues && otherValues.length >= 2) {
-    otherSum = otherValues.reduce((sum, v) => sum + v.valueCountFiltered, 0)
-    data = [
-      ...topValues.map((cv) => ({
-        name: cv.valueName,
-        value: cv.valueCountFiltered,
-      })),
-      { name: "Other", value: otherSum },
-    ]
-  } else {
-    data = [
-      ...topValues.map((cv) => ({
-        name: cv.valueName,
-        value: cv.valueCountFiltered,
-      })),
-      ...otherValues.map((cv) => ({
-        name: cv.valueName,
-        value: cv.valueCountFiltered,
-      })),
-    ]
-  }
-  const total = data.reduce((sum, d) => sum + d.value, 0)
-  data = data.map((d) => ({
-    ...d,
-    percentage: total > 0 ? (d.value / total) * 100 : 0,
-  }))
 
   // Show only for bigger values to avoid label overlap, at always at least one
   const showLabelFor = data.map((_, i) =>
@@ -221,9 +194,9 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
       </CardContent>
       <CardFooter className="flex-col gap-2 text-sm">
         <div className="text-muted-foreground leading-none">
-          {groupOtherValues && otherValues.length > 1 && (
+          {groupOtherValues && otherCount > 1 && (
             <span>
-              Note: grouped {otherValues.length.toLocaleString()} more values as{" "}
+              Note: grouped {otherCount.toLocaleString()} more values as{" "}
               <span className="italic">Other</span>
             </span>
           )}

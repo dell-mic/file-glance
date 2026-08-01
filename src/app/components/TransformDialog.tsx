@@ -259,10 +259,7 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
           >
             Cancel
           </Button>
-          <Button
-            data-testid="btnTransformApply"
-            onPointerDown={onApply}
-          >
+          <Button data-testid="btnTransformApply" onPointerDown={onApply}>
             Apply
           </Button>
         </div>

@@ -1,0 +1,8 @@
+[
+  { "Category": "A", "Region": "North", "Sales": 10, "Flag": 1 },
+  { "Category": "A", "Region": "South", "Sales": 20, "Flag": 1 },
+  { "Category": "B", "Region": "North", "Sales": 30, "Flag": 1 },
+  { "Category": "B", "Region": "South", "Sales": 40, "Flag": 1 },
+  { "Category": "C", "Region": "North", "Sales": 50, "Flag": 1 },
+  { "Category": "C", "Region": "South", "Sales": 60, "Flag": 1 }
+]

@@ -9,7 +9,14 @@ import {
 } from "../../components/ui/select"
 import { ChartContainer } from "@/components/ui/chart"
 import React, { useMemo, useState, useRef } from "react"
-import orderBy from "lodash-es/orderBy"
+import {
+  aggregatePivot,
+  buildGroupedBarData,
+  sortPivotResult,
+  type Aggregation,
+  type SortField,
+  type SortOrder,
+} from "@/stats"
 import {
   BarChart as BarIcon,
   LineChart as LineIcon,
@@ -57,7 +64,6 @@ interface PivotChartProps {
 const AGGREGATIONS = ["Sum", "Average", "Max", "Min", "Count"] as const
 const CHART_TYPES = ["Bar", "Line", "Pie"] as const
 const SORT_FIELDS = ["None", "X-Value", "Y-Value"] as const
-type SORT_ORDERS = "asc" | "desc"
 
 const ChartElementId = "pivotChartArea"
 
@@ -115,13 +121,11 @@ export const PivotChart: React.FC<PivotChartProps> = ({
   const [yField, setYField] = useState(
     numericColumns[0]?.columnName || columnInfos[0].columnName || "",
   )
-  const [aggregation, setAggregation] =
-    useState<(typeof AGGREGATIONS)[number]>("Count")
+  const [aggregation, setAggregation] = useState<Aggregation>("Count")
   const [chartType, setChartType] =
     useState<(typeof CHART_TYPES)[number]>("Bar")
-  const [sortField, setSortField] =
-    useState<(typeof SORT_FIELDS)[number]>("Y-Value")
-  const [sortOrder, setSortOrder] = useState<SORT_ORDERS>("desc")
+  const [sortField, setSortField] = useState<SortField>("Y-Value")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
 
   const isNumericColumn = !!numericColumns.find(
     (nc) => nc.columnName === yField,
@@ -133,104 +137,48 @@ export const PivotChart: React.FC<PivotChartProps> = ({
 
     // Grouped bar logic: if Bar chart and yField is not numeric, count per combination
     if (chartType === "Bar" && !isNumericColumn) {
-      // Get all unique values for yField (group keys)
-      const yValuesSet = new Set<any>()
-      for (const row of data) {
-        const yVal = row[yField as keyof typeof row]
-        if (yVal !== undefined && yVal !== null && yVal !== "") {
-          yValuesSet.add(yVal)
-        }
-      }
-      const yValues = Array.from(yValuesSet)
-
-      // Group by xField, then count for each yField value
-      const xGroups: Record<string, Record<string, number>> = {}
-      for (const row of data) {
-        const x = row[xField as keyof typeof row]
-        const y = row[yField as keyof typeof row]
-        if (
-          x == null ||
-          x === undefined ||
-          x === "" ||
-          y == null ||
-          y === undefined ||
-          y === ""
-        ) {
-          continue
-        }
-        if (!xGroups[x]) xGroups[x] = {}
-        if (!xGroups[x][y]) xGroups[x][y] = 0
-        xGroups[x][y] += 1
-      }
-      // Build result array: one object per xField value, with each yField value as a property
-      let result = Object.entries(xGroups).map(([xKey, yCounts]) => {
-        const obj: Record<string, any> = { [xField]: xKey }
-        for (const yVal of yValues) {
-          obj[yVal] = yCounts[yVal] || 0
-        }
-        return obj
-      })
-
-      // Sorting
-      if (sortField !== "None") {
-        const key = sortField === "X-Value" ? xField : yValues[0] // sort by first y value's count
-        result = orderBy(result, [Number(key)], [sortOrder])
-      }
-
-      return { chartData: result, _groupedYValues: yValues }
+      const { chartData, groupedYValues } = buildGroupedBarData(
+        data,
+        (row) => row[xField as keyof typeof row],
+        (row) => row[yField as keyof typeof row],
+        xField,
+      )
+      // Y series is frequency-ordered (largest first) so the renderer's slice to
+      // MaxGroupsDisplayed keeps the most frequent series. For sort-by-Y-Value,
+      // sort by the first (most frequent) series key.
+      const firstYKey =
+        groupedYValues.length > 0 ? String(groupedYValues[0]) : undefined
+      const result = sortPivotResult(
+        chartData,
+        sortField,
+        sortOrder,
+        xField,
+        yField,
+        firstYKey,
+      )
+      return { chartData: result, _groupedYValues: groupedYValues }
     } else {
-      // Group by xField
-      const groups: Record<string, any[]> = {}
       const xIndex = columnInfos.find(
         (ci) => ci.columnName === xField,
       )!.columnIndex
       const yIndex = columnInfos.find(
         (ci) => ci.columnName === yField,
       )!.columnIndex
-      for (const row of data) {
-        const _row = row.map((_) => (typeof _ === "bigint" ? Number(_) : _))
-
-        const x = _row[xIndex]
-        const yRaw = _row[yIndex]
-        if (
-          x == null ||
-          x === undefined ||
-          yRaw == null ||
-          yRaw === undefined ||
-          yRaw === ""
-        ) {
-          continue
-        }
-        if (!groups[x]) groups[x] = []
-        groups[x].push(yRaw)
-      }
-
-      let result = Object.entries(groups).map(([key, values]) => {
-        let val = 0
-        switch (aggregation) {
-          case "Count":
-            val = values.length
-            break
-          case "Sum":
-            val = values.reduce((a, b) => a + b, 0)
-            break
-          case "Average":
-            val = values.reduce((a, b) => a + b, 0) / values.length
-            break
-          case "Max":
-            val = Math.max(...values)
-            break
-          case "Min":
-            val = Math.min(...values)
-            break
-        }
-        return { [xField]: key, [yField]: val }
-      })
-
-      if (sortField !== "None") {
-        const key = sortField === "X-Value" ? xField : yField
-        result = orderBy(result, [Number(key)], [sortOrder])
-      }
+      const { chartData: aggData } = aggregatePivot(
+        data,
+        xIndex,
+        yIndex,
+        xField,
+        yField,
+        aggregation,
+      )
+      const result = sortPivotResult(
+        aggData,
+        sortField,
+        sortOrder,
+        xField,
+        yField,
+      )
       return { chartData: result }
     }
   }, [
@@ -382,9 +330,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
             </Label>
             <Select
               value={aggregation}
-              onValueChange={(val) =>
-                setAggregation(val as (typeof AGGREGATIONS)[number])
-              }
+              onValueChange={(val) => setAggregation(val as Aggregation)}
               disabled={yAxisIsNonNumeric}
             >
               <SelectTrigger className="w-full">
@@ -430,9 +376,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
             <div className="flex flex-row gap-2">
               <Select
                 value={sortField}
-                onValueChange={(val) =>
-                  setSortField(val as (typeof SORT_FIELDS)[number])
-                }
+                onValueChange={(val) => setSortField(val as SortField)}
               >
                 <SelectTrigger className="w-1/2">
                   <SelectValue placeholder="Sort Field" />
@@ -452,7 +396,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
               </Select>
               <Select
                 value={sortOrder}
-                onValueChange={(val) => setSortOrder(val as SORT_ORDERS)}
+                onValueChange={(val) => setSortOrder(val as SortOrder)}
                 disabled={sortField === "None"}
               >
                 <SelectTrigger className="w-1/2">

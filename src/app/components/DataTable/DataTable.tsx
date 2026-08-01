@@ -277,9 +277,10 @@ export const DataTable = (props: {
     const valueCounts = columnInfo.columnValues
     // Sample by count to include at least both: the most common as well as the least common (latter might be outliers / needing special treatment)
     return sampleValuesFromArray(
-      orderBy(valueCounts, "valueCountFiltered", "desc").map(
-        (cv) => cv.originalValue,
-      ),
+      orderBy(valueCounts, "valueCountFiltered", "desc").map((cv) => ({
+        value: cv.originalValue,
+        preTransformValue: cv.preTransformValue,
+      })),
     )
   }, [popoverColumnIndex, props.columnInfos])
 

@@ -3,6 +3,7 @@ import { NumericColumnChart } from "./NumericColumnChart"
 import { CategoryColumnChart } from "./CategoryColumnChart"
 import { ColumnInfos } from "../ValueInspector"
 import { ChartCard } from "./ChartCard"
+import { isNumericColumn } from "@/utils"
 
 interface DataChartsProps {
   columnInfos: ColumnInfos[]
@@ -24,7 +25,7 @@ export const DataCharts: React.FC<DataChartsProps> = ({
         if (!col || !col.columnName || !Array.isArray(col.columnValues))
           return null
         if (hiddenColumns.includes(col.columnIndex)) return null
-        const isNumberColumn = col.columnType === "Number"
+        const isNumberColumn = isNumericColumn(col)
         let chart = null
         if (isNumberColumn) {
           chart = <NumericColumnChart columnInfo={col} />

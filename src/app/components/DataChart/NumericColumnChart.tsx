@@ -1,4 +1,5 @@
 import React from "react"
+import { computeNumericStats } from "@/stats"
 import { ChartContainer } from "../../../components/ui/chart"
 import { BarChart, Bar, Tooltip as RechartsTooltip } from "recharts"
 import {
@@ -20,36 +21,13 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
 }) => {
   const allValues = col.columnValues.filter((v) => v.value !== null)
   const displayedValues = allValues.filter((v) => v.valueCountFiltered > 0)
-  let barChartData: { name: string; count: number }[] = []
 
-  let min = Infinity,
-    max = -Infinity
-  for (const cv of displayedValues) {
-    const n = cv.value
-    if (!isNaN(n)) {
-      if (n < min) min = n
-      if (n > max) max = n
-    }
-  }
+  const stats = computeNumericStats(col)
+  const barChartData = stats.histogram
 
-  const allNumbers: number[] = displayedValues.flatMap((cv) => {
-    const n = cv.value
-    if (isNaN(n)) return []
-    return Array(cv.valueCountFiltered).fill(n)
-  })
-  if (allNumbers.length > 0) {
-    const bucketCount = Math.min(displayedValues.length, 10)
-    const bucketSize = (max - min) / bucketCount || 1
-    barChartData = Array.from({ length: bucketCount }, (_, i) => ({
-      name: `${(min + i * bucketSize).toLocaleString(undefined, { maximumFractionDigits: 1 })} - ${(min + (i + 1) * bucketSize).toLocaleString(undefined, { maximumFractionDigits: 1 })}`,
-      count: 0,
-    }))
-    allNumbers.forEach((n) => {
-      let idx = Math.floor((n - min) / bucketSize)
-      if (idx >= bucketCount) idx = bucketCount - 1
-      barChartData[idx].count++
-    })
-  }
+  const fmt = (n: number | null) =>
+    n == null ? "—" : n.toLocaleString(undefined, { maximumFractionDigits: 1 })
+
   return (
     <>
       <CardHeader className="items-center pb-0">
@@ -61,34 +39,21 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
           )}
           <div className="flex gap-3 mt-2 justify-center items-center">
             <span>
-              Min:{" "}
-              <b>
-                {min.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-              </b>
+              Min: <b>{fmt(stats.min)}</b>
             </span>
             <span>
-              Max:{" "}
-              <b>
-                {max.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-              </b>
+              Max: <b>{fmt(stats.max)}</b>
             </span>
           </div>
           {(() => {
-            if (allNumbers.length === 0) return null
-            const sum = allNumbers.reduce((a, b) => a + b, 0)
-            const avg = sum / allNumbers.length
-            const sorted = [...allNumbers].sort((a, b) => a - b)
-            const mid = Math.floor(sorted.length / 2)
-            const median =
-              sorted.length % 2 !== 0
-                ? sorted[mid]
-                : (sorted[mid - 1] + sorted[mid]) / 2
+            // Hide Avg/Median/Sum when there are no numeric values (no ∞ etc.)
+            if (stats.count === 0) return null
             return (
               <div className="flex gap-3 mt-1 justify-center items-center">
                 <span>
                   Avg:{" "}
                   <b>
-                    {avg.toLocaleString(undefined, {
+                    {stats.avg!.toLocaleString(undefined, {
                       maximumFractionDigits: 1,
                     })}
                   </b>
@@ -96,7 +61,7 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
                 <span>
                   Median:{" "}
                   <b>
-                    {median.toLocaleString(undefined, {
+                    {stats.median!.toLocaleString(undefined, {
                       maximumFractionDigits: 1,
                     })}{" "}
                   </b>
@@ -104,7 +69,7 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
                 <span>
                   Sum:{" "}
                   <b>
-                    {sum.toLocaleString(undefined, {
+                    {stats.sum.toLocaleString(undefined, {
                       maximumFractionDigits: 1,
                     })}{" "}
                   </b>

@@ -53,10 +53,22 @@ addEventListener(
     // Allow access via headerName in subsequent code (esp. user functions)
     const _allRows = allRows.map((row) => createRowProxy(row, displayedHeader))
 
+    // Pre-transform cell values, captured lazily by applyTransformer the
+    // first time a transformer touches a (row, column) cell, so the 6th arg
+    // `originalValue` reflects the pristine value (before any transformer
+    // ran). Capture happens in *displayed* index space: eagerly copying
+    // pristine rows by `t.columnIndex` would misalign once an `asNewColumn`
+    // transformer splices a column in, since later transformers' indices are
+    // in shifted (displayed) space. Reused by countValues to populate
+    // `preTransformValue` per distinct value, which the transform preview
+    // uses as `originalValue` when validating user code.
+    const originals: any[][] = []
+
     const displayedData = applyTransformer(
       _allRows,
       _transformers,
       displayedHeader,
+      originals,
     )
 
     const displayedDataFiltered = applyFilters(
@@ -72,6 +84,7 @@ addEventListener(
       displayedHeader,
       displayedData,
       displayedDataFiltered,
+      originals,
     )
 
     postMessage({
@@ -88,6 +101,7 @@ function applyTransformer(
   allRows: any[][],
   transformers: CompiledTransformer[],
   displayedHeader: string[],
+  originals: any[][],
 ) {
   console.time("applyTransformer")
 
@@ -103,6 +117,15 @@ function applyTransformer(
       for (const columnIndex of row.keys()) {
         for (const transformer of transformers) {
           if (transformer.columnIndex === columnIndex) {
+            // First touch of this cell: record its value before any
+            // transformer modifies it. Column iteration is ascending and
+            // `asNewColumn` splices happen at columnIndex + 1, so cells are
+            // always captured in final displayed index space, staying
+            // aligned with displayedData for countValues.
+            const originalRow = (originals[rowIndex] ??= [])
+            if (!(columnIndex in originalRow)) {
+              originalRow[columnIndex] = row[columnIndex]
+            }
             let newValue
             try {
               newValue = transformer.transformer(
@@ -111,7 +134,7 @@ function applyTransformer(
                 rowIndex,
                 displayedHeader[columnIndex],
                 transformedData,
-                allRows[rowIndex][columnIndex],
+                originalRow[columnIndex],
               )
             } catch (err: any) {
               console.error("Error while applying transformer:", err.toString())
