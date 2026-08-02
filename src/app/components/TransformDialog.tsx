@@ -95,7 +95,7 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
         break
       case "parse_unix_ts":
         onTransformerCodeChange(
-          "return new Date(Number(value) * 1000).toISOString()",
+          "return Number(value) > 0 ? new Date(Number(value) * 1000).toISOString() : 'never'",
         )
         break
       default:
