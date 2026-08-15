@@ -1,6 +1,6 @@
 import { expect, describe, it } from "bun:test"
 
-import { detectDelimiter } from "@/utils"
+import { detectDelimiter } from "@/csvUtils"
 
 describe("detectDelimiter", () => {
   it("should return comma as the delimiter if it is the most frequent", () => {

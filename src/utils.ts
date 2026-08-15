@@ -1,6 +1,5 @@
 import * as jschardet from "jschardet"
 import {
-  maxBy,
   set,
   uniq,
   isEqual,
@@ -105,7 +104,7 @@ export function isMacOS(): boolean {
 }
 
 // Helper function to flatten a nested object
-function flattenObject(obj: any, prefix = "") {
+export function flattenObject(obj: any, prefix = "") {
   return Object.keys(obj).reduce((acc: any, k) => {
     const pre = prefix.length ? prefix + "." : ""
     if (
@@ -119,55 +118,6 @@ function flattenObject(obj: any, prefix = "") {
     }
     return acc
   }, {})
-}
-
-export function parseLineSeparatedJson(input: string): {
-  data: any[][]
-  headerRow: string[]
-} | null {
-  const lines = input.split("\n")
-  const jsonObjects: any[] = []
-  const allKeys = new Set<string>()
-  let firstValidLineFound = false
-
-  for (const line of lines) {
-    const trimmed = line.trim()
-
-    // Skip empty lines
-    if (trimmed === "") {
-      continue
-    }
-
-    // Try to parse the line as JSON
-    const parsed = tryParseJSONObject(trimmed)
-
-    // If parsing failed and it's the first non-empty line, abort
-    if (parsed === false) {
-      if (!firstValidLineFound) {
-        return null
-      }
-      // Otherwise, ignore non-JSON lines
-      continue
-    }
-
-    firstValidLineFound = true
-
-    const flattened = flattenObject(parsed)
-    jsonObjects.push(flattened)
-    Object.keys(flattened).forEach((key) => allKeys.add(key))
-  }
-
-  // Return null if no valid JSON objects were found
-  if (jsonObjects.length === 0) {
-    return null
-  }
-
-  const headerRow = Array.from(allKeys)
-
-  // Convert objects to rows using the header row
-  const data = jsonObjects.map((obj) => headerRow.map((header) => obj[header]))
-
-  return { data, headerRow }
 }
 
 export function jsonToTable(jsonArray: Array<any>): {
@@ -744,46 +694,6 @@ export function postProcessCode(inputCode: string): string {
   }
 
   return outputCode
-}
-
-export function detectDelimiter(input: string): string | null {
-  const supportedDelimiters = [",", "\t", ";", "|", "~", "#"] // Note: Order matters in case of equal occurrence count!
-  const counts: Record<string, number> = {}
-  const linesToTest = input
-    .split("\n")
-    .slice(0, 50)
-    .map((l) => l.replace(/['"]/g, "").slice(0, 1000).trim())
-    .filter((l) => l.length > 0)
-
-  if (!linesToTest.length) {
-    return null
-  }
-
-  let delimItersToTest = supportedDelimiters.filter((sd) =>
-    linesToTest[0].includes(sd),
-  )
-  for (const line of linesToTest) {
-    // Disregard delimiter candidates which are not occurring at all for one or more line
-    if (line.length > 1) {
-      delimItersToTest = delimItersToTest.filter((dl) => line.includes(dl))
-    }
-    for (const c of line) {
-      if (delimItersToTest.includes(c)) {
-        counts[c] = (counts[c] || 0) + 1
-      }
-    }
-    if (delimItersToTest.length < 2) {
-      break
-    }
-  }
-  // console.log(counts)
-  const maxEntry = maxBy(
-    Object.entries(counts).filter((c) => delimItersToTest.includes(c[0])),
-    (_) => _[1],
-  )!
-  // console.log("detected delimiter: ", maxEntry)
-
-  return maxEntry ? maxEntry[0] : null
 }
 
 function hasDuplicates(arr: any[]): boolean {

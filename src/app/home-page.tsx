@@ -5,7 +5,6 @@ import React, { useCallback, useEffect, useRef } from "react"
 import { maxBy, omit, debounce } from "lodash-es"
 
 import * as XLSX from "xlsx"
-import { parse } from "csv-parse/browser/esm/sync"
 import { stringify as stringifyCSV } from "csv-stringify/browser/esm/sync"
 import { parquetRead, parquetMetadataAsync, parquetSchema } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
@@ -16,9 +15,9 @@ import FilterDialog from "./components/FilterDialog"
 import FilterExplanation from "./components/FilterExplanation"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { describeFilters } from "@/filterDescription"
+import { openCSVStream, parseCSV } from "@/csvUtils"
 import {
   base64GzippedToString,
-  detectDelimiter,
   generateHeaderRow,
   generateSampleData,
   stringToBase64Gzipped,
@@ -47,7 +46,6 @@ import {
   applyFilters,
   countValues,
   createRowProxy,
-  parseLineSeparatedJson,
   isMacOS,
 } from "@/utils"
 import { extractZipFile } from "@/utils/zipExtractor"
@@ -265,12 +263,12 @@ export default function Home() {
 
         // For legacy reasons assume CSV if not valid JSON
         if (!maybeJson) {
-          data = parse(project.data, {
+          data = parseCSV(project.data, {
             delimiter: ExportDelimiter_v1,
             bom: true,
             skip_empty_lines: true,
             relax_column_count: true,
-          })
+          }).records
           _headerRow = data.shift()!
         } else {
           const parsed = jsonToTable(maybeJson)
@@ -521,45 +519,54 @@ export default function Home() {
           // setDataFormatAlwaysIncludesHeader(true)
           // setDataIncludesHeaderRow(true)
         } else {
-          const contentAsText: string = await readFileToString(file)
-
-          // Try line separated JSON first (will fail early if no JSON)
-          const lsJsonResult = parseLineSeparatedJson(contentAsText)
-          if (lsJsonResult && lsJsonResult.data.length > 0) {
-            appendRows(lsJsonResult.data)
-            _headerRow = lsJsonResult.headerRow
-            isHeaderSet = true
-            setDataFormatAlwaysIncludesHeader(true)
-            setDataIncludesHeaderRow(true)
-          } else {
-            // Otherwise: Assume somehow-Separated text
-            console.time("detectDelimiter")
-            const delimiter = detectDelimiter(contentAsText)
-            console.timeEnd("detectDelimiter")
-            console.log("detected delimiter: ", delimiter)
-            if (delimiter) {
-              try {
-                const content = parse(contentAsText, {
-                  delimiter,
-                  bom: true,
-                  skip_empty_lines: true,
-                  relax_column_count: true,
-                  relax_quotes: true,
-                })
-
-                // If we have multiple files w/ header, drop header row except first
-                if (isHeaderSet) {
-                  content.shift()
-                }
-
-                appendRows(content)
-              } catch (err) {
-                console.error(err)
+          // Assume somehow-separated text or line-separated JSON; stream the
+          // file so it never has to be materialized as a whole string first
+          try {
+            const stream = await openCSVStream(file, {
+              delimiter: "auto",
+              bom: true,
+              skip_empty_lines: true,
+              relax_column_count: true,
+              relax_quotes: true,
+            })
+            console.log(
+              "detected format: ",
+              stream.meta.format,
+              "delimiter: ",
+              stream.meta.delimiter,
+            )
+            if (stream.meta.format === "lsjson") {
+              const rows: any[][] = []
+              for await (const row of stream.rows) {
+                rows.push(row)
+              }
+              if (rows.length > 0) {
+                appendRows(rows)
+                _headerRow = stream.meta.headerRow!
+                isHeaderSet = true
+                setDataFormatAlwaysIncludesHeader(true)
+                setDataIncludesHeaderRow(true)
+              } else {
                 errorMessage = "Parsing failed"
               }
+            } else if (stream.meta.delimiter) {
+              const content: any[][] = []
+              for await (const row of stream.rows) {
+                content.push(row)
+              }
+
+              // If we have multiple files w/ header, drop header row except first
+              if (isHeaderSet) {
+                content.shift()
+              }
+
+              appendRows(content)
             } else {
               errorMessage = "No delimiter detected"
             }
+          } catch (err) {
+            console.error(err)
+            errorMessage = "Parsing failed"
           }
 
           // console.log(data)

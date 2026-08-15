@@ -1,6 +1,6 @@
 import { expect, describe, it } from "bun:test"
 
-import { parseLineSeparatedJson } from "@/utils"
+import { parseLineSeparatedJson } from "@/csvUtils"
 
 describe("parseLineSeparatedJson", () => {
   it("should parse line-separated JSON objects into a table format", () => {
