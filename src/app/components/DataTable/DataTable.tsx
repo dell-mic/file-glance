@@ -371,9 +371,11 @@ export const DataTable = (props: {
         text: "Copy values (unique)",
         icon: <ClipboardDocumentListIcon />,
         onSelect: async () => {
-          await navigator.clipboard.writeText(
-            uniq(props.rows.map((row) => row[popoverColumnIndex!])).join("\n"),
+          const colValues = props.rows.map((row) => row[popoverColumnIndex!])
+          const flatValues = colValues.flatMap((v) =>
+            Array.isArray(v) ? v : [v],
           )
+          await navigator.clipboard.writeText(uniq(flatValues).join("\n"))
           toast({
             title: "Values copied to clipboard",
           })
@@ -383,13 +385,16 @@ export const DataTable = (props: {
         text: "Copy values (unique, JS array)",
         icon: <ClipboardDocumentListIcon />,
         onSelect: async () => {
+          const colValues = props.rows.map((row) => row[popoverColumnIndex!])
+          const flatValues = colValues.flatMap((v) =>
+            Array.isArray(v) ? v : [v],
+          )
           const stringifiedArray = `[${uniq(
-            props.rows.map((row) => {
-              const value = row[popoverColumnIndex!]
-              return typeof value === "bigint"
+            flatValues.map((value: any) =>
+              typeof value === "bigint"
                 ? value.toString() + "n"
-                : JSON.stringify(value)
-            }),
+                : JSON.stringify(value),
+            ),
           ).join(",")}]`
           await navigator.clipboard.writeText(stringifiedArray)
           toast({
