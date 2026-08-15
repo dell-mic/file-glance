@@ -81,6 +81,12 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
       case "trim":
         onTransformerCodeChange("return value.trim()")
         break
+      case "split":
+        onTransformerCodeChange(
+          `const DELIMITERS = ",;"
+return value.split(new RegExp(\`[\${DELIMITERS}]\\\\s*\`))`,
+        )
+        break
       case "emaildomain":
         onTransformerCodeChange("return value.split('@')[1] || ''")
         break
@@ -164,6 +170,7 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
             <SelectItem value="trim">Trim</SelectItem>
             <SelectItem value="uppercase">Uppercase</SelectItem>
             <SelectItem value="lowercase">Lowercase</SelectItem>
+            <SelectItem value="split">Split</SelectItem>
             <SelectItem value="emaildomain">Domain from Email</SelectItem>
             <SelectSeparator />
             <SelectItem value="parse_int">Parse Integer</SelectItem>
