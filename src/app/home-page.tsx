@@ -239,12 +239,13 @@ export default function Home() {
   // Handle search input change with conditional debouncing
   const handleSearchChange = useCallback(
     (value: string) => {
-      console.log(`search: '${value}', debounced: ${shouldDebounce}`)
+      const trimmed = value.trim()
+      console.log(`search: '${trimmed}', debounced: ${shouldDebounce}`)
       setSearchInputValue(value)
       if (shouldDebounce) {
-        debouncedSetSearchRef(value)
+        debouncedSetSearchRef(trimmed)
       } else {
-        setSearch(value)
+        setSearch(trimmed)
       }
     },
     [shouldDebounce, debouncedSetSearchRef],
