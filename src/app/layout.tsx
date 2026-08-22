@@ -7,6 +7,7 @@ import { longDescription, siteUrl, title } from "@/constants"
 import { Toaster } from "../components/ui/toaster"
 import { Suspense } from "react"
 import { NavigationEvents } from "./navigation-events"
+import { ServiceWorkerRegistration } from "./service-worker-registration"
 
 const roboto_mono = Roboto_Mono({
   subsets: ["latin"],
@@ -137,6 +138,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <NavigationEvents />
         </Suspense>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )

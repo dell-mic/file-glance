@@ -535,7 +535,7 @@ export function parseCSV(
 function detectEncoding(firstChunk: Uint8Array): string {
   // @ts-ignore: ts does not know about Buffer coming from next.js polyfill
   const detected = jschardet.detect(Buffer.from(firstChunk))
-  console.log("file encoding: ", detected)
+  // console.log("file encoding: ", detected)
   return detected?.encoding || "utf-8"
 }
 

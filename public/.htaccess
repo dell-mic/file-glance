@@ -13,4 +13,9 @@
     <FilesMatch "\.(html)$">
         Header set Cache-Control "no-store, no-cache, must-revalidate"
     </FilesMatch>
+
+    # SERVICE WORKER MUST BE REVALIDATED ON EVERY CHECK SO UPDATES LAND PROMPTLY
+    <Files "sw.js">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </Files>
 </IfModule>

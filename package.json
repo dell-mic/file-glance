@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "curl --retry 5 --retry-delay 1 --retry-connrefused --silent --output /dev/null http://localhost:3000 & next dev",
     "dev:https": "next dev --experimental-https",
-    "build": "next build",
-    "buildAndStart": "next build && serve out",
+    "build": "next build && node scripts/gen-sw-assets.mjs",
+    "buildAndStart": "next build && node scripts/gen-sw-assets.mjs && serve out",
     "check": "npm run format && npm run typeCheck && npm run lint && bun test test/unit && npm run test:e2e:quick",
     "lint": "eslint src",
     "typeCheck": "tsc --noEmit ",
