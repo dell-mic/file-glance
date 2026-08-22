@@ -1,9 +1,9 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Roboto, Roboto_Mono } from "next/font/google"
 
 import "./globals.css"
 import Script from "next/script"
-import { title } from "@/constants"
+import { longDescription, siteUrl, title } from "@/constants"
 import { Toaster } from "../components/ui/toaster"
 import { Suspense } from "react"
 import { NavigationEvents } from "./navigation-events"
@@ -22,9 +22,80 @@ const roboto = Roboto({
 })
 
 export const metadata: Metadata = {
-  title: title,
-  description:
-    "Simple, but powerful, privacy-friendly tool for working with tabular data using JavaScript. Supports CSV, TSV, XLSX, JSON",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: title,
+    template: "%s | FileGlance",
+  },
+  description: longDescription,
+  keywords: [
+    "csv viewer",
+    "tsv viewer",
+    "xlsx viewer",
+    "json viewer",
+    "parquet viewer",
+    "tabular data",
+    "data cleaning",
+    "data transformation",
+    "privacy-friendly",
+    "client-side",
+    "JavaScript",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: "FileGlance",
+    description: longDescription,
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FileGlance — view, filter, and transform tabular data files in the browser",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    description: longDescription,
+    images: ["/og-image.png"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#22272b",
+}
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "FileGlance",
+  url: siteUrl,
+  description: longDescription,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any (web browser)",
+  browserRequirements: "Requires JavaScript",
+  offers: {
+    "@type": "Offer",
+    price: 0,
+    priceCurrency: "USD",
+  },
 }
 
 export default function RootLayout({
@@ -35,7 +106,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="canonical" href="https://www.fileglance.info" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Script id="matomo" strategy="afterInteractive">
           {process.env.NODE_ENV === "production"
             ? `

@@ -1,4 +1,4 @@
-import { description } from "@/constants"
+import { longDescription } from "@/constants"
 import type { MetadataRoute } from "next"
 
 // https://github.com/vercel/next.js/discussions/72221
@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "FileGlance",
     short_name: "FileGlance",
-    description: description,
+    description: longDescription,
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

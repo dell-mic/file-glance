@@ -1,4 +1,5 @@
-import { description } from "@/constants"
+import { longDescription } from "@/constants"
+import type { Metadata } from "next"
 import React from "react"
 import "./styles.css"
 import Link from "next/link"
@@ -7,8 +8,12 @@ import Link from "next/link"
 // See: https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts#pages
 // The default export is the page component.
 
-export const metadata = {
-  title: "About | File Glance",
+export const metadata: Metadata = {
+  title: "About",
+  description: longDescription,
+  alternates: {
+    canonical: "/about/",
+  },
 }
 
 export default function Page() {
@@ -35,7 +40,7 @@ export default function Page() {
       </Link>
       <div className="max-w-2xl mx-auto px-4 mb-6">
         <h1 className="mt-4">About FileGlance</h1>
-        <p>{description}</p>
+        <p>{longDescription}</p>
         <h2>Why FileGlance?</h2>
         <b>Frustrated by:</b>
         <ol>
