@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Modal } from "../../components/ui/Modal"
-import { renderValuePreview } from "@/utils"
+import { renderValuePreview, tsTypeForColumnType } from "@/utils"
 import CodeEditor from "@/components/ui/CodeEditor"
 
 interface TransformerValidation {
@@ -28,6 +28,8 @@ interface TransformerValidation {
 interface TransformDialogProps {
   open: boolean
   headerName: string
+  /** columnType (constructor name) of the target column, for autocomplete */
+  columnType?: string
   targetType: "current" | "new"
   newColName: string
   transformerFunctionCode: string
@@ -42,21 +44,29 @@ interface TransformDialogProps {
 const TransformerFunctionCodeHistoryKey = "transformerFunctionCodeHistory"
 const MaxHistoryEntries = 50
 
-// Variables available in the transformer function body, for autocomplete
-const transformerParamsLib = {
-  uri: "ts:fileglance/transformer-params.d.ts",
-  content: `declare var value: any
-declare var originalValue: any
+const transformerParamsLibUri = "ts:fileglance/transformer-params.d.ts"
+
+// Variables available in the transformer function body, for autocomplete.
+// `value` / `originalValue` get the target column's actual type (when known)
+// so e.g. string methods are suggested for string columns.
+function buildTransformerParamsLib(columnType?: string) {
+  const tsType = tsTypeForColumnType(columnType ?? "any")
+  return {
+    uri: transformerParamsLibUri,
+    content: `declare var value: ${tsType}
+declare var originalValue: ${tsType}
 declare var columnIndex: number
 declare var rowIndex: number
 declare var headerName: string
 declare var allRows: any[][]
 `,
+  }
 }
 
 const TransformDialog: React.FC<TransformDialogProps> = ({
   open,
   headerName,
+  columnType,
   targetType,
   newColName,
   transformerFunctionCode,
@@ -67,6 +77,11 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
   onTransformerCodeChange,
   onApply,
 }) => {
+  const transformerParamsLib = React.useMemo(
+    () => buildTransformerParamsLib(columnType),
+    [columnType],
+  )
+
   const handleTransformerSelected = (value: string) => {
     switch (value) {
       case "custom":

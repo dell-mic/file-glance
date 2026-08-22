@@ -37,28 +37,45 @@ test(`Filter dialog autocompletes column names`, async ({ page }) => {
   const suggestWidget = page.locator(".suggest-widget")
   const viewLines = page.getByTestId("filterCodeInput").locator(".view-lines")
 
-  // Dot access: row.<name> suggests column names; identifiers are inserted
-  // as plain properties (accept with Tab — Enter is disabled by design)
+  // Dot access: row.<name> suggests column names (via the typed extraLib).
+  // Identifiers are inserted as plain properties (accept with Tab — Enter
+  // is disabled by design)
   await page.keyboard.type("return row.Ag", { delay: 50 })
   await expect(suggestWidget).toBeVisible()
   await expect(suggestWidget).toContainText("Age")
   await page.keyboard.press("Tab")
   await expect(viewLines).toHaveText(/return\srow\.Age/)
 
-  // A column that is not a valid identifier is inserted in bracket form
-  // (and the dot is removed). The suggest list is virtualized, so filter
-  // before asserting.
+  // A column that is not a valid identifier cannot follow a dot; inside
+  // brackets it is suggested as a string literal. Accepting inserts only
+  // the bare member name (monaco's ts worker adds no closing quote).
   await fillCodeEditor(page, "filterCodeInput", "")
-  await page.keyboard.type("return row.Phone", { delay: 50 })
+  await page.keyboard.type('return row["Ph', { delay: 50 })
   await expect(suggestWidget).toContainText("Phone Number")
   await page.keyboard.press("Tab")
-  await expect(viewLines).toHaveText(/return\srow\["Phone\sNumber"\]/)
+  await expect(viewLines).toHaveText('return row["Phone Number')
 
   // Dot access also works at runtime (row proxy maps names to indices)
   await fillCodeEditor(page, "filterCodeInput", 'return row.ID === "1"')
   await page.waitForTimeout(600)
   await expect(page.locator("#filterDialog")).toContainText("Matching rows: 1")
   await expect(page.getByTestId("btnFilterApply")).toBeEnabled()
+})
+
+test(`Filter dialog suggests string methods on string columns`, async ({
+  page,
+}) => {
+  await page.getByTestId("btnFilter").click()
+  const editor = page.getByTestId("filterCodeInput").locator(".monaco-editor")
+  await editor.waitFor()
+  await editor.click()
+  const suggestWidget = page.locator(".suggest-widget")
+
+  // All values of "Name" are strings -> string method completions are
+  // offered after row.Name. (filter so "trim" is in the visible list)
+  await page.keyboard.type("return row.Name.tr", { delay: 50 })
+  await expect(suggestWidget).toBeVisible()
+  await expect(suggestWidget).toContainText("trim")
 })
 
 test(`Filter dialog disables Apply for no matches`, async ({ page }) => {

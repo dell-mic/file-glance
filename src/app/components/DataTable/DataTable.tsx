@@ -501,6 +501,10 @@ export const DataTable = (props: {
         <TransformDialog
           open={transformModalOpen}
           headerName={props.headerRow[popoverColumnIndex!]}
+          columnType={
+            props.columnInfos.find((c) => c.columnIndex === popoverColumnIndex)
+              ?.columnType
+          }
           targetType={targetType}
           newColName={newColName}
           transformerFunctionCode={transformerFunctionCode}

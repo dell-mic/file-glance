@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { uniq } from "lodash-es"
 import type { BeforeMount, OnMount } from "@monaco-editor/react"
-import type { editor as monacoEditor, Position } from "monaco-editor"
+import type { Position } from "monaco-editor"
 import MonacoEditor from "@/components/ui/MonacoEditor"
 import { cn } from "@/lib/utils"
 import { tryParseJSONObject } from "@/utils"
@@ -26,12 +26,6 @@ interface CodeEditorProps {
   maxHistoryEntries?: number
   /** Type declarations for the variables in scope when the code is executed. */
   extraLib?: { content: string; uri: string }
-  /**
-   * Suggests `values` when accessing members on `<receiver>`, e.g. column
-   * names for `row["..."]` and `row.<name>`. Names that are not valid JS
-   * identifiers are inserted in bracket form when picked after a dot.
-   */
-  memberCompletions?: { receiver: string; values: string[] }
   /** Bound to Ctrl/Cmd+Enter. */
   onRunShortcut?: () => void
 }
@@ -76,7 +70,6 @@ function CodeEditor({
   localStorageHistoryKey,
   maxHistoryEntries = 50,
   extraLib,
-  memberCompletions,
   onRunShortcut,
 }: CodeEditorProps) {
   // History state lives in refs: monaco key bindings are registered once on
@@ -87,7 +80,6 @@ function CodeEditor({
   const valueRef = useRef(value)
   const onValueChangeRef = useRef(onValueChange)
   const onRunShortcutRef = useRef(onRunShortcut)
-  const completionsRef = useRef(memberCompletions)
   const disposablesRef = useRef<Array<{ dispose(): void }>>([])
   const [height, setHeight] = useState<number>(MIN_HEIGHT)
 
@@ -98,8 +90,7 @@ function CodeEditor({
   useEffect(() => {
     onValueChangeRef.current = onValueChange
     onRunShortcutRef.current = onRunShortcut
-    completionsRef.current = memberCompletions
-  }, [onValueChange, onRunShortcut, memberCompletions])
+  }, [onValueChange, onRunShortcut])
 
   const saveToHistory = useCallback(
     (newValue: string) => {
@@ -165,7 +156,33 @@ function CodeEditor({
     }
   }
 
+  const extraLibRef = useRef(extraLib)
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null)
+  const extraLibDisposableRef = useRef<{ dispose(): void } | null>(null)
+
+  // (Re-)register the extraLib whenever it changes or monaco becomes
+  // available — dialogs stay mounted while data/column types change.
+  const applyExtraLib = useCallback(() => {
+    extraLibDisposableRef.current?.dispose()
+    extraLibDisposableRef.current = null
+    const monaco = monacoRef.current
+    if (!monaco || !extraLibRef.current) return
+    // Note: in monaco 0.56 ESM the TS language service API lives on the
+    // `typescript` module export, not on monaco.languages.typescript
+    extraLibDisposableRef.current =
+      monaco.typescript.javascriptDefaults.addExtraLib(
+        extraLibRef.current.content,
+        extraLibRef.current.uri,
+      )
+  }, [])
+
+  useEffect(() => {
+    extraLibRef.current = extraLib
+    applyExtraLib()
+  }, [extraLib, applyExtraLib])
+
   const handleMount: OnMount = (editor, monaco) => {
+    monacoRef.current = monaco
     // History browsing via ArrowUp/ArrowDown, gated by when-clauses: only
     // when the cursor is on the first/last line and no suggest/parameter-
     // hints widget is open. Otherwise the keybindings fall through to
@@ -221,106 +238,9 @@ function CodeEditor({
       historyIndexRef.current = null
     })
 
-    if (extraLib) {
-      // Note: in monaco 0.56 ESM the TS language service API lives on the
-      // `typescript` module export, not on monaco.languages.typescript
-      disposablesRef.current.push(
-        monaco.typescript.javascriptDefaults.addExtraLib(
-          extraLib.content,
-          extraLib.uri,
-        ),
-      )
-    }
-
-    if (memberCompletions) {
-      disposablesRef.current.push(
-        monaco.languages.registerCompletionItemProvider("javascript", {
-          triggerCharacters: ['"', "'", "."],
-          provideCompletionItems(
-            model: monacoEditor.ITextModel,
-            position: Position,
-          ) {
-            if (model !== editor.getModel()) return { suggestions: [] }
-            const completions = completionsRef.current
-            if (!completions) return { suggestions: [] }
-            const textBefore = model
-              .getLineContent(position.lineNumber)
-              .slice(0, position.column - 1)
-            const receiver = completions.receiver.replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&",
-            )
-            const partialRange = (partial: string) => ({
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: position.column - partial.length,
-              endColumn: position.column,
-            })
-
-            // String access: row["..."] / row['...']
-            const bracketMatch = textBefore.match(
-              new RegExp(`${receiver}\\s*\\[\\s*(["'])([^"']*)$`),
-            )
-            if (bracketMatch) {
-              const partial = bracketMatch[2]
-              const range = partialRange(partial)
-              return {
-                suggestions: completions.values.map((v) => ({
-                  label: v,
-                  kind: monaco.languages.CompletionItemKind.Value,
-                  insertText: v,
-                  range,
-                })),
-              }
-            }
-
-            // Property access: row.<name>
-            const dotMatch = textBefore.match(
-              new RegExp(`${receiver}\\.([A-Za-z0-9_$]*)$`),
-            )
-            if (dotMatch) {
-              const partial = dotMatch[1]
-              const range = partialRange(partial)
-              return {
-                suggestions: completions.values.map((v) =>
-                  /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(v)
-                    ? {
-                        label: v,
-                        kind: monaco.languages.CompletionItemKind.Field,
-                        insertText: v,
-                        range,
-                        filterText: v,
-                      }
-                    : {
-                        // Not usable after a dot (e.g. contains spaces) —
-                        // insert bracket form and remove the dot
-                        label: v,
-                        kind: monaco.languages.CompletionItemKind.Field,
-                        insertText: `["${v.replace(/"/g, '\\"')}"]`,
-                        range,
-                        filterText: v,
-                        additionalTextEdits: [
-                          {
-                            range: {
-                              startLineNumber: position.lineNumber,
-                              endLineNumber: position.lineNumber,
-                              startColumn: position.column - partial.length - 1,
-                              endColumn: position.column - partial.length,
-                            },
-                            text: "",
-                          },
-                        ],
-                      },
-                ),
-              }
-            }
-
-            return { suggestions: [] }
-          },
-        }),
-      )
-    }
-
+    // Register the extraLib now that monaco is available (the effect above
+    // may have run before monaco finished loading)
+    applyExtraLib()
     if (!fillContainer) {
       // Auto-grow with the content (no inner scrollbar), like the previous
       // textarea-based editor
@@ -348,6 +268,7 @@ function CodeEditor({
   // Dispose the globally registered monaco services on unmount
   useEffect(() => {
     return () => {
+      extraLibDisposableRef.current?.dispose()
       disposablesRef.current.forEach((d) => d.dispose())
       disposablesRef.current = []
     }
@@ -393,6 +314,9 @@ function CodeEditor({
           contextmenu: false,
           automaticLayout: true,
           fixedOverflowWidgets: true,
+          // Suggest also inside strings, so quoted column access
+          // (row["…"]) completes via the typed extraLib
+          quickSuggestions: { other: true, comments: false, strings: true },
           fontFamily: "monospace",
           fontSize: 14,
           padding: { top: contentPadding, bottom: contentPadding },

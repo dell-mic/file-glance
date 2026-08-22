@@ -59,6 +59,62 @@ export function isNumericColumn(c: ColumnInfos) {
   return c.columnType === "Number" || c.columnType === "BigInt"
 }
 
+// Map a columnType (constructor name of all values in the column, see
+// countValues) to the TypeScript type used for autocomplete declarations.
+// Unknown / mixed columns fall back to "any".
+export function tsTypeForColumnType(columnType: string): string {
+  switch (columnType) {
+    case "String":
+      return "string"
+    case "Number":
+      return "number"
+    case "Boolean":
+      return "boolean"
+    case "BigInt":
+      return "bigint"
+    case "Date":
+      return "Date"
+    case "Array":
+      return "any[]"
+    default:
+      return "any"
+  }
+}
+
+/**
+ * Build an extraLib declaring `row` with per-column types so Monaco's TS
+ * language service can complete column names and (for typed columns) their
+ * methods, e.g. `.trim()` on string columns. The runtime row is a Proxy over
+ * an array, hence the intersection with any[]. Falls back to plain `any`
+ * when no column info is available.
+ */
+export function buildRowTypeLib(
+  uri: string,
+  headers: string[],
+  columnInfos?: ColumnInfos[],
+): { content: string; uri: string } {
+  const typeByName = new Map<string, string>()
+  for (const [i, header] of headers.entries()) {
+    if (!header || typeByName.has(header)) continue
+    const columnInfo = columnInfos?.find((c) => c.columnIndex === i)
+    typeByName.set(header, tsTypeForColumnType(columnInfo?.columnType ?? "any"))
+  }
+
+  if (typeByName.size === 0) {
+    return { uri, content: `declare var row: any\n` }
+  }
+
+  const members = Array.from(typeByName, ([name, type]) => {
+    // Quote every key: also covers names that are not valid identifiers
+    return `${JSON.stringify(name)}: ${type}`
+  }).join("\n  ")
+
+  return {
+    uri,
+    content: `declare var row: any[] & {\n  ${members}\n}\n`,
+  }
+}
+
 // Cache header->index lookup per headers array so proxy access stays O(1) instead of O(headers) per cell access
 const headerIndexCache = new WeakMap<string[], Map<string, number>>()
 

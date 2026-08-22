@@ -9,13 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select"
-import { compileFilterCode, createRowProxy, renderValuePreview } from "@/utils"
+import {
+  buildRowTypeLib,
+  compileFilterCode,
+  createRowProxy,
+  renderValuePreview,
+} from "@/utils"
 import CodeEditor from "@/components/ui/CodeEditor"
-
-interface ColumnInfos {
-  columnName: string
-  columnValues: { value: any }[]
-}
+import type { ColumnInfos } from "@/app/components/ValueInspector"
 
 interface FilterDialogProps {
   open: boolean
@@ -30,13 +31,22 @@ interface FilterDialogProps {
 
 const FilterFunctionCodeHistoryKey = "filterFunctionCodeHistory"
 
-// Variables available in the filter function body, for autocomplete
-const filterParamsLib = {
-  uri: "ts:fileglance/filter-params.d.ts",
-  content: `declare var row: any
-declare var rowIndex: number
+// Variables available in the filter function body, for autocomplete. `row`
+// is declared with per-column types so Monaco's TS language service can
+// complete column names and (for typed columns) their methods.
+const filterLibUri = "ts:fileglance/filter-params.d.ts"
+
+function buildFilterParamsLib(
+  headerRow: string[],
+  columnValueCounts: ColumnInfos[],
+) {
+  const rowLib = buildRowTypeLib(filterLibUri, headerRow, columnValueCounts)
+  return {
+    uri: filterLibUri,
+    content: `${rowLib.content}declare var rowIndex: number
 declare var cache: Record<string, any>
 `,
+  }
 }
 
 const FilterDialog: React.FC<FilterDialogProps> = ({
@@ -49,6 +59,11 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   onFilterCodeChange,
   onApply,
 }) => {
+  const filterParamsLib = React.useMemo(
+    () => buildFilterParamsLib(headerRow, columnValueCounts),
+    [headerRow, columnValueCounts],
+  )
+
   // Generate example filter code based on columnValueCounts
   let exampleFilterFunctionCode = ""
   if (columnValueCounts[0]) {
@@ -212,7 +227,6 @@ return rowIndex < ${topX}`)
           grayBackground
           path="inmemory://model/filter.js"
           extraLib={filterParamsLib}
-          memberCompletions={{ receiver: "row", values: headerRow }}
         />
         {filterValidationResult.error ? (
           <div className="text-red-600 font-medium">
