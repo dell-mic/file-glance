@@ -181,7 +181,7 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
                 props: any,
               ) => {
                 // console.log(props)
-                const percent = props[0].payload?.payload?.percentage || 0
+                const percent = props[0].payload?.percentage || 0
 
                 return [
                   `${value} (${percent.toFixed(1)}%)`,
