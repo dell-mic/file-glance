@@ -28,5 +28,13 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
+    file_handlers: [
+      {
+        action: "/",
+        accept: {
+          "text/csv": [".csv", ".tsv"],
+        },
+      },
+    ],
   }
 }

@@ -645,6 +645,16 @@ export default function Home() {
     [toast],
   )
 
+  // PWA File Handling API: consume files passed via OS-level "open with" launch
+  useEffect(() => {
+    if (!("launchQueue" in window)) return
+    window.launchQueue?.setConsumer(async (launchParams) => {
+      const handles = launchParams.files ?? []
+      const files = await Promise.all(handles.map((h) => h.getFile()))
+      if (files.length) parseFiles(files, true).catch(handleParseError)
+    })
+  }, [parseFiles, handleParseError])
+
   const parseText = useCallback(
     (text: string, syntheticFileName: string, hideEmptyColumns: boolean) => {
       setParsingState("parsing")
