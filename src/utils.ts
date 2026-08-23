@@ -843,7 +843,7 @@ export function tryBase64Decode(str: string): string | null {
   try {
     const decoded = fromBase64(str)
     return decoded
-  } catch (_) {
+  } catch {
     return null
   }
 }

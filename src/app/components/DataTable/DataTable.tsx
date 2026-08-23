@@ -137,8 +137,7 @@ export const DataTable = (props: {
       listRef.current.scrollToRow({ index: scrollToRow })
       // console.log("listRef.current.scrollToRow", scrollToRow, selectedRow, listRef, navigationDirection, rows.length)
     }
-    // TODO: Fix linting complaint / maybe refactor to useCallback?
-  }, [selectedRow, navigationDirection, rows.length])
+  }, [selectedRow, navigationDirection, rows.length, listRef])
 
   // Custom column widths set by the user via drag-resizing the header cells
   const [customColumnWidths, setCustomColumnWidths] = useState<

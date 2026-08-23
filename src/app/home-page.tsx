@@ -127,7 +127,9 @@ export default function Home() {
   // at the drop-registration effect) always reads the current value instead of
   // the stale "initial" captured on first render.
   const parsingStateRef = React.useRef(parsingState)
-  parsingStateRef.current = parsingState
+  useEffect(() => {
+    parsingStateRef.current = parsingState
+  })
   const [sortSetting, setSortSetting] = React.useState<SortSetting | null>(null)
 
   // Calculated values
@@ -224,22 +226,25 @@ export default function Home() {
 
   // Detect OS for hotkey display
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- must run client-side only to avoid hydration mismatch
     setIsMac(isMacOS())
   }, [])
 
   // Debounced search handler (for large files)
-  const debouncedSetSearchRef = useRef(
-    debounce((value: string) => {
-      setSearch(value)
-    }, 250),
-  ).current
+  const debouncedSetSearch = React.useMemo(
+    () =>
+      debounce((value: string) => {
+        setSearch(value)
+      }, 250),
+    [],
+  )
 
   // Cleanup debounced function on unmount
   useEffect(() => {
     return () => {
-      debouncedSetSearchRef.cancel?.()
+      debouncedSetSearch.cancel?.()
     }
-  }, [debouncedSetSearchRef])
+  }, [debouncedSetSearch])
 
   // Determine if we should debounce based on file size
   const shouldDebounce = allRows.length > 10000
@@ -251,12 +256,12 @@ export default function Home() {
       console.log(`search: '${trimmed}', debounced: ${shouldDebounce}`)
       setSearchInputValue(value)
       if (shouldDebounce) {
-        debouncedSetSearchRef(trimmed)
+        debouncedSetSearch(trimmed)
       } else {
         setSearch(trimmed)
       }
     },
-    [shouldDebounce, debouncedSetSearchRef],
+    [shouldDebounce, debouncedSetSearch],
   )
 
   // Invalid regex feedback for the search input (search itself is then ignored
@@ -959,6 +964,7 @@ export default function Home() {
         if (hash.startsWith("#d=")) {
           trackEvent("UrlParse", "Data")
 
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time sync from location.hash (external system, public API per README)
           setParsingState("parsing")
           const data = hash.substring(StartHashContent)
           let decoded: string | null
@@ -1059,6 +1065,7 @@ export default function Home() {
     if (!allRows?.length) {
       // No calculation will complete for this run (in-flight worker responses were
       // invalidated by the requestId bump above), so don't leave the flag stuck.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting stale in-progress flag when in-flight work is invalidated
       setCalculationInProgress(false)
       return
     }
