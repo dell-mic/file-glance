@@ -42,12 +42,17 @@ import {
   FilterValue,
   SortSetting,
   Transformer,
+  SearchOptions,
+  defaultSearchOptions,
+  createSearchMatcher,
+  parseSearch,
   findEmptyColumns,
   applyFilters,
   countValues,
   createRowProxy,
   isMacOS,
 } from "@/utils"
+import { cn } from "@/lib/utils"
 import { extractZipFile } from "@/utils/zipExtractor"
 
 import { description, title } from "@/constants"
@@ -69,6 +74,7 @@ import { FunnelIcon as FunnelIconSolid } from "@heroicons/react/24/solid"
 import { CellObject } from "xlsx"
 import { BarChart2, Table as TableIcon, Code2 } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Toggle } from "@/components/ui/toggle"
 import { DataTable } from "./components/DataTable/DataTable"
 import { FreeQuery } from "./components/FreeQuery/FreeQuery"
 import Link from "next/link"
@@ -112,6 +118,8 @@ export default function Home() {
   const [transformers, setTransformers] = React.useState<Array<Transformer>>([])
   const [searchInputValue, setSearchInputValue] = React.useState<string>("")
   const [search, setSearch] = React.useState<string>("")
+  const [searchOptions, setSearchOptions] =
+    React.useState<SearchOptions>(defaultSearchOptions)
   const [parsingState, setParsingState] = React.useState<
     "initial" | "parsing" | "finished"
   >("initial")
@@ -251,6 +259,14 @@ export default function Home() {
     [shouldDebounce, debouncedSetSearchRef],
   )
 
+  // Invalid regex feedback for the search input (search itself is then ignored
+  // by applyFilters; this mirrors its behavior via the same shared helper)
+  const searchError = React.useMemo(() => {
+    if (!search) return null
+    const { term } = parseSearch(search, displayedHeader)
+    return createSearchMatcher(term, searchOptions).error ?? null
+  }, [search, searchOptions, displayedHeader])
+
   const importProject = useCallback(
     (p: ProjectExport | string): void => {
       try {
@@ -289,6 +305,7 @@ export default function Home() {
         const projectSearch = project.search || ""
         setSearchInputValue(projectSearch)
         setSearch(projectSearch)
+        setSearchOptions(project.searchOptions || defaultSearchOptions)
         setHiddenColumns(project.hiddenColumns || [])
         setSortSetting(project.sortSetting || null)
         // eslint-disable-next-line react-hooks/immutability
@@ -359,6 +376,7 @@ export default function Home() {
       setTransformers([])
       setSearchInputValue("")
       setSearch("")
+      setSearchOptions(defaultSearchOptions)
       setFilters([])
       setFilterFunctionCode("")
 
@@ -1058,6 +1076,7 @@ export default function Home() {
           headerRow,
           filters,
           search,
+          searchOptions,
           sortSetting,
           appliedFilterFunctionCode,
         })
@@ -1070,6 +1089,7 @@ export default function Home() {
         headerRow,
         filters,
         search,
+        searchOptions,
         sortSetting,
         appliedFilterFunctionCode,
       )
@@ -1092,6 +1112,7 @@ export default function Home() {
     headerRow,
     filters,
     search,
+    searchOptions,
     sortSetting,
     appliedFilterFunctionCode,
   ])
@@ -1306,6 +1327,7 @@ export default function Home() {
       filters: filters,
       filterFunction: appliedFilterFunctionCode,
       search: search,
+      searchOptions: searchOptions,
       sortSetting: sortSetting,
     }
     return project
@@ -1340,6 +1362,7 @@ export default function Home() {
       filters: filters,
       filterFunction: appliedFilterFunctionCode,
       search: search,
+      searchOptions: searchOptions,
       sortSetting: sortSetting,
     }
     return transformerExport
@@ -1358,6 +1381,7 @@ export default function Home() {
       }
       setFilters(validateFiltersImport(transformerImport.filters))
       setSearch(transformerImport.search || "")
+      setSearchOptions(transformerImport.searchOptions || defaultSearchOptions)
       setHiddenColumns(transformerImport.hiddenColumns || [])
       setSortSetting(transformerImport.sortSetting || null)
 
@@ -1558,6 +1582,7 @@ export default function Home() {
         setFilters([])
         setSearchInputValue("")
         setSearch("")
+        setSearchOptions(defaultSearchOptions)
         setFilterFunctionCode("")
         setAppliedFilterFunctionCode(null)
       }}
@@ -1685,6 +1710,7 @@ export default function Home() {
                               filters,
                               search,
                               appliedFilterFunctionCode,
+                              searchOptions,
                             )}
                           />
                         ) : (
@@ -1777,20 +1803,63 @@ export default function Home() {
                       </ToggleGroupItem>
                     </ToggleGroup>
                     <div className="flex gap-1">
-                      <input
-                        ref={searchInputRef}
-                        type="search"
-                        data-testid="searchInput"
-                        className="min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2"
-                        value={searchInputValue}
-                        onChange={(e) => {
-                          handleSearchChange(e.target.value)
-                        }}
-                        onPaste={(e) => {
-                          e.stopPropagation()
-                        }}
-                        placeholder={`Search (${isMac ? "⌘" : "Ctrl"}+K)`}
-                      ></input>
+                      <div className="relative flex items-center">
+                        <input
+                          ref={searchInputRef}
+                          type="search"
+                          data-testid="searchInput"
+                          className={cn(
+                            "min-w-52 bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg p-2 pr-[72px] [&::-webkit-search-cancel-button]:hidden",
+                            searchError &&
+                              "border-red-500 focus:border-red-500 focus:outline-red-500",
+                          )}
+                          title={searchError ?? undefined}
+                          value={searchInputValue}
+                          onChange={(e) => {
+                            handleSearchChange(e.target.value)
+                          }}
+                          onPaste={(e) => {
+                            e.stopPropagation()
+                          }}
+                          placeholder={`Search (${isMac ? "⌘" : "Ctrl"}+K)`}
+                        ></input>
+                        <div className="absolute right-1.5 flex gap-0.5">
+                          <Toggle
+                            size="sm"
+                            pressed={searchOptions.caseSensitive}
+                            onPressedChange={(v) => {
+                              setSearchOptions((o) => ({
+                                ...o,
+                                caseSensitive: v,
+                              }))
+                              // Give immediate feedback even when the query is
+                              // empty: jump into the input so typing applies
+                              // the new mode right away
+                              searchInputRef.current?.focus()
+                            }}
+                            title="Match Case"
+                            aria-label="Match case"
+                            data-testid="searchOptCase"
+                            className="h-7 px-1.5 min-w-7 text-xs font-mono data-[state=on]:bg-blue-100 data-[state=on]:text-blue-800"
+                          >
+                            Aa
+                          </Toggle>
+                          <Toggle
+                            size="sm"
+                            pressed={searchOptions.regex}
+                            onPressedChange={(v) => {
+                              setSearchOptions((o) => ({ ...o, regex: v }))
+                              searchInputRef.current?.focus()
+                            }}
+                            title="Use Regular Expression"
+                            aria-label="Use regular expression"
+                            data-testid="searchOptRegex"
+                            className="h-7 px-1.5 min-w-7 text-xs font-mono data-[state=on]:bg-blue-100 data-[state=on]:text-blue-800"
+                          >
+                            .*
+                          </Toggle>
+                        </div>
+                      </div>
 
                       <Button
                         data-testid={"btnFilter"}
@@ -2020,6 +2089,7 @@ interface ProjectExport {
   hiddenColumns?: number[]
   name?: string
   search?: string
+  searchOptions?: SearchOptions
   filterFunction?: string | null
   transformers?: Omit<Transformer, "transformer">[]
   sortSetting?: SortSetting | null

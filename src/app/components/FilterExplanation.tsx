@@ -92,15 +92,28 @@ const FilterExplanation: React.FC<FilterExplanationProps> = ({
                 values.
               </div>
             )}
-            {hasSearchClause && (
-              <div>
-                Search: case-sensitive substring match
-                {clauses.some((c) => c.kind === "search" && c.column === null)
-                  ? " across all columns"
-                  : ""}
-                .
-              </div>
-            )}
+            {hasSearchClause &&
+              (() => {
+                const searchClause = clauses.find(
+                  (c) => c.kind === "search",
+                ) as Extract<FilterClause, { kind: "search" }>
+                const mode = searchClause.options.regex
+                  ? "regular expression match"
+                  : searchClause.options.caseSensitive
+                    ? "case-sensitive substring match"
+                    : "case-insensitive substring match"
+                return (
+                  <div>
+                    Search: {mode}
+                    {clauses.some(
+                      (c) => c.kind === "search" && c.column === null,
+                    )
+                      ? " across all columns"
+                      : ""}
+                    .
+                  </div>
+                )
+              })()}
           </div>
         )}
       </HoverCardContent>

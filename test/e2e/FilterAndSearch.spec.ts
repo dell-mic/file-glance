@@ -23,6 +23,47 @@ test(`Searching in column`, async ({ page }) => {
   await expect(page).toHaveScreenshot()
 })
 
+test(`Search is case-insensitive by default`, async ({ page }) => {
+  // "canada" (lowercase) matches the 13 "Canada" rows by default
+  await page.getByTestId("searchInput").fill("canada")
+  await expect(page.getByTestId("filterExplanationTrigger")).toHaveText(
+    "13 filtered",
+  )
+})
+
+test(`Match Case toggle makes search case-sensitive`, async ({ page }) => {
+  const input = page.getByTestId("searchInput")
+  await input.fill("canada")
+  await expect(page.getByTestId("filterExplanationTrigger")).toHaveText(
+    "13 filtered",
+  )
+
+  await page.getByTestId("searchOptCase").click()
+  await expect(page.getByTestId("filterExplanationTrigger")).toHaveText(
+    "0 filtered",
+  )
+})
+
+test(`Regex search mode`, async ({ page }) => {
+  await page.getByTestId("searchOptRegex").click()
+  await page.getByTestId("searchInput").fill(`ID:^10$`)
+  await expect(page.getByTestId("filterExplanationTrigger")).toHaveText(
+    "1 filtered",
+  )
+})
+
+test(`Invalid regex shows error and ignores the search`, async ({ page }) => {
+  const input = page.getByTestId("searchInput")
+  await page.getByTestId("searchOptRegex").click()
+  await input.fill("[unclosed")
+
+  await expect(input).toHaveClass(/border-red-500/)
+  // Search is ignored -> all rows remain visible
+  await expect(page.getByTestId("filterExplanationTrigger")).toHaveText(
+    "50 filtered",
+  )
+})
+
 test(`Filter on value`, async ({ page }) => {
   // Includes filter variant
   await page.getByTestId("valueInspector_2_Age").click()
@@ -40,6 +81,9 @@ test(`Filter on value`, async ({ page }) => {
     .locator("a")
     .first()
     .click({ modifiers: ["Alt"] })
+
+  // Park the mouse so no value-hover tooltip leaks into the snapshot
+  await page.mouse.move(660, 500)
 
   await expect(page).toHaveScreenshot()
 })

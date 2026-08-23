@@ -33,7 +33,7 @@ It aims to be both:
 - Automatic detection of file encoding, delimiters, and data location
 - Optimized display (hides empty columns by default)
 - Simple filtering with value facets for exact matches
-- Full-text search across data
+- Full-text search across data (case-sensitive/insensitive and regular expression modes, `ColumnName:value` to scope a search to one column)
 - Basic sorting functionality
 - Adjustable column widths via drag and drop (double-click to fit content / reset)
 - Advanced row filtering using custom JavaScript

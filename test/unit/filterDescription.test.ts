@@ -5,6 +5,7 @@ import {
   clauseToPseudoSql,
   describeFilters,
 } from "@/filterDescription"
+import { defaultSearchOptions } from "@/utils"
 
 const header = ["country", "city", "status"]
 
@@ -96,25 +97,61 @@ describe("describeFilters", () => {
 
   it("describes a global search", () => {
     expect(describeFilters(header, [], "foo", null)).toEqual([
-      { kind: "search", column: null, term: "foo" },
+      {
+        kind: "search",
+        column: null,
+        term: "foo",
+        options: defaultSearchOptions,
+      },
     ])
   })
 
   it("describes a column-scoped search", () => {
     expect(describeFilters(header, [], "city:ber", null)).toEqual([
-      { kind: "search", column: "city", term: "ber" },
+      {
+        kind: "search",
+        column: "city",
+        term: "ber",
+        options: defaultSearchOptions,
+      },
     ])
   })
 
   it("treats search as global when the prefix is not a column name", () => {
     expect(describeFilters(header, [], "unknown:ber", null)).toEqual([
-      { kind: "search", column: null, term: "unknown:ber" },
+      {
+        kind: "search",
+        column: null,
+        term: "unknown:ber",
+        options: defaultSearchOptions,
+      },
     ])
   })
 
   it("keeps colons in the term of a column-scoped search", () => {
     expect(describeFilters(header, [], "city:a:b", null)).toEqual([
-      { kind: "search", column: "city", term: "a:b" },
+      {
+        kind: "search",
+        column: "city",
+        term: "a:b",
+        options: defaultSearchOptions,
+      },
+    ])
+  })
+
+  it("attaches the given search options to the search clause", () => {
+    expect(
+      describeFilters(header, [], "foo", null, {
+        caseSensitive: true,
+        regex: true,
+      }),
+    ).toEqual([
+      {
+        kind: "search",
+        column: null,
+        term: "foo",
+        options: { caseSensitive: true, regex: true },
+      },
     ])
   })
 
@@ -142,7 +179,12 @@ describe("describeFilters", () => {
     expect(clauses).toEqual([
       { kind: "include", column: "country", values: ["DE"] },
       { kind: "exclude", column: "country", values: ["FR"] },
-      { kind: "search", column: "city", term: "ber" },
+      {
+        kind: "search",
+        column: "city",
+        term: "ber",
+        options: defaultSearchOptions,
+      },
       { kind: "function", code: "return rowIndex < 100" },
     ])
   })
@@ -222,13 +264,57 @@ describe("clauseToPseudoSql", () => {
   })
 
   it("renders global search with * placeholder", () => {
-    const clause: FilterClause = { kind: "search", column: null, term: "foo" }
-    expect(clauseToPseudoSql(clause)).toBe("* CONTAINS 'foo'")
+    const clause: FilterClause = {
+      kind: "search",
+      column: null,
+      term: "foo",
+      options: defaultSearchOptions,
+    }
+    expect(clauseToPseudoSql(clause)).toBe(
+      "* CONTAINS (case-insensitive) 'foo'",
+    )
   })
 
   it("renders column search", () => {
-    const clause: FilterClause = { kind: "search", column: "city", term: "ber" }
-    expect(clauseToPseudoSql(clause)).toBe("city CONTAINS 'ber'")
+    const clause: FilterClause = {
+      kind: "search",
+      column: "city",
+      term: "ber",
+      options: defaultSearchOptions,
+    }
+    expect(clauseToPseudoSql(clause)).toBe(
+      "city CONTAINS (case-insensitive) 'ber'",
+    )
+  })
+
+  it("renders case-sensitive search without annotation", () => {
+    const clause: FilterClause = {
+      kind: "search",
+      column: null,
+      term: "foo",
+      options: { caseSensitive: true, regex: false },
+    }
+    expect(clauseToPseudoSql(clause)).toBe("* CONTAINS 'foo'")
+  })
+
+  it("renders regex search with i flag when case-insensitive", () => {
+    const clause: FilterClause = {
+      kind: "search",
+      column: null,
+      term: "^Be.*n$",
+      options: { caseSensitive: false, regex: true },
+    }
+    expect(clauseToPseudoSql(clause)).toBe("* MATCHES /^Be.*n$/i")
+  })
+
+  it("renders case-sensitive regex search without flag", () => {
+    const clause: FilterClause = {
+      kind: "search",
+      column: "city",
+      term: "^Be",
+      options: { caseSensitive: true, regex: true },
+    }
+    expect(clauseToPseudoSql(clause)).toBe("city MATCHES /^Be/")
   })
 
   it("renders the function clause", () => {

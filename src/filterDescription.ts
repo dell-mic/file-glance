@@ -1,17 +1,28 @@
-import { ColumnFilter, parseSearch } from "./utils"
+import {
+  ColumnFilter,
+  parseSearch,
+  SearchOptions,
+  defaultSearchOptions,
+} from "./utils"
 
 /**
  * Structured, UI-agnostic description of all active filters.
  * Mirrors the semantics of `applyFilters` in utils.ts:
  * - facet include/exclude per column (exact match on stringified values)
  * - empty facet value matches null/undefined/"" (and empty arrays)
- * - global or column-scoped substring search ("columnName:value" syntax)
+ * - global or column-scoped search ("columnName:value" syntax) with
+ *   case-sensitivity and regex options
  * - custom JavaScript filter function
  */
 export type FilterClause =
   | { kind: "include"; column: string; values: string[] }
   | { kind: "exclude"; column: string; values: string[] }
-  | { kind: "search"; column: string | null; term: string }
+  | {
+      kind: "search"
+      column: string | null
+      term: string
+      options: SearchOptions
+    }
   | { kind: "function"; code: string }
 
 export function columnNameFallback(columnIndex: number): string {
@@ -27,6 +38,7 @@ export function describeFilters(
   filters: ColumnFilter[],
   search: string,
   appliedFilterFunctionCode: string | null,
+  searchOptions: SearchOptions = defaultSearchOptions,
 ): FilterClause[] {
   const clauses: FilterClause[] = []
 
@@ -53,6 +65,7 @@ export function describeFilters(
       kind: "search",
       column: columnIndex !== null ? columnName(headerRow, columnIndex) : null,
       term,
+      options: searchOptions,
     })
   }
 
@@ -95,8 +108,17 @@ export function clauseToPseudoSql(clause: FilterClause): string {
         parts.push(`${clause.column} IS EMPTY`)
       return parts.length > 1 ? `(${parts.join(" OR ")})` : parts[0]
     }
-    case "search":
-      return `${clause.column ?? "*"} CONTAINS ${quote(clause.term)}`
+    case "search": {
+      const scope = clause.column ?? "*"
+      if (clause.options.regex) {
+        const flags = clause.options.caseSensitive ? "" : "i"
+        const pattern = clause.term.replace(/\//g, "\\/")
+        return `${scope} MATCHES /${pattern}/${flags}`
+      }
+      return clause.options.caseSensitive
+        ? `${scope} CONTAINS ${quote(clause.term)}`
+        : `${scope} CONTAINS (case-insensitive) ${quote(clause.term)}`
+    }
     case "function":
       return "matches custom JavaScript filter"
   }

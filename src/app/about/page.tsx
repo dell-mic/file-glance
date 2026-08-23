@@ -76,7 +76,9 @@ export default function Page() {
           </li>
           <li>Optimized display (hides empty columns by default)</li>
           <li>Simple filtering with value facets for exact matches</li>
-          <li>Full-text search across data</li>
+          <li>
+            Full-text search across data (case sensitivity and regex options)
+          </li>
           <li>Basic sorting functionality</li>
           <li>Advanced row filtering using custom JavaScript</li>
           <li>Advanced value transformation using custom JavaScript</li>

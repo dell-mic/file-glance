@@ -1283,6 +1283,54 @@ export function findEmptyColumns(data: any[][]): number[] {
   return emptyCols
 }
 
+export interface SearchOptions {
+  caseSensitive: boolean
+  regex: boolean
+}
+
+export const defaultSearchOptions: SearchOptions = {
+  caseSensitive: false,
+  regex: false,
+}
+
+/**
+ * Compiles a search term + options into a reusable cell matcher.
+ * The matcher is built once per filtering pass (never per cell), so regex
+ * compilation and lowercasing of the needle happen a single time.
+ * An invalid regex pattern is reported via `error`; callers should then
+ * skip search filtering entirely.
+ */
+export function createSearchMatcher(
+  term: string,
+  options: SearchOptions,
+): { matches: (cell: any) => boolean; error?: string } {
+  if (options.regex) {
+    let re: RegExp
+    try {
+      re = new RegExp(term, options.caseSensitive ? "" : "i")
+    } catch (err: any) {
+      return {
+        matches: () => false,
+        error: err?.message || "Invalid regular expression",
+      }
+    }
+    return {
+      matches: (cell) =>
+        re.test(valueAsString(cell)) || re.test(valueAsStringFormatted(cell)),
+    }
+  }
+
+  const needle = options.caseSensitive ? term : term.toLowerCase()
+  const contains = (s: string) =>
+    options.caseSensitive
+      ? s.includes(needle)
+      : s.toLowerCase().includes(needle)
+  return {
+    matches: (cell) =>
+      contains(valueAsString(cell)) || contains(valueAsStringFormatted(cell)),
+  }
+}
+
 /**
  * Parses a search string into an optional column scope and the actual term.
  * "columnName:value" searches only that column; anything else searches all columns.
@@ -1306,6 +1354,7 @@ export function applyFilters(
   displayedHeader: string[],
   filters: ColumnFilter[],
   search: string,
+  searchOptions: SearchOptions,
   sortSetting: SortSetting | null,
   appliedFilterFunctionCode: string | null,
 ) {
@@ -1385,19 +1434,23 @@ export function applyFilters(
       })
     : displayedData
 
-  const { columnIndex: searchColumnIndex, term: searchValue } = parseSearch(
-    search,
-    displayedHeader,
-  )
-  const isColumnSearch = searchColumnIndex !== null
-
-  filteredData = search.length
-    ? filteredData.filter((row) =>
-        isColumnSearch
-          ? searchMatch(row[searchColumnIndex], searchValue)
-          : row.some((value) => searchMatch(value, searchValue)),
-      )
-    : filteredData
+  if (search.length) {
+    const { columnIndex: searchColumnIndex, term: searchValue } = parseSearch(
+      search,
+      displayedHeader,
+    )
+    const matcher = createSearchMatcher(searchValue, searchOptions)
+    if (!matcher.error) {
+      filteredData =
+        searchColumnIndex !== null
+          ? filteredData.filter((row) =>
+              matcher.matches(row[searchColumnIndex]),
+            )
+          : filteredData.filter((row) =>
+              row.some((value) => matcher.matches(value)),
+            )
+    }
+  }
 
   // Apply sorting before filter function as might impact results
   if (sortSetting) {
@@ -1425,13 +1478,6 @@ export function applyFilters(
   console.timeEnd("filterAndSorting")
 
   return filteredData
-}
-
-function searchMatch(cell: any, search: string): boolean {
-  return (
-    valueAsString(cell).includes(search) ||
-    valueAsStringFormatted(cell).includes(search)
-  )
 }
 
 export function showAsEmpty(v: any): boolean {

@@ -6,6 +6,7 @@ import {
   Transformer,
   countValues,
   applyFilters,
+  SearchOptions,
 } from "@/utils"
 import { cloneDeep } from "lodash-es"
 
@@ -19,6 +20,7 @@ addEventListener(
       headerRow,
       filters,
       search,
+      searchOptions,
       sortSetting,
       appliedFilterFunctionCode,
       requestId,
@@ -76,6 +78,7 @@ addEventListener(
       displayedHeader,
       filters,
       search,
+      searchOptions,
       sortSetting,
       appliedFilterFunctionCode,
     ).map((_) => Array.from(_)) // Unwrap proxied data again, otherwise can't be cloned/transferred from worker thread
@@ -179,6 +182,7 @@ export interface DisplayedDataWorkerInput {
   headerRow: string[]
   filters: ColumnFilter[]
   search: string
+  searchOptions: SearchOptions
   sortSetting: SortSetting | null
   appliedFilterFunctionCode: string | null
   requestId: number
