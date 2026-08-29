@@ -19,6 +19,16 @@ test(`Visual View`, async ({ page }) => {
 
 test(`Visual View - filtered`, async ({ page }) => {
   await page.getByTestId("valueInspector_0_city").click()
-  await page.getByTestId("valueInspector_0_city").locator("a").first().click()
+  const cityValue = page
+    .getByTestId("valueInspector_0_city")
+    .locator("a")
+    .first()
+  await cityValue.click()
+  // The baseline screenshot includes the value tooltip; keep hovering the
+  // value and wait for the tooltip so its appearance is deterministic.
+  await cityValue.hover()
+  await expect(
+    page.locator("[data-radix-popper-content-wrapper]"),
+  ).toBeVisible()
   await expect(page).toHaveScreenshot({ fullPage: true })
 })

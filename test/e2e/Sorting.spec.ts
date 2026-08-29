@@ -23,7 +23,7 @@ test(`Sorting follows its column after transform-as-new-column`, async ({
 }) => {
   // Sort Age (displayed index 2) ascending. The header click both renders and
   // applies the sort synchronously (no transformers yet => main-thread path).
-  const ageCell = page.locator('[title$="Column: Age"]').first()
+  const ageCell = page.locator('[data-column="Age"]').first()
   const preSortFirstAge = (await ageCell.textContent()) ?? ""
   await page.getByTestId("header_2_Age").click()
   // Wait for the ascending sort to land, so the captured "before" value is the

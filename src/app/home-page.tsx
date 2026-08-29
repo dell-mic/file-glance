@@ -1970,6 +1970,8 @@ export default function Home() {
                           addOrRemove(hiddenColumns, columnIndex),
                         )
                       }}
+                      totalRowCount={allRows.length}
+                      filteredRowCount={displayedDataFiltered.length}
                     ></ValuesInspector>
 
                     {viewMode === "visual" ? (

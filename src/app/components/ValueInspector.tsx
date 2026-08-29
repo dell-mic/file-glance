@@ -27,6 +27,13 @@ const CheckmarkIcon = (
   </svg>
 )
 
+function pct(num: number, denom: number): string {
+  if (denom <= 0) return "—"
+  return `${((num / denom) * 100).toLocaleString(undefined, {
+    maximumFractionDigits: 1,
+  })}%`
+}
+
 export const ValuesInspector = (props: {
   filters: ColumnFilter[]
   onFilterToggle: (
@@ -39,6 +46,8 @@ export const ValuesInspector = (props: {
   onToggleAccordion: (index: number) => void
   hiddenColumns: number[]
   onToggleColumnVisibility: (index: number) => void
+  totalRowCount: number
+  filteredRowCount: number
 }) => {
   const isMacOSValue = isMacOS()
   const modKey = isMacOSValue ? "⌘" : "Ctrl"
@@ -120,6 +129,8 @@ export const ValuesInspector = (props: {
           }
           modKey={modKey}
           altKey={altKey}
+          totalRowCount={props.totalRowCount}
+          filteredRowCount={props.filteredRowCount}
         />
       ))}
 
@@ -151,6 +162,8 @@ const ColumnAccordion = (props: {
   onSortChange: (field: SortField, direction: SortDirection) => void
   modKey: string
   altKey: string
+  totalRowCount: number
+  filteredRowCount: number
 }) => {
   const { column, currentSort, open } = props
 
@@ -324,9 +337,16 @@ const ColumnAccordion = (props: {
                         </MiddleEllipsis>
                       </a>
                     </TooltipTrigger>
-                    <TooltipContent side="top" align="center" sideOffset={4}>
-                      <div className="font-medium break-all">
+                    <TooltipContent side="right" align="center" sideOffset={4}>
+                      <div className="font-medium break-all flex justify-between gap-4">
                         {columnValue.valueName || "(empty)"}
+                        <span className="font-normal text-gray-500 shrink-0">
+                          {columnValue.value === null ||
+                          columnValue.value === undefined
+                            ? "null/undefined"
+                            : (columnValue.value.constructor?.name ??
+                              "unknown")}
+                        </span>
                       </div>
                       <div className="border-t border-gray-200 my-2" />
                       <div className="text-xs text-gray-500 space-y-1">
@@ -348,9 +368,25 @@ const ColumnAccordion = (props: {
                               <b>
                                 {columnValue.valueCountFiltered.toLocaleString()}
                               </b>{" "}
-                              / {columnValue.valueCountTotal.toLocaleString()} —
-                              rows with this value after active filters / total
-                              rows with this value
+                              <span className="text-gray-400 font-normal">
+                                (
+                                {pct(
+                                  columnValue.valueCountFiltered,
+                                  props.filteredRowCount,
+                                )}
+                                )
+                              </span>{" "}
+                              / {columnValue.valueCountTotal.toLocaleString()}{" "}
+                              <span className="text-gray-400 font-normal">
+                                (
+                                {pct(
+                                  columnValue.valueCountTotal,
+                                  props.totalRowCount,
+                                )}
+                                )
+                              </span>{" "}
+                              — rows with this value after active filters /
+                              total rows with this value
                             </div>
                             {columnValue.valueCountFiltered === 0 && (
                               <div className="italic">
@@ -364,6 +400,14 @@ const ColumnAccordion = (props: {
                             <b>
                               {columnValue.valueCountTotal.toLocaleString()}
                             </b>{" "}
+                            <span className="text-gray-400 font-normal">
+                              (
+                              {pct(
+                                columnValue.valueCountTotal,
+                                props.totalRowCount,
+                              )}
+                              )
+                            </span>{" "}
                             — rows containing this value (no filters active)
                           </div>
                         )}

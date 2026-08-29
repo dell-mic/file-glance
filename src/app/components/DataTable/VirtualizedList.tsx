@@ -8,12 +8,16 @@ import {
 } from "@heroicons/react/16/solid"
 
 import {
-  isEmptyArray,
   isLink,
   isNonEmptyArray,
   valueAsStringFormatted,
   SortSetting,
 } from "@/utils"
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip"
 import { cva } from "class-variance-authority"
 import { cloneDeep } from "lodash-es"
 
@@ -198,82 +202,118 @@ export const Row = ({
             valueCell = "empty"
             isEmpty = true
           }
-          let title = ""
+          let tooltipValue = ""
+          let tooltipValueIsEmpty = false
+
+          const tooltipTypeName =
+            v === null
+              ? "null"
+              : v === undefined
+                ? "undefined"
+                : isTypedValue
+                  ? (v.constructor?.name ?? "unknown")
+                  : "String"
 
           if (!isEmpty) {
-            title = isTypedValue
-              ? `${_valueAsStringRow} [${v.constructor.name}]`
-              : _valueAsStringRow
-          } else if (isEmptyArray(v)) {
-            title = `${JSON.stringify(v)} [${v.constructor.name}]`
-          } else if (_valueAsStringRow === "") {
-            title = "(empty string)"
+            tooltipValue = _valueAsStringRow
           } else {
-            title = _valueAsStringRow
+            tooltipValue = "empty"
+            tooltipValueIsEmpty = true
           }
 
-          title += "\n\nColumn: " + header
+          const cellContent = (
+            <>
+              <div className="font-medium break-all flex justify-between gap-4 items-end">
+                <span
+                  className={`whitespace-pre-wrap ${
+                    tooltipValueIsEmpty ? "font-mono text-gray-500" : ""
+                  }`}
+                >
+                  {tooltipValue}
+                </span>
+                <span className="font-normal font-mono text-[0.65rem] text-gray-500 shrink-0 translate-y-[2px]">
+                  {tooltipTypeName}
+                </span>
+              </div>
+              <div className="border-t border-gray-200 my-2" />
+              <div className="text-xs text-gray-500">
+                Column: <b>{header}</b>
+              </div>
+            </>
+          )
 
           const highlightLinks = isMetaPressed && isLink(v)
 
           if (highlightLinks) {
             // Use actual links for link highlight such that e.g. "copy link" context menu features work out of the box
             return (
-              <a
-                key={vi}
-                title={title}
-                className={cellClass({
-                  isNumber: false,
-                  booleanTrue,
-                  booleanFalse,
-                  isArray,
-                  isEmpty,
-                  isMetaPressed,
-                  isLink: true,
-                })}
-                style={{
-                  width: columnsWidths[vi],
-                }}
-                href={valueCell}
-                target="_blank"
-              >
-                {valueCell}
-              </a>
+              <Tooltip key={vi} delayDuration={750}>
+                <TooltipTrigger asChild>
+                  <a
+                    data-column={header}
+                    className={cellClass({
+                      isNumber: false,
+                      booleanTrue,
+                      booleanFalse,
+                      isArray,
+                      isEmpty,
+                      isMetaPressed,
+                      isLink: true,
+                    })}
+                    style={{
+                      width: columnsWidths[vi],
+                    }}
+                    href={valueCell}
+                    target="_blank"
+                  >
+                    {valueCell}
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={4}>
+                  {cellContent}
+                </TooltipContent>
+              </Tooltip>
             )
           } else {
             return (
-              <span
-                key={vi}
-                title={title}
-                className={cellClass({
-                  isNumber,
-                  isBigInt,
-                  isArray,
-                  isDate,
-                  booleanTrue,
-                  booleanFalse,
-                  isEmpty,
-                  isMetaPressed,
-                })}
-                style={{
-                  width: columnsWidths[vi],
-                }}
-                onClick={() => {
-                  if (isMetaPressed) {
-                    onValueCellPressed({
-                      value: v,
-                      valueAsString: _valueAsStringFormatted,
-                    })
-                  } else {
-                    onRowSelected({
-                      rowIndex: index,
-                      rowData: cloneDeep(rows[index]),
-                    })
-                  }
-                }}
-              >
-                {valueCell}
-              </span>
+              <Tooltip key={vi} delayDuration={750}>
+                <TooltipTrigger asChild>
+                  <span
+                    data-column={header}
+                    className={cellClass({
+                      isNumber,
+                      isBigInt,
+                      isArray,
+                      isDate,
+                      booleanTrue,
+                      booleanFalse,
+                      isEmpty,
+                      isMetaPressed,
+                    })}
+                    style={{
+                      width: columnsWidths[vi],
+                    }}
+                    onClick={() => {
+                      if (isMetaPressed) {
+                        onValueCellPressed({
+                          value: v,
+                          valueAsString: _valueAsStringFormatted,
+                        })
+                      } else {
+                        onRowSelected({
+                          rowIndex: index,
+                          rowData: cloneDeep(rows[index]),
+                        })
+                      }
+                    }}
+                  >
+                    {valueCell}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={4}>
+                  {cellContent}
+                </TooltipContent>
+              </Tooltip>
             )
           }
         }
