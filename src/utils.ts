@@ -55,6 +55,36 @@ export function renderValuePreview(v: any) {
   }
 }
 
+// Type name used for type badges (table tooltips, row detail dialog)
+export function valueTypeName(v: any): string {
+  if (v === null) return "null"
+  if (v === undefined) return "undefined"
+  if (typeof v === "string") return "String"
+  return v.constructor?.name ?? "unknown"
+}
+
+export function rowToTsv(row: any[]): string {
+  return row.join("\t")
+}
+
+export function rowToJson(headerRow: string[], row: any[]): string {
+  const rowObj = Object.fromEntries(
+    headerRow.map((header, i) => [header, row[i]]),
+  )
+  // JSON.stringify throws on bigint values (e.g. from parquet files)
+  return JSON.stringify(
+    rowObj,
+    (_key, value) => (typeof value === "bigint" ? value.toString() : value),
+    2,
+  )
+}
+
+export function rowToKeyValuePairs(headerRow: string[], row: any[]): string {
+  return headerRow
+    .map((header, i) => `${header}: ${valueAsStringSimplified(row[i])}`)
+    .join("\n")
+}
+
 export function isNumericColumn(c: ColumnInfos) {
   return c.columnType === "Number" || c.columnType === "BigInt"
 }

@@ -11,6 +11,7 @@ import {
   isLink,
   isNonEmptyArray,
   valueAsStringFormatted,
+  valueTypeName,
   SortSetting,
 } from "@/utils"
 import {
@@ -40,6 +41,13 @@ export interface RowProps {
     valueAsString: string
   }) => void
   onRowSelected: ({
+    rowIndex,
+    rowData,
+  }: {
+    rowIndex: number
+    rowData: any[]
+  }) => void
+  onRowDoubleClicked: ({
     rowIndex,
     rowData,
   }: {
@@ -142,6 +150,7 @@ export const Row = ({
   isMetaPressed,
   onValueCellPressed,
   onRowSelected,
+  onRowDoubleClicked,
 }: RowComponentProps<RowProps>) => {
   if (stickyIndices.includes(index)) {
     return null
@@ -205,14 +214,7 @@ export const Row = ({
           let tooltipValue = ""
           let tooltipValueIsEmpty = false
 
-          const tooltipTypeName =
-            v === null
-              ? "null"
-              : v === undefined
-                ? "undefined"
-                : isTypedValue
-                  ? (v.constructor?.name ?? "unknown")
-                  : "String"
+          const tooltipTypeName = valueTypeName(v)
 
           if (!isEmpty) {
             tooltipValue = _valueAsStringRow
@@ -305,6 +307,12 @@ export const Row = ({
                           rowData: cloneDeep(rows[index]),
                         })
                       }
+                    }}
+                    onDoubleClick={() => {
+                      onRowDoubleClicked({
+                        rowIndex: index,
+                        rowData: cloneDeep(rows[index]),
+                      })
                     }}
                   >
                     {valueCell}

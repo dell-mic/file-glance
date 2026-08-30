@@ -20,8 +20,14 @@ import { MenuPopover } from "../../../components/ui/Popover"
 import useWindowDimensions from "../../../hooks/useWindowDimensions"
 import { Row, StickyRow } from "./VirtualizedList"
 import { useToast } from "@/hooks/use-toast"
-import { getScrollbarWidth, SortSetting, valueAsStringFormatted } from "@/utils"
+import {
+  getScrollbarWidth,
+  SortSetting,
+  valueAsStringFormatted,
+  rowToJson,
+} from "@/utils"
 import TransformDialog from "../TransformDialog"
+import RowDetailDialog from "./RowDetailDialog"
 import useKeyPress from "@/hooks/useKeyPress"
 import {
   clampColumnWidthPx,
@@ -71,6 +77,7 @@ export const DataTable = (props: {
   const [navigationDirection, setNavigationDirection] = useState<
     "up" | "down" | null
   >(null)
+  const [rowDetailOpen, setRowDetailOpen] = useState<boolean>(false)
 
   const [transformerValidation, setTransformerValidation] =
     React.useState<TransformerValidation | null>(null)
@@ -121,6 +128,7 @@ export const DataTable = (props: {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedRow(null)
     setNavigationDirection(null)
+    setRowDetailOpen(false)
   }, [props.rows])
 
   // Adjust scroll position when selected column near out of displayed range
@@ -416,7 +424,9 @@ export const DataTable = (props: {
   ]
 
   const handleKeyDown: React.KeyboardEventHandler = async (e) => {
-    // console.log(e)
+    // While the row detail dialog is open, arrow navigation is owned by the
+    // dialog's own window-level listener (both would move otherwise)
+    if (rowDetailOpen) return
 
     if (!selectedRow) return
 
@@ -447,26 +457,18 @@ export const DataTable = (props: {
       setNavigationDirection(null)
       setSelectedRow(null)
     } else if (e.key === "Enter") {
-      if (e.metaKey) {
-        const rowObj = Object.fromEntries(
-          props.headerRow.map((header, i) => [
-            header,
-            props.rows[selectedRow - 1][i],
-          ]),
+      e.preventDefault()
+      if (e.metaKey || e.ctrlKey) {
+        // Accidental (but welcome) shortcut: copy row as JSON directly
+        await navigator.clipboard.writeText(
+          rowToJson(props.headerRow, props.rows[selectedRow - 1]),
         )
-        await navigator.clipboard.writeText(JSON.stringify(rowObj))
         toast({
           title: "Row values copied to clipboard",
           description: "as JSON",
         })
       } else {
-        await navigator.clipboard.writeText(
-          props.rows[selectedRow - 1].join("\t"),
-        )
-        toast({
-          title: "Row values copied to clipboard",
-          description: "as tab separated",
-        })
+        setRowDetailOpen(true)
       }
     }
   }
@@ -495,6 +497,23 @@ export const DataTable = (props: {
             horizontal: "left",
           }}
         ></MenuPopover>
+      )}
+      {selectedRow !== null && (
+        <RowDetailDialog
+          open={rowDetailOpen}
+          headerRow={props.headerRow}
+          row={rows[selectedRow]}
+          rowIndex={selectedRow - 1}
+          totalRows={rows.length - 1}
+          onClose={() => setRowDetailOpen(false)}
+          onNavigate={(delta: -1 | 1) => {
+            setNavigationDirection(delta === -1 ? "up" : "down")
+            setSelectedRow((current) => {
+              if (current === null) return current
+              return Math.min(Math.max(current + delta, 1), rows.length - 1)
+            })
+          }}
+        />
       )}
       {transformModalOpen && (
         <TransformDialog
@@ -556,6 +575,11 @@ export const DataTable = (props: {
               onRowSelected: ({ rowIndex }) => {
                 setSelectedRow(rowIndex !== selectedRow ? rowIndex : null)
                 setNavigationDirection(null)
+              },
+              onRowDoubleClicked: ({ rowIndex }) => {
+                setSelectedRow(rowIndex)
+                setNavigationDirection(null)
+                setRowDetailOpen(true)
               },
             }}
             style={{ width: tableWidth, height: height ?? 0 }}
