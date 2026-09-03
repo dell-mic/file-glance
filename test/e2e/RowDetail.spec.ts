@@ -69,6 +69,28 @@ test(`Navigate rows with buttons and ArrowUp/Down`, async ({ page }) => {
   ).toHaveText("Jane Smith")
 })
 
+test(`Selecting a row, then shrinking rows via search does not crash`, async ({
+  page,
+}) => {
+  // Regression: when filtering replaced props.rows with a shorter array, the
+  // first render still used the old selectedRow index, so the row detail
+  // dialog crashed on rows[selectedRow] === undefined
+  // ("Cannot read properties of undefined (reading '0')")
+  const pageErrors: Error[] = []
+  page.on("pageerror", (error) => pageErrors.push(error))
+
+  // Select the last row (row 50), then search so only 1 row remains
+  await page.locator('[data-column="Name"]').last().click()
+  await page.getByTestId("searchInput").fill("John Doe")
+  await expect(page.getByTestId("filterExplanationTrigger")).toHaveText(
+    "1 filtered",
+  )
+
+  // The table (and the whole app) must still be alive
+  await expect(page.getByTestId("DataTable")).toBeVisible()
+  expect(pageErrors).toEqual([])
+})
+
 for (const clipboardScenario of [
   {
     title: "Copy individual value",

@@ -123,13 +123,18 @@ export const DataTable = (props: {
     }
   }, [])
 
-  // reset selection when rows change (e.g. when sorted)
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+  // Reset selection when rows change (e.g. when sorted or filtered).
+  // Adjusted during render (not in an effect): an effect would run only after
+  // a render that still uses the old selectedRow — if it points beyond the
+  // new, shorter rows array, RowDetailDialog crashes on
+  // rows[selectedRow] === undefined.
+  const [prevRows, setPrevRows] = useState(props.rows)
+  if (prevRows !== props.rows) {
+    setPrevRows(props.rows)
     setSelectedRow(null)
     setNavigationDirection(null)
     setRowDetailOpen(false)
-  }, [props.rows])
+  }
 
   // Adjust scroll position when selected column near out of displayed range
   useEffect(() => {
