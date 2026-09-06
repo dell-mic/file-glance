@@ -6,6 +6,7 @@ import {
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/20/solid"
 
+import MiddleEllipsis from "@/components/ui/MiddleEllipsis"
 import { Modal } from "@/components/ui/Modal"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
@@ -15,6 +16,7 @@ import {
   rowToKeyValuePairs,
   rowToTsv,
   valueAsStringFormatted,
+  valueColorClass,
   valueTypeName,
 } from "@/utils"
 
@@ -126,11 +128,13 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
               <div
                 key={columnIndex}
                 data-testid={`rowDetailField_${columnIndex}_${header}`}
-                className="group grid grid-cols-[11rem_1fr] gap-4 border-b border-gray-100 py-1.5 last:border-b-0 even:bg-gray-50/60"
+                className="group grid grid-cols-[12.5rem_1fr] gap-4 border-b border-gray-100 py-1.5 last:border-b-0 even:bg-gray-50/60"
               >
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-gray-600 break-all">
-                    {header}
+                <div className="flex items-center gap-1.5 text-sm">
+                  <span className="font-medium text-gray-600 overflow-hidden">
+                    <MiddleEllipsis>
+                      <span>{header}</span>
+                    </MiddleEllipsis>
                   </span>
                   <span className="font-mono text-[0.65rem] text-gray-400 shrink-0">
                     {valueTypeName(value)}
@@ -144,7 +148,9 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
                 >
                   <div
                     className={`text-base whitespace-pre-wrap break-all ${
-                      isEmpty ? "font-mono text-sm text-gray-400" : ""
+                      isEmpty
+                        ? "font-mono text-sm text-gray-400"
+                        : valueColorClass(value)
                     }`}
                   >
                     {isEmpty ? "empty" : formatted}

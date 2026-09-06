@@ -63,6 +63,20 @@ export function valueTypeName(v: any): string {
   return v.constructor?.name ?? "unknown"
 }
 
+// Type-based text color, mirrors the grid's cellClass colors in VirtualizedList
+// (Number=blue, BigInt=indigo, Boolean green/red by value, Array=purple, Date=cyan)
+export function valueColorClass(v: any): string {
+  if (typeof v !== "string") {
+    if (typeof v === "number") return "text-blue-900"
+    if (v === true) return "text-green-800"
+    if (v === false) return "text-red-900"
+    if (v instanceof Date) return "text-cyan-900"
+    if (isNonEmptyArray(v)) return "text-purple-950"
+    if (typeof v === "bigint") return "text-indigo-900"
+  }
+  return ""
+}
+
 export function rowToTsv(row: any[]): string {
   return row.join("\t")
 }
