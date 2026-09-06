@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 import zlib from "zlib"
 import { stringToBase64Gzipped } from "../../src/utils"
 
@@ -17,6 +17,11 @@ const DATA_CONTENT_WRAPPER_SELECTOR = '[data-testid="DataContentWrapper"]'
 
 const host = "http://localhost:3000/"
 
+// Give late re-renders/hydration commits a chance to (re-)apply the document
+// title, so title assertions actually verify persistence rather than racing
+// ahead of a potential clobber.
+const settle = (page: Page) => page.waitForTimeout(500)
+
 test("parses #d= URI encoded CSV data", async ({ page }) => {
   const targetUrl = host + "#d=" + encodeURI(sampleCsv)
   // console.log(targetUrl)
@@ -26,6 +31,10 @@ test("parses #d= URI encoded CSV data", async ({ page }) => {
 
   await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
+  // Check document title is set from the parsed data and survives late commits
+  // (CSV data gets no file extension appended, so the title is just "URL Data")
+  await settle(page)
+  await expect(page).toHaveTitle(/^URL Data$/i)
 })
 
 test("parses #d= URI encoded JSON data", async ({ page }) => {
@@ -37,6 +46,9 @@ test("parses #d= URI encoded JSON data", async ({ page }) => {
 
   await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
+  // Check document title is set from the parsed data and survives late commits
+  await settle(page)
+  await expect(page).toHaveTitle(/URL Data\.json/i)
 })
 
 test("parses #d= BASE64/JSON data", async ({ page }) => {
@@ -49,6 +61,9 @@ test("parses #d= BASE64/JSON data", async ({ page }) => {
 
   await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
+  // Check document title is set from the parsed data and survives late commits
+  await settle(page)
+  await expect(page).toHaveTitle(/URL Data\.json/i)
 })
 
 test("parses #c= base64 gzipped data", async ({ page }) => {
@@ -60,6 +75,10 @@ test("parses #c= base64 gzipped data", async ({ page }) => {
 
   await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(wrapper).toHaveScreenshot()
+  // Check document title is set from the parsed data and survives late commits
+  // (CSV data gets no file extension appended, so the title is just "URL Data")
+  await settle(page)
+  await expect(page).toHaveTitle(/^URL Data$/i)
 })
 
 test("parses #p= base64 gzipped minimal project", async ({ page }) => {
@@ -79,6 +98,7 @@ test("parses #p= base64 gzipped minimal project", async ({ page }) => {
 
   await expect(page.getByText(NameWithSpecialCharts)).toBeVisible()
   await expect(page).toHaveScreenshot()
-  // Check document title includes the project name
+  // Check document title includes the project name and survives late commits
+  await settle(page)
   await expect(page).toHaveTitle(/minimal project\.json/i)
 })

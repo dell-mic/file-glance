@@ -96,6 +96,40 @@ export default function Home() {
     null,
   )
 
+  // Keep the tab title in sync with the loaded file. Next.js mounts its
+  // metadata <title> component in a late commit after hydration (observed
+  // ~250ms after load), claiming the SSR <title> element and rewriting
+  // document.title back to the static route title. Any imperative title set
+  // before that moment gets clobbered (this is why the URL parsing path lost
+  // its title, even with delayed re-sets). So assert the title here and keep
+  // enforcing it whenever something rewrites the element behind our back.
+  // When no file is loaded, restore the route's own SSR title (landing pages
+  // have their own SEO titles) rather than assuming the default site title.
+  const routeTitleRef = React.useRef<string | null>(null)
+  React.useEffect(() => {
+    if (routeTitleRef.current === null) {
+      // Runs in the hydration commit's effect phase, before the late metadata
+      // <title> mount rewrites it, so this still holds the SSR route title.
+      routeTitleRef.current = document.title || title
+    }
+    const desiredTitle = currentFile ? currentFile.name : routeTitleRef.current
+    document.title = desiredTitle
+
+    const head = document.head
+    if (!head) return
+    const observer = new MutationObserver(() => {
+      if (document.title !== desiredTitle) {
+        document.title = desiredTitle
+      }
+    })
+    observer.observe(head, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    })
+    return () => observer.disconnect()
+  }, [currentFile])
+
   const [openAccordions, setOpenAccordions] = React.useState<number[]>([])
   const [hiddenColumns, setHiddenColumns] = React.useState<number[]>([])
   // const [columnValueCounts, setColumnValueCounts] = React.useState<
@@ -730,7 +764,6 @@ export default function Home() {
     hideEmptyColumns: boolean,
   ) => {
     if (!file || !headerRow?.length) {
-      document.title = title
       setCurrentFile(null)
       setHeaderRow([])
       setAllRows([])
@@ -748,10 +781,6 @@ export default function Home() {
     setDisplayedDataFiltered(data)
 
     setParsingState("finished")
-
-    // TODO: Hacky workaround; somehow document title gets reset in URL parsing case
-    document.title = file.name
-    setTimeout(() => (document.title = file.name), 200)
 
     // Hide empty columns initially
     // Only scan when the result is actually used (O(rows*cols) otherwise wasted)
