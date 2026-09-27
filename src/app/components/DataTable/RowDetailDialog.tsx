@@ -131,7 +131,10 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
                 className="group grid grid-cols-[12.5rem_1fr] gap-4 border-b border-gray-100 py-1.5 last:border-b-0 even:bg-gray-50/60"
               >
                 <div className="flex items-center gap-1.5 text-sm">
-                  <span className="font-medium text-gray-600 overflow-hidden">
+                  <span
+                    className="font-medium text-gray-600 overflow-hidden"
+                    title={header}
+                  >
                     <MiddleEllipsis>
                       <span>{header}</span>
                     </MiddleEllipsis>
@@ -169,7 +172,7 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
             size="sm"
             onPointerDown={() => copyRow("tsv")}
           >
-            Copy row as TSV (for spreadsheets)
+            Copy as TSV (for spreadsheets)
           </Button>
           <Button
             data-testid="btnRowCopyJson"
@@ -177,7 +180,7 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
             size="sm"
             onPointerDown={() => copyRow("json")}
           >
-            Copy row as JSON
+            Copy as JSON
           </Button>
           <Button
             data-testid="btnRowCopyKv"
@@ -185,7 +188,7 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
             size="sm"
             onPointerDown={() => copyRow("kv")}
           >
-            Copy row as Key: Value
+            Copy as Key: Value
           </Button>
           <span className="ml-auto text-xs text-gray-400 inline-flex items-center gap-1">
             <Kbd>
