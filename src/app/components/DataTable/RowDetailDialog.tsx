@@ -24,6 +24,8 @@ interface RowDetailDialogProps {
   open: boolean
   headerRow: string[]
   row: any[]
+  /** column indexes hidden in the table view */
+  hiddenColumns: number[]
   /** 0-based index within the data rows (header excluded) */
   rowIndex: number
   totalRows: number
@@ -35,12 +37,21 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
   open,
   headerRow,
   row,
+  hiddenColumns,
   rowIndex,
   totalRows,
   onClose,
   onNavigate,
 }) => {
   const { toast } = useToast()
+  const [showHidden, setShowHidden] = React.useState(false)
+
+  // Columns shown in the list and included in the copy actions. Hidden columns
+  // are excluded unless the user opts in via the toggle (default: off).
+  const visibleColumnIndexes = headerRow
+    .map((_header, columnIndex) => columnIndex)
+    .filter((columnIndex) => showHidden || !hiddenColumns.includes(columnIndex))
+
 
   // ArrowUp/Down navigation while the dialog is open (Modal only handles Escape)
   useEffect(() => {
@@ -65,12 +76,14 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
   }
 
   const copyRow = async (format: "tsv" | "json" | "kv") => {
+    const headers = visibleColumnIndexes.map((i) => headerRow[i])
+    const values = visibleColumnIndexes.map((i) => row[i])
     const text =
       format === "tsv"
-        ? rowToTsv(row)
+        ? rowToTsv(values)
         : format === "json"
-          ? rowToJson(headerRow, row)
-          : rowToKeyValuePairs(headerRow, row)
+          ? rowToJson(headers, values)
+          : rowToKeyValuePairs(headers, values)
     await navigator.clipboard.writeText(text)
     toast({
       title: "Row values copied to clipboard",
@@ -120,7 +133,8 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
 
         {/* Form-like layout: label on the left, value on the same line */}
         <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
-          {headerRow.map((header, columnIndex) => {
+          {visibleColumnIndexes.map((columnIndex) => {
+            const header = headerRow[columnIndex]
             const value = row[columnIndex]
             const formatted = valueAsStringFormatted(value)
             const isEmpty = !formatted
@@ -190,6 +204,21 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
           >
             Copy as Key: Value
           </Button>
+          {hiddenColumns.length > 0 && (
+            <label
+              data-testid="toggleRowDetailShowHidden"
+              className="inline-flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none ml-1"
+              title="Show hidden columns in this dialog and include them in the copy actions"
+            >
+              <input
+                type="checkbox"
+                className="size-3.5 accent-gray-600 cursor-pointer"
+                checked={showHidden}
+                onChange={(e) => setShowHidden(e.target.checked)}
+              />
+              Show hidden columns ({hiddenColumns.length})
+            </label>
+          )}
           <span className="ml-auto text-xs text-gray-400 inline-flex items-center gap-1">
             <Kbd>
               <ArrowUpIcon className="size-3 inline-block" />

@@ -508,6 +508,7 @@ export const DataTable = (props: {
           open={rowDetailOpen}
           headerRow={props.headerRow}
           row={rows[selectedRow]}
+          hiddenColumns={hiddenColumns}
           rowIndex={selectedRow - 1}
           totalRows={rows.length - 1}
           onClose={() => setRowDetailOpen(false)}
