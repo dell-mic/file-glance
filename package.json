@@ -58,7 +58,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.6",
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.64.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/bun": "1.4.0",
     "@types/dom-to-image": "2.6.7",

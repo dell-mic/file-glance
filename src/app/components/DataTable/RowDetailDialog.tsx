@@ -52,7 +52,6 @@ const RowDetailDialog: React.FC<RowDetailDialogProps> = ({
     .map((_header, columnIndex) => columnIndex)
     .filter((columnIndex) => showHidden || !hiddenColumns.includes(columnIndex))
 
-
   // ArrowUp/Down navigation while the dialog is open (Modal only handles Escape)
   useEffect(() => {
     if (!open) return
