@@ -48,3 +48,13 @@ Compact guide for AI agents working in this repo. Verify against `package.json` 
 - `window.d.ts` augments `Window._paq` (Matomo analytics). If you reference `_paq`, keep that ambient declaration in sync.
 - `dev:https` uses `next dev --experimental-https` for testing PWA / service-worker / clipboard features that require HTTPS.
 - The site is a PWA; deep-linking data via `#d=` (CSV/JSON, optionally Base64) and `#c=` (Base64 gzip) is part of the public API documented in `README.md` — preserve that behavior when touching routing or the hash parser.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
