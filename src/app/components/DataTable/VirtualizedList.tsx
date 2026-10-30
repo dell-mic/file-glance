@@ -47,13 +47,6 @@ export interface RowProps {
     rowIndex: number
     rowData: any[]
   }) => void
-  onRowDoubleClicked: ({
-    rowIndex,
-    rowData,
-  }: {
-    rowIndex: number
-    rowData: any[]
-  }) => void
 }
 
 export interface StickyRowProps {
@@ -150,7 +143,6 @@ export const Row = ({
   isMetaPressed,
   onValueCellPressed,
   onRowSelected,
-  onRowDoubleClicked,
 }: RowComponentProps<RowProps>) => {
   if (stickyIndices.includes(index)) {
     return null
@@ -307,12 +299,6 @@ export const Row = ({
                           rowData: cloneDeep(rows[index]),
                         })
                       }
-                    }}
-                    onDoubleClick={() => {
-                      onRowDoubleClicked({
-                        rowIndex: index,
-                        rowData: cloneDeep(rows[index]),
-                      })
                     }}
                   >
                     {valueCell}
