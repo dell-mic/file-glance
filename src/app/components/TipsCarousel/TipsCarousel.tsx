@@ -24,8 +24,8 @@ const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
     {
       content: (
         <>
-          Double-click a row (or select it and press <Kbd>Enter</Kbd>) to see
-          its full details and copy it as TSV / JSON / Key: Value.
+          Select a row and press <Kbd>Enter</Kbd> to see its full details and
+          copy it as TSV / JSON / Key: Value.
           <ul>
             <li>
               <Kbd>{modKey}</Kbd> + <Kbd>Enter</Kbd> copies as JSON directly

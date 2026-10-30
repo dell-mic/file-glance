@@ -582,11 +582,6 @@ export const DataTable = (props: {
                 setSelectedRow(rowIndex !== selectedRow ? rowIndex : null)
                 setNavigationDirection(null)
               },
-              onRowDoubleClicked: ({ rowIndex }) => {
-                setSelectedRow(rowIndex)
-                setNavigationDirection(null)
-                setRowDetailOpen(true)
-              },
             }}
             style={{ width: tableWidth, height: height ?? 0 }}
           >
