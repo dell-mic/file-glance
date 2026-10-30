@@ -1857,7 +1857,7 @@ export default function Home() {
                           onPaste={(e) => {
                             e.stopPropagation()
                           }}
-                          placeholder={`Search (${isMac ? "⌘" : "Ctrl"}+K)`}
+                          placeholder={`Search (${isMac ? "⌘K" : "Ctrl K"})`}
                         ></input>
                         <div className="absolute right-1.5 flex gap-0.5">
                           <Toggle

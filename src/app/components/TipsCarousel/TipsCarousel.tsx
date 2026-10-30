@@ -28,7 +28,7 @@ const TipsCarousel: React.FC<TipsCarouselProps> = ({ tips: propTips }) => {
           its full details and copy it as TSV / JSON / Key: Value.
           <ul>
             <li>
-              <Kbd>{modKey}</Kbd> + <Kbd>Enter</Kbd> copies as JSON directly
+              <Kbd>{modKey}</Kbd> <Kbd>Enter</Kbd> copies as JSON directly
             </li>
           </ul>
         </>
