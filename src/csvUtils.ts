@@ -1,7 +1,7 @@
 import * as jschardet from "jschardet"
 import { maxBy } from "lodash-es"
 
-import { flattenObject, tryParseJSONObject } from "@/utils"
+import { flattenObject, tryParseJSONObject, toDecoderLabel } from "@/utils"
 
 /**
  * Pure, dependency-free CSV / line-separated-JSON parsing utilities.
@@ -536,7 +536,7 @@ function detectEncoding(firstChunk: Uint8Array): string {
   // @ts-ignore: ts does not know about Buffer coming from next.js polyfill
   const detected = jschardet.detect(Buffer.from(firstChunk))
   // console.log("file encoding: ", detected)
-  return detected?.encoding || "utf-8"
+  return toDecoderLabel(detected?.encoding)
 }
 
 function countNewlines(text: string, cap: number): number {

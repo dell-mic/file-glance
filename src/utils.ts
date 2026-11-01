@@ -544,12 +544,53 @@ export function generateSampleData(numRows: number): {
   return { data, headerRow }
 }
 
+// jschardet 4 (chardet names) returns many strings that are not WHATWG
+// TextDecoder labels. Exact equivalents are mapped; encodings without a
+// WHATWG decoder (DOS/EBCDIC codepages, utf-7/32, hz, johab, mac-greek/…)
+// fall back to utf-8 below. shortcut: no table-based decoders for those, add
+// one if users report mojibake for legacy DOS/EBCDIC files.
+const DECODER_LABEL_FIX: Record<string, string> = {
+  "utf-8-sig": "utf-8",
+  // shortcut: chardet names cp437 (and no TextDecoder label exists for it);
+  // windows-1252 also fixes misdetection of tiny windows-1252 buffers
+  cp437: "windows-1252",
+  big5hkscs: "big5",
+  cp874: "windows-874",
+  cp932: "shift_jis",
+  cp949: "euc-kr",
+  euc_kr: "euc-kr",
+  "euc-jis-2004": "euc-jp",
+  euc_jis_2004: "euc-jp",
+  "iso2022-jp-2": "iso-2022-jp",
+  "iso2022-jp-2004": "iso-2022-jp",
+  "iso2022-jp-ext": "iso-2022-jp",
+  iso2022_jp_2: "iso-2022-jp",
+  iso2022_jp_2004: "iso-2022-jp",
+  iso2022_jp_ext: "iso-2022-jp",
+  iso2022_kr: "iso-2022-kr",
+  shift_jis_2004: "shift_jis",
+  "tis-620": "windows-874",
+  "utf-16-be": "utf-16be",
+  "utf-16-le": "utf-16le",
+  "mac-roman": "macintosh",
+  "mac-cyrillic": "x-mac-cyrillic",
+}
+export function toDecoderLabel(name?: string | null): string {
+  const label = DECODER_LABEL_FIX[name?.toLowerCase() ?? ""] ?? name ?? "utf-8"
+  try {
+    new TextDecoder(label)
+    return label
+  } catch {
+    return "utf-8"
+  }
+}
+
 export async function readFileToString(file: File): Promise<string> {
   return file.arrayBuffer().then((v) => {
     // @ts-ignore: ts does not know about Buffer coming from next.js polyfill
     const fileEncoding = jschardet.detect(Buffer.from(new Uint8Array(v)))
     console.log("file encoding: ", fileEncoding)
-    const enc = new TextDecoder(fileEncoding?.encoding || "utf-8")
+    const enc = new TextDecoder(toDecoderLabel(fileEncoding?.encoding))
     return enc.decode(v)
   })
 }
