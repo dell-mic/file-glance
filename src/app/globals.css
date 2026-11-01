@@ -2,7 +2,77 @@
 
 @config '../../tailwind.config.ts';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --breakpoint-3xl: 124rem;
   --breakpoint-4xl: 190rem;
+}
+
+/*
+ * Dark mode: the codebase styles everything with Tailwind's default palette
+ * utilities (text-gray-500, bg-white, ...), which compile to CSS variables.
+ * Overriding those variables under .dark gives the whole UI a dark scheme
+ * without touching any component class. Light backgrounds become dark
+ * surfaces, dark text becomes light, and mid-tones used as secondary text are
+ * brightened so the (rather small) fonts stay readable on dark surfaces.
+ */
+html.dark {
+  color-scheme: dark;
+  /* Body background is the browser default (not a utility), so set it here */
+  background-color: #14171c;
+  color: #f9fafb;
+
+  /* Surfaces: white/black and the background end of the gray scale */
+  --color-white: #14171c;
+  --color-black: #f9fafb;
+  --color-gray-50: #181c23;
+  --color-gray-100: #1d212a;
+  --color-gray-200: #2a2f39;
+  --color-gray-300: #3f4550;
+
+  /* Text: gray-400 is already readable on dark, mid-tones brightened */
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #aab1bb;
+  --color-gray-600: #c3c8d0;
+  --color-gray-700: #d8dce1;
+  --color-gray-800: #e6e8ec;
+  --color-gray-900: #f2f3f5;
+  --color-gray-950: #fafafa;
+
+  /* Accent tints: dark tints for light backgrounds, bright tones for text */
+  --color-red-100: #3a1a1e;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+  --color-red-900: #fee2e2;
+  --color-green-100: #16301f;
+  --color-green-600: #4ade80;
+  --color-green-800: #86efac;
+  --color-blue-100: #1b2a45;
+  --color-blue-500: #60a5fa;
+  --color-blue-600: #93c5fd;
+  --color-blue-800: #bfdbfe;
+  --color-blue-900: #dbeafe;
+  --color-yellow-50: #2b2413;
+  --color-yellow-200: #57491d;
+  --color-yellow-800: #fde68a;
+  --color-purple-100: #2c2144;
+  --color-purple-800: #d8b4fe;
+  --color-purple-950: #e9d5ff;
+  --color-indigo-900: #c7d2fe;
+  --color-cyan-900: #a5f3fc;
+}
+
+/* Recharts axis tick labels default to #666 — too dark on dark surfaces */
+html.dark .recharts-cartesian-axis-tick text {
+  fill: #9ca3af;
+}
+
+/* Recharts' default tooltip hardcodes a white background inline
+   (DefaultTooltipContent contentStyle); the label text inherits the light
+   html.dark color and would be unreadable on it. */
+html.dark .recharts-default-tooltip {
+  background-color: #1d212a !important;
+  border-color: #3f4550 !important;
 }

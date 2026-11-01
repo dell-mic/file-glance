@@ -41,11 +41,8 @@ import {
   YAxis,
   Tooltip,
 } from "recharts"
-import {
-  CHART_SERIES_COLORS,
-  CHART_LABELS_COLORS,
-  EMPTY_LABEL,
-} from "./DataChart/chartUtils"
+import { EMPTY_LABEL, getChartColors } from "./DataChart/chartUtils"
+import useDarkMode from "@/hooks/useDarkMode"
 
 import { ColumnInfos } from "./ValueInspector"
 import {
@@ -73,6 +70,8 @@ export const PivotChart: React.FC<PivotChartProps> = ({
   columnInfos,
   data,
 }) => {
+  const dark = useDarkMode()
+  const colors = useMemo(() => getChartColors(dark), [dark])
   const exportButtonRef = useRef<HTMLButtonElement>(null)
   const [popoverAnchorElement, setPopoverAnchorElement] =
     useState<HTMLElement | null>(null)
@@ -204,11 +203,11 @@ export const PivotChart: React.FC<PivotChartProps> = ({
         d.name,
         {
           label: d.name,
-          color: CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length],
+          color: colors.series[i % colors.series.length],
         },
       ]),
     )
-  }, [pieData])
+  }, [pieData, colors])
 
   const chartTitle = `${aggregation} of ${yField} by ${xField}`
 
@@ -475,6 +474,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                         <XAxis dataKey={xField} />
                         <YAxis />
                         <Tooltip
+                          cursor={false}
                           formatter={(value: any, name: any) => [value, name]}
                         />
                         {/* One <Bar> per yField value */}
@@ -488,11 +488,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                                 dataKey={String(yVal)}
                                 name={String(yVal)}
                                 // hide={}
-                                fill={
-                                  CHART_SERIES_COLORS[
-                                    i % CHART_SERIES_COLORS.length
-                                  ]
-                                }
+                                fill={colors.series[i % colors.series.length]}
                               />
                             )
                           })}
@@ -507,6 +503,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                     <XAxis dataKey={xField} />
                     <YAxis />
                     <Tooltip
+                      cursor={false}
                       formatter={(value: any) => [
                         value.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
@@ -519,9 +516,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                       {chartData.map((entry, i) => (
                         <Cell
                           key={`cell-${i}`}
-                          fill={
-                            CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]
-                          }
+                          fill={colors.series[i % colors.series.length]}
                         />
                       ))}
                     </Bar>
@@ -535,6 +530,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                   <XAxis dataKey={xField} />
                   <YAxis />
                   <Tooltip
+                    cursor={false}
                     formatter={(value: any) => [
                       value.toLocaleString(undefined, {
                         maximumFractionDigits: 2,
@@ -546,7 +542,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                   <Line
                     type="monotone"
                     dataKey={yField}
-                    stroke={CHART_SERIES_COLORS[0]}
+                    stroke={colors.series[0]}
                     strokeWidth={3}
                     dot
                   />
@@ -563,9 +559,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                       const { index, points } = props
                       if (points && points.length === 2) {
                         const color =
-                          CHART_SERIES_COLORS[
-                            index % CHART_SERIES_COLORS.length
-                          ]
+                          colors.series[index % colors.series.length]
                         const [start, end] = points
                         const dx = end.x - start.x
                         const dy = end.y - start.y
@@ -594,8 +588,7 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                       const radius = outerRadius + 18
                       const x = cx + radius * Math.cos(-midAngle * RADIAN)
                       const y = cy + radius * Math.sin(-midAngle * RADIAN)
-                      const color =
-                        CHART_LABELS_COLORS[index % CHART_LABELS_COLORS.length]
+                      const color = colors.labels[index % colors.labels.length]
                       return (
                         <text
                           x={x}
@@ -612,13 +605,11 @@ export const PivotChart: React.FC<PivotChartProps> = ({
                     {pieData.map((entry, i) => (
                       <Cell
                         key={`cell-${i}`}
-                        fill={
-                          CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length]
-                        }
+                        fill={colors.series[i % colors.series.length]}
                       />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip cursor={false} />
                 </PieChart>
               ) : (
                 <div />

@@ -31,6 +31,36 @@ export const ChartAnimationDuration = 250
 
 export const EMPTY_LABEL = "(empty)"
 
+/**
+ * Mode-aware chart palette. The pastel series colors read well on both light
+ * and dark surfaces. In dark mode the light "Other"/"(empty)" neutrals get
+ * dark tints, and slice labels use the series colors directly instead of the
+ * darkened label colors (which would be unreadable on dark surfaces).
+ */
+export function getChartColors(dark: boolean) {
+  if (!dark) {
+    return {
+      series: CHART_SERIES_COLORS,
+      labels: CHART_LABELS_COLORS,
+      others: CHART_COLOR_OTHERS,
+      othersLabel: CHART_LABEL_OTHERS,
+      empty: CHART_COLOR_EMPTY,
+      emptyLabel: CHART_LABEL_EMPTY,
+    }
+  }
+  // Fills are deepened versions of the pastels (pastels read as neon on dark
+  // surfaces); labels stay at the original brighter tones for readability.
+  const series = CHART_SERIES_COLORS.map((c) => darkenHexColor(c, 0.15))
+  return {
+    series,
+    labels: CHART_SERIES_COLORS,
+    others: "#3a3f47",
+    othersLabel: "#9ca3af",
+    empty: "#4a4f58",
+    emptyLabel: "#9ca3af",
+  }
+}
+
 export function darkenHexColor(hex: string, percent: number): string {
   // Remove hash if present
   hex = hex.replace(/^#/, "")

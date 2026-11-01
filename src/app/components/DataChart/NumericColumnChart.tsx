@@ -10,7 +10,8 @@ import {
   CardFooter,
 } from "../../../components/ui/card"
 import { ColumnInfos } from "../ValueInspector"
-import { CHART_SERIES_COLORS, ChartAnimationDuration } from "./chartUtils"
+import { ChartAnimationDuration, getChartColors } from "./chartUtils"
+import useDarkMode from "@/hooks/useDarkMode"
 
 interface NumericColumnChartProps {
   columnInfo: ColumnInfos
@@ -86,6 +87,7 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
             margin={{ top: 0, right: 20, left: 20, bottom: 0 }}
           >
             <RechartsTooltip
+              cursor={false}
               labelFormatter={(label, props) => {
                 const name = props[0]?.payload.name
                 if (name) {
@@ -103,7 +105,7 @@ export const NumericColumnChart: React.FC<NumericColumnChartProps> = ({
             />
             <Bar
               dataKey="count"
-              fill={CHART_SERIES_COLORS[0]}
+              fill={getChartColors(useDarkMode()).series[0]}
               label={false}
               animationDuration={ChartAnimationDuration}
             />

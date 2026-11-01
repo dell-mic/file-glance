@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import React from "react"
 import "./styles.css"
 import Link from "next/link"
+import { ThemeToggle } from "../components/ThemeToggle"
 
 // This file is a Next.js app router page.
 // See: https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts#pages
@@ -38,6 +39,7 @@ export default function Page() {
         </svg>
         Back
       </Link>
+      <ThemeToggle className="fixed top-3 right-3" />
       <div className="max-w-2xl mx-auto px-4 mb-6">
         <h1 className="mt-4">About FileGlance</h1>
         <p>{longDescription}</p>

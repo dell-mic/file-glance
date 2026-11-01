@@ -1,9 +1,11 @@
 "use client"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { uniq } from "lodash-es"
-import type { BeforeMount, OnMount } from "@monaco-editor/react"
+import type { OnMount } from "@monaco-editor/react"
 import type { Position } from "monaco-editor"
 import MonacoEditor from "@/components/ui/MonacoEditor"
+import { defineThemes, getEditorTheme } from "@/components/ui/monacoThemes"
+import useDarkMode from "@/hooks/useDarkMode"
 import { cn } from "@/lib/utils"
 import { tryParseJSONObject } from "@/utils"
 
@@ -30,25 +32,7 @@ interface CodeEditorProps {
   onRunShortcut?: () => void
 }
 
-const GRAY_THEME = "codeEditorGray"
-const LIGHT_THEME = "codeEditorLight"
 const MIN_HEIGHT = 80 // px, matches the min-h-20 of the dialog inputs
-
-const defineThemes: BeforeMount = (monaco) => {
-  monaco.editor.defineTheme(GRAY_THEME, {
-    base: "vs",
-    inherit: true,
-    rules: [],
-    // Tailwind gray-100
-    colors: { "editor.background": "#F3F4F6" },
-  })
-  monaco.editor.defineTheme(LIGHT_THEME, {
-    base: "vs",
-    inherit: true,
-    rules: [],
-    colors: { "editor.background": "#FFFFFF" },
-  })
-}
 
 /**
  * Minimal Monaco-based code input: syntax highlighting and autocomplete, but
@@ -72,6 +56,7 @@ function CodeEditor({
   extraLib,
   onRunShortcut,
 }: CodeEditorProps) {
+  const dark = useDarkMode()
   // History state lives in refs: monaco key bindings are registered once on
   // mount and must always see the latest values.
   const historyRef = useRef<string[]>([])
@@ -293,7 +278,7 @@ function CodeEditor({
         language="javascript"
         value={value}
         onChange={handleChange}
-        theme={grayBackground ? GRAY_THEME : LIGHT_THEME}
+        theme={getEditorTheme(grayBackground, dark)}
         beforeMount={defineThemes}
         onMount={handleMount}
         width="100%"

@@ -10,6 +10,8 @@ import "./FreeQuery.css"
 import { toast } from "@/hooks/use-toast"
 import CodeEditor from "@/components/ui/CodeEditor"
 import MonacoEditor from "@/components/ui/MonacoEditor"
+import { defineThemes, getEditorTheme } from "@/components/ui/monacoThemes"
+import useDarkMode from "@/hooks/useDarkMode"
 
 interface FreeQueryProps {
   data: any[][]
@@ -25,6 +27,7 @@ declare var headers: string[]
 }
 
 export function FreeQuery({ data, headerRow }: FreeQueryProps) {
+  const dark = useDarkMode()
   const [query, setQuery] = React.useState<string>("")
   const [output, setOutput] = React.useState<string>("")
   const [outputType, setOutputType] = React.useState<string>("")
@@ -154,6 +157,10 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
                 width="100%"
                 className="flex-1 font-mono text-sm"
                 wrapperProps={{ "data-testid": "queryOutput" }}
+                // An explicit theme is required: without one this editor would
+                // reset monaco's global theme (light) on first Run Query
+                theme={getEditorTheme(false, dark)}
+                beforeMount={defineThemes}
                 language={outputType === "object" ? "json" : "text"}
                 value={output}
                 options={{

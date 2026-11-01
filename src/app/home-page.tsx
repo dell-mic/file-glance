@@ -13,6 +13,7 @@ import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { FileChooser } from "./components/FileChooser"
 import FilterDialog from "./components/FilterDialog"
 import FilterExplanation from "./components/FilterExplanation"
+import { ThemeToggle } from "./components/ThemeToggle"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { describeFilters } from "@/filterDescription"
 import { openCSVStream, parseCSV } from "@/csvUtils"
@@ -1645,7 +1646,7 @@ export default function Home() {
     <TooltipProvider delayDuration={500} skipDelayDuration={150}>
       <div
         ref={drop}
-        className="h-screen p-2"
+        className="h-screen p-2 relative"
         // onDragEnter={handleDragEnter}
         // onDragOver={handleDragOver}
         // onDrop={handleDrop}
@@ -1664,6 +1665,7 @@ export default function Home() {
             case "initial":
               return (
                 <div>
+                  <ThemeToggle className="absolute top-2.5 right-2.5" />
                   <h1 className="text-6xl text-gray-700 m-4">FileGlance</h1>
                   <div className="text-2xl text-gray-500 m-4">
                     {description}
@@ -1967,6 +1969,7 @@ export default function Home() {
                           horizontal: "left",
                         }}
                       ></MenuPopover>
+                      <ThemeToggle />
                     </div>
                   </div>
                   <div

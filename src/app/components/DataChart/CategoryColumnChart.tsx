@@ -11,16 +11,12 @@ import {
 } from "../../../components/ui/card"
 import { ColumnInfos } from "../ValueInspector"
 import {
-  CHART_COLOR_EMPTY,
-  CHART_COLOR_OTHERS,
-  CHART_LABEL_EMPTY,
-  CHART_LABEL_OTHERS,
-  CHART_LABELS_COLORS,
-  CHART_SERIES_COLORS,
   ChartAnimationDuration,
   EMPTY_LABEL,
+  getChartColors,
 } from "./chartUtils"
 import { showAsEmpty } from "@/utils"
+import useDarkMode from "@/hooks/useDarkMode"
 import { buildCategoryChartData } from "@/stats"
 
 interface CategoryColumnChartProps {
@@ -44,6 +40,8 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
     groupOtherValues,
   )
 
+  const colors = getChartColors(useDarkMode())
+
   // Show only for bigger values to avoid label overlap, at always at least one
   const showLabelFor = data.map((_, i) =>
     i === 0 ? true : _.percentage >= MinSharePctForLabel,
@@ -59,14 +57,14 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
   ) => {
     // console.log(columnType, valueName, seriesIndex)
 
-    const ColorSeries = forLabel ? CHART_LABELS_COLORS : CHART_SERIES_COLORS
+    const ColorSeries = forLabel ? colors.labels : colors.series
 
     // Special coloring for Other & "(empty)"
     if (valueName === "Other")
-      return forLabel ? CHART_LABEL_OTHERS : CHART_COLOR_OTHERS
+      return forLabel ? colors.othersLabel : colors.others
 
     if (showAsEmpty(valueName))
-      return forLabel ? CHART_LABEL_EMPTY : CHART_COLOR_EMPTY
+      return forLabel ? colors.emptyLabel : colors.empty
 
     if (columnType === "Boolean") {
       if (valueName === "true") return ColorSeries[ColorSeries.length - 2]
@@ -173,6 +171,7 @@ export const CategoryColumnChart: React.FC<CategoryColumnChartProps> = ({
               ))}
             </Pie>
             <ChartTooltip
+              cursor={false}
               formatter={(
                 value: any,
                 name: any,
