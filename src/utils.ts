@@ -10,6 +10,7 @@ import {
   orderBy,
 } from "lodash-es"
 import { ColumnInfos } from "./app/components/ValueInspector"
+import { postProcessCode } from "./transformerCode"
 
 // Cache a default NumberFormat instance for repeated use instead of using toLocaleString(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
 const defaultNumberFormatter = new Intl.NumberFormat()
@@ -761,44 +762,47 @@ export const saveFile = async (blob: Blob, name: string) => {
 
 /**
  * Simple post processing to allow code snippets without explicit return statement.
- * Simulates behavior of language like scala where the last expression is the return value (in a very naively implemented manner, though)
- * @param inputCode
- * @returns
+ * ... (moved to transformerCode.ts)
  */
-export function postProcessCode(inputCode: string): string {
-  let outputCode
-
-  // Split into lines, trim each line
-  const lines = inputCode.split("\n").map((line) => line.trim())
-
-  // Remove empty lines at the start
-  while (lines.length > 0 && lines[0] === "") {
-    lines.shift()
-  }
-  // Remove empty lines at the end
-  while (lines.length > 0 && lines[lines.length - 1] === "") {
-    lines.pop()
-  }
-
-  outputCode = lines.join("\n")
-
-  // Check if the query contains a return statement (not in a comment)
-  const codeWithoutComments = lines
-    .filter((line) => !line.trim().startsWith("//"))
-    .join("\n")
-  const hasReturn = /(^|[^\w])return\b/.test(codeWithoutComments)
-  if (!hasReturn && lines.length > 0) {
-    // Add 'return ' to the last line if missing
-    lines[lines.length - 1] = "return " + lines[lines.length - 1]
-    outputCode = lines.join("\n")
-  }
-
-  return outputCode
-}
+export { postProcessCode, compileTransformerCode } from "./transformerCode"
 
 function hasDuplicates(arr: any[]): boolean {
   arr = arr.filter(Boolean)
   return new Set(arr).size !== arr.length
+}
+
+export function compileFilterCode(
+  code: string,
+  sampleRow: any[],
+): {
+  filter: Function | null
+  error: string | null
+} {
+  let filter = null
+  let error = null
+  try {
+    filter = new Function("row", "rowIndex", "cache", postProcessCode(code))
+  } catch (err: any) {
+    error = err.toString()
+  }
+
+  if (!error && filter) {
+    try {
+      const result = applyFilterFunction(sampleRow, 0, filter, {})
+      if (typeof result !== "boolean") {
+        error = "Filter function must return a boolean value"
+        filter = null
+      }
+    } catch (err: any) {
+      error = err.toString()
+      filter = null
+    }
+  }
+
+  return {
+    filter,
+    error,
+  }
 }
 
 export function generateHeaderRow(
@@ -899,66 +903,6 @@ function fromBase64(base64: string): string {
     bytes[i] = binary.charCodeAt(i)
   }
   return new TextDecoder().decode(bytes) // UTF-8 decode
-}
-
-export function compileTransformerCode(code: string): {
-  transformer: Function | null
-  error: string | null
-} {
-  let transformer = null
-  let error = null
-  try {
-    transformer = new Function(
-      "value",
-      "columnIndex",
-      "rowIndex",
-      "headerName",
-      "allRows",
-      "originalValue",
-      postProcessCode(code),
-    )
-  } catch (err: any) {
-    error = err.toString()
-  }
-
-  return {
-    transformer,
-    error,
-  }
-}
-
-export function compileFilterCode(
-  code: string,
-  sampleRow: any[],
-): {
-  filter: Function | null
-  error: string | null
-} {
-  let filter = null
-  let error = null
-  try {
-    filter = new Function("row", "rowIndex", "cache", postProcessCode(code))
-  } catch (err: any) {
-    error = err.toString()
-  }
-
-  if (!error && filter) {
-    try {
-      const result = applyFilterFunction(sampleRow, 0, filter, {})
-      if (typeof result !== "boolean") {
-        error = "Filter function must return a boolean value"
-        filter = null
-      }
-    } catch (err: any) {
-      error = err.toString()
-      filter = null
-    }
-  }
-
-  return {
-    filter,
-    error,
-  }
 }
 
 export function applyFilterFunction(

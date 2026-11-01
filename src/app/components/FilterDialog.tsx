@@ -16,6 +16,13 @@ import {
   renderValuePreview,
 } from "@/utils"
 import CodeEditor from "@/components/ui/CodeEditor"
+import AiCodeRow from "@/app/components/AiCodeRow"
+import {
+  buildFilterMessages,
+  formatSampleRow,
+  type FilterAiContext,
+} from "@/ai/filterPrompt"
+import { formatColumnForPrompt } from "@/ai/transformerPrompt"
 import type { ColumnInfos } from "@/app/components/ValueInspector"
 
 interface FilterDialogProps {
@@ -63,6 +70,27 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
     () => buildFilterParamsLib(headerRow, columnValueCounts),
     [headerRow, columnValueCounts],
   )
+
+  // Context for on-device AI filter generation, capped in size
+  const aiContext = React.useMemo<FilterAiContext>(() => {
+    const maxColumns = 40
+    if (headerRow.length > maxColumns) {
+      console.warn(
+        `[AI] Filter context capped: file has ${headerRow.length} columns, using first ${maxColumns}`,
+      )
+    }
+    return {
+      columns: headerRow
+        .slice(0, maxColumns)
+        .map((name) =>
+          formatColumnForPrompt(
+            name,
+            columnValueCounts.find((c) => c.columnName === name)?.columnType,
+          ),
+        ),
+      sampleRow: formatSampleRow(displayedData[0] ?? [], headerRow),
+    }
+  }, [headerRow, columnValueCounts, displayedData])
 
   // Generate example filter code based on columnValueCounts
   let exampleFilterFunctionCode = ""
@@ -189,6 +217,9 @@ return rowIndex < ${topX}`)
     return () => clearTimeout(handler)
   }, [filterFunctionCode, displayedData, headerRow])
 
+  const validationError =
+    filterValidationResult.error ?? filterValidationResult.rowError
+
   return (
     <Modal
       id="filterDialog"
@@ -218,6 +249,19 @@ return rowIndex < ${topX}`)
         >
           {exampleFilterFunctionCode}
         </pre>
+        <AiCodeRow
+          idPrefix="filterAi"
+          placeholder="Describe the filter for AI…"
+          buildMessages={(instruction, previous) =>
+            buildFilterMessages(aiContext, instruction, previous)
+          }
+          onCodeChange={onFilterCodeChange}
+          fix={
+            filterFunctionCode && validationError
+              ? { code: filterFunctionCode, error: validationError }
+              : null
+          }
+        />
         <CodeEditor
           data-testid={`filterCodeInput`}
           className="w-full min-h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm my-2"

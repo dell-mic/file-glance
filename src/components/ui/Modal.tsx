@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 
+import { cn } from "@/lib/utils"
+
 import "./Modal.css"
 
 interface ContainerComponentPops {
@@ -13,6 +15,8 @@ interface ModalProps extends ContainerComponentPops {
   closeOnEsc?: boolean
   onClose: () => void
   open?: boolean
+  /** Extra classes for the dialog box, e.g. `max-w-md` to narrow it */
+  className?: string
 }
 
 const Frame: React.FC<ModalProps> = ({
@@ -22,6 +26,7 @@ const Frame: React.FC<ModalProps> = ({
   closeOnEsc = true,
   onClose,
   open = true,
+  className,
 }) => {
   useEffect(() => {
     const onKeyPress = (e: KeyboardEvent) => {
@@ -48,7 +53,10 @@ const Frame: React.FC<ModalProps> = ({
     >
       {/* container: `max-w-sm` to make it reasonably narrow, `mx-auto` to center horizontally */}
       <div
-        className="relative w-full bg-white max-w-4xl m-auto p-2 rounded-md shadow-xl roll-out overflow-hidden"
+        className={cn(
+          "relative w-full bg-white max-w-4xl m-auto p-2 rounded-md shadow-xl roll-out overflow-hidden",
+          className,
+        )}
         ref={container}
       >
         {/* contents */}

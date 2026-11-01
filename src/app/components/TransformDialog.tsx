@@ -15,6 +15,11 @@ import { Input } from "@/components/ui/input"
 import { Modal } from "../../components/ui/Modal"
 import { renderValuePreview, tsTypeForColumnType } from "@/utils"
 import CodeEditor from "@/components/ui/CodeEditor"
+import AiCodeRow from "@/app/components/AiCodeRow"
+import {
+  buildTransformerMessages,
+  type TransformerAiContext,
+} from "@/ai/transformerPrompt"
 
 interface TransformerValidation {
   compilationError: string | null
@@ -26,6 +31,8 @@ interface TransformerValidation {
 }
 
 interface TransformDialogProps {
+  /** Context for on-device AI generation; null/undefined hides the AI row */
+  aiContext?: TransformerAiContext | null
   open: boolean
   headerName: string
   /** columnType (constructor name) of the target column, for autocomplete */
@@ -64,6 +71,7 @@ declare var allRows: any[][]
 }
 
 const TransformDialog: React.FC<TransformDialogProps> = ({
+  aiContext,
   open,
   headerName,
   columnType,
@@ -81,6 +89,12 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
     () => buildTransformerParamsLib(columnType),
     [columnType],
   )
+
+  // --- On-device AI generation ---
+  const validationError =
+    transformerValidation?.compilationError ??
+    transformerValidation?.sampleResults.find((s) => s.error)?.error ??
+    null
 
   const handleTransformerSelected = (value: string) => {
     switch (value) {
@@ -126,167 +140,192 @@ return value.split(new RegExp(\`[\${DELIMITERS}]\\\\s*\`))`,
   }
 
   return (
-    <Modal
-      id="columnTransformDialog"
-      closeOnClickOutside={false}
-      open={open}
-      onClose={onClose}
-    >
-      <div>
-        <h2 className="m-auto text-2xl text-gray-700 mb-4">
-          Transform Column: {headerName}
-        </h2>
+    <>
+      <Modal
+        id="columnTransformDialog"
+        closeOnClickOutside={false}
+        open={open}
+        onClose={onClose}
+      >
+        <div>
+          <h2 className="m-auto text-2xl text-gray-700 mb-4">
+            Transform Column: {headerName}
+          </h2>
 
-        <div className="mb-4">
-          <Label>Apply transformation to</Label>
-          <RadioGroup
-            value={targetType}
-            onValueChange={onTargetTypeChange}
-            className="flex items-center min-h-9 space-x-4"
-          >
-            <div className="flex flex-row items-center space-x-2">
-              <RadioGroupItem
-                value="current"
-                id="current"
-                data-testid={`transform-current`}
-              />
-              <Label htmlFor="current">Current column</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem
-                value="new"
-                id="new"
-                data-testid={`transform-new`}
-              />
-              <Label htmlFor="new">
-                New column{targetType === "new" ? ":" : ""}
-              </Label>
-              {targetType === "new" && (
-                <div>
-                  <Input
-                    id="newColumnName"
-                    data-testid={`transform-newColumnName`}
-                    value={newColName}
-                    onChange={(e) => onNewColNameChange(e.target.value)}
-                    placeholder="e.g. name_cleaned"
-                    required
-                  />
-                </div>
-              )}
-            </div>
-          </RadioGroup>
-        </div>
+          <div className="mb-4">
+            <Label>Apply transformation to</Label>
+            <RadioGroup
+              value={targetType}
+              onValueChange={onTargetTypeChange}
+              className="flex items-center min-h-9 space-x-4"
+            >
+              <div className="flex flex-row items-center space-x-2">
+                <RadioGroupItem
+                  value="current"
+                  id="current"
+                  data-testid={`transform-current`}
+                />
+                <Label htmlFor="current">Current column</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem
+                  value="new"
+                  id="new"
+                  data-testid={`transform-new`}
+                />
+                <Label htmlFor="new">
+                  New column{targetType === "new" ? ":" : ""}
+                </Label>
+                {targetType === "new" && (
+                  <div>
+                    <Input
+                      id="newColumnName"
+                      data-testid={`transform-newColumnName`}
+                      value={newColName}
+                      onChange={(e) => onNewColNameChange(e.target.value)}
+                      placeholder="e.g. name_cleaned"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            </RadioGroup>
+          </div>
 
-        <Select onValueChange={handleTransformerSelected}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Transformer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="trim">Trim</SelectItem>
-            <SelectItem value="uppercase">Uppercase</SelectItem>
-            <SelectItem value="lowercase">Lowercase</SelectItem>
-            <SelectItem value="split">Split</SelectItem>
-            <SelectItem value="emaildomain">Domain from Email</SelectItem>
-            <SelectSeparator />
-            <SelectItem value="parse_int">Parse Integer</SelectItem>
-            <SelectItem value="parse_float">Parse Float</SelectItem>
-            <SelectItem value="parse_boolean">Parse Boolean</SelectItem>
-            <SelectItem value="parse_unix_ts">Parse UNIX Timestamp</SelectItem>
-            <SelectSeparator />
-            <SelectItem value="custom">Custom</SelectItem>
-          </SelectContent>
-        </Select>
-        <pre
-          data-testid={`transformCodeHints`}
-          className="w-full font-mono text-sm p-[5px] whitespace-pre-wrap"
-        >
-          {
-            "// (value, columnIndex, rowIndex, headerName, allRows, originalValue) =>"
-          }
-        </pre>
-        <CodeEditor
-          data-testid={`transformCodeInput`}
-          className="w-full min-h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm mb-2"
-          value={transformerFunctionCode}
-          onValueChange={onTransformerCodeChange}
-          localStorageHistoryKey={TransformerFunctionCodeHistoryKey}
-          maxHistoryEntries={MaxHistoryEntries}
-          grayBackground
-          path="inmemory://model/transformer.js"
-          extraLib={transformerParamsLib}
-        />
-        <div className="h-52 w-full mt-4">
-          <h3 className="text-xl">Preview</h3>
-          {transformerValidation?.compilationError && (
-            <div className="text-red-600 font-medium my-10 text-center">
-              Compilation Error: {transformerValidation?.compilationError}
-            </div>
-          )}
-
-          <table
-            className="w-full border-collapse table-fixed text-sm"
-            style={{
-              display: transformerValidation?.compilationError
-                ? "none"
-                : "table",
-            }}
-          >
-            <thead>
-              <tr>
-                <th className="border border-gray-300 px-2 py-1 text-left">
-                  Value
-                </th>
-                <th className="border border-gray-300 px-2 py-1 text-left">
-                  Result
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {transformerValidation?.sampleResults.map((sample, index) => {
-                const sampleRender = renderValuePreview(sample.value)
-
-                const resultRender = sample.error
-                  ? sample.error
-                  : renderValuePreview(sample.result)
-                return (
-                  <tr
-                    key={index}
-                    className="even:bg-gray-100 font-mono whitespace-nowrap"
-                  >
-                    <td
-                      className="border border-gray-300 px-2 py-1 overflow-hidden"
-                      title={sampleRender}
-                    >
-                      {sampleRender}
-                    </td>
-                    <td
-                      className={`border border-gray-300 px-2 py-1 overflow-hidden ${
-                        sample.error ? "text-red-600" : "text-green-600"
-                      }`}
-                      title={resultRender}
-                    >
-                      {resultRender}
-                    </td>
-                  </tr>
+          <Select onValueChange={handleTransformerSelected}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Transformer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="trim">Trim</SelectItem>
+              <SelectItem value="uppercase">Uppercase</SelectItem>
+              <SelectItem value="lowercase">Lowercase</SelectItem>
+              <SelectItem value="split">Split</SelectItem>
+              <SelectItem value="emaildomain">Domain from Email</SelectItem>
+              <SelectSeparator />
+              <SelectItem value="parse_int">Parse Integer</SelectItem>
+              <SelectItem value="parse_float">Parse Float</SelectItem>
+              <SelectItem value="parse_boolean">Parse Boolean</SelectItem>
+              <SelectItem value="parse_unix_ts">
+                Parse UNIX Timestamp
+              </SelectItem>
+              <SelectSeparator />
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          {aiContext && (
+            <AiCodeRow
+              idPrefix="transformAi"
+              placeholder="Describe the transformation for AI…"
+              buildMessages={(instruction, previous) =>
+                buildTransformerMessages(
+                  aiContext,
+                  headerName,
+                  columnType,
+                  instruction,
+                  previous,
                 )
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex justify-end gap-4 mt-4">
-          <Button
-            data-testid="btnTransfomCancel"
-            variant="ghost"
-            onPointerDown={onClose}
+              }
+              onCodeChange={onTransformerCodeChange}
+              fix={
+                transformerFunctionCode && validationError
+                  ? { code: transformerFunctionCode, error: validationError }
+                  : null
+              }
+            />
+          )}
+          <pre
+            data-testid={`transformCodeHints`}
+            className="w-full font-mono text-sm p-[5px] whitespace-pre-wrap"
           >
-            Cancel
-          </Button>
-          <Button data-testid="btnTransformApply" onPointerDown={onApply}>
-            Apply
-          </Button>
+            {
+              "// (value, columnIndex, rowIndex, headerName, allRows, originalValue) =>"
+            }
+          </pre>
+          <CodeEditor
+            data-testid={`transformCodeInput`}
+            className="w-full min-h-20 bg-gray-100 border border-gray-700 border-solid font-mono text-sm mb-2"
+            value={transformerFunctionCode}
+            onValueChange={onTransformerCodeChange}
+            localStorageHistoryKey={TransformerFunctionCodeHistoryKey}
+            maxHistoryEntries={MaxHistoryEntries}
+            grayBackground
+            path="inmemory://model/transformer.js"
+            extraLib={transformerParamsLib}
+          />
+          <div className="h-52 w-full mt-4">
+            <h3 className="text-xl">Preview</h3>
+            {transformerValidation?.compilationError && (
+              <div className="text-red-600 font-medium my-10 text-center">
+                Compilation Error: {transformerValidation?.compilationError}
+              </div>
+            )}
+
+            <table
+              className="w-full border-collapse table-fixed text-sm"
+              style={{
+                display: transformerValidation?.compilationError
+                  ? "none"
+                  : "table",
+              }}
+            >
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-2 py-1 text-left">
+                    Value
+                  </th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">
+                    Result
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {transformerValidation?.sampleResults.map((sample, index) => {
+                  const sampleRender = renderValuePreview(sample.value)
+
+                  const resultRender = sample.error
+                    ? sample.error
+                    : renderValuePreview(sample.result)
+                  return (
+                    <tr
+                      key={index}
+                      className="even:bg-gray-100 font-mono whitespace-nowrap"
+                    >
+                      <td
+                        className="border border-gray-300 px-2 py-1 overflow-hidden"
+                        title={sampleRender}
+                      >
+                        {sampleRender}
+                      </td>
+                      <td
+                        className={`border border-gray-300 px-2 py-1 overflow-hidden ${
+                          sample.error ? "text-red-600" : "text-green-600"
+                        }`}
+                        title={resultRender}
+                      >
+                        {resultRender}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-4 mt-4">
+            <Button
+              data-testid="btnTransfomCancel"
+              variant="ghost"
+              onPointerDown={onClose}
+            >
+              Cancel
+            </Button>
+            <Button data-testid="btnTransformApply" onPointerDown={onApply}>
+              Apply
+            </Button>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+    </>
   )
 }
 

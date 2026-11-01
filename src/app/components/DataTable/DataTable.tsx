@@ -27,6 +27,10 @@ import {
   rowToJson,
 } from "@/utils"
 import TransformDialog from "../TransformDialog"
+import {
+  formatColumnForPrompt,
+  formatSampleValues,
+} from "@/ai/transformerPrompt"
 import RowDetailDialog from "./RowDetailDialog"
 import useKeyPress from "@/hooks/useKeyPress"
 import {
@@ -309,6 +313,27 @@ export const DataTable = (props: {
     })
   }
 
+  // Context for on-device AI transformer generation, capped in size
+  const aiContext = useMemo(() => {
+    const maxColumns = 40
+    if (props.headerRow.length > maxColumns) {
+      console.warn(
+        `[AI] Transform context capped: file has ${props.headerRow.length} columns, using first ${maxColumns}`,
+      )
+    }
+    return {
+      columns: props.headerRow
+        .slice(0, maxColumns)
+        .map((name, index) =>
+          formatColumnForPrompt(
+            name,
+            props.columnInfos.find((c) => c.columnIndex === index)?.columnType,
+          ),
+        ),
+      sampleValues: formatSampleValues(sampleValues.map((s) => s.value)),
+    }
+  }, [props.headerRow, props.columnInfos, sampleValues])
+
   const popoverColumnsIsSorted =
     props.sortSetting && props.sortSetting.columnIndex === popoverColumnIndex
   const sortOrder = props.sortSetting?.sortOrder
@@ -429,6 +454,11 @@ export const DataTable = (props: {
   ]
 
   const handleKeyDown: React.KeyboardEventHandler = async (e) => {
+    // The transform dialog is a portal: its key events bubble through the
+    // React tree into this handler. Enter in one of its inputs (e.g. the AI
+    // prompt or new-column name) must not trigger row navigation/detail here.
+    if (!e.currentTarget.contains(e.target as Node)) return
+
     // While the row detail dialog is open, arrow navigation is owned by the
     // dialog's own window-level listener (both would move otherwise)
     if (rowDetailOpen) return
@@ -524,6 +554,7 @@ export const DataTable = (props: {
       {transformModalOpen && (
         <TransformDialog
           open={transformModalOpen}
+          aiContext={aiContext}
           headerName={props.headerRow[popoverColumnIndex!]}
           columnType={
             props.columnInfos.find((c) => c.columnIndex === popoverColumnIndex)

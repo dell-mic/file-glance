@@ -44,3 +44,7 @@ node_modules/
 /playwright/.cache/
 
 certificates
+# AI eval harness build artifacts
+scripts/ai-eval/dist/harness.js
+scripts/ai-eval/results/
+scripts/ai-eval/.profile/

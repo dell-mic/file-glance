@@ -12,7 +12,7 @@ addEventListener("message", async (event: MessageEvent<ValidationInput>) => {
   postMessage(validationResult)
 })
 
-function applyTransformer(
+export function applyTransformer(
   transformerCode: string,
   columnIndex: number,
   header: string,
@@ -36,6 +36,14 @@ function applyTransformer(
         ])
       } catch (err: any) {
         error = err.toString()
+      }
+
+      // A function result is either a mistake or partial code (e.g. while AI
+      // output is still streaming in); it also can't be structured-cloned,
+      // which would make the postMessage below throw.
+      if (typeof result === "function") {
+        result = undefined
+        error = "Transformer returned a function — did you forget to call it?"
       }
 
       return {
