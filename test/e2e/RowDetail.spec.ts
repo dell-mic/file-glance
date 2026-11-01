@@ -13,8 +13,9 @@ test.beforeEach(async ({ page }) => {
   )
 })
 
-test(`Double-click opens row detail dialog`, async ({ page }) => {
-  await page.locator('[data-column="Name"]').first().dblclick()
+test(`Row detail dialog shows fields`, async ({ page }) => {
+  await page.locator('[data-column="Name"]').first().click()
+  await page.keyboard.press("Enter")
 
   const dialog = page.getByTestId("rowDetailDialog")
   await expect(dialog).toBeVisible()
@@ -43,7 +44,8 @@ test(`Enter opens dialog, Escape closes`, async ({ page }) => {
 })
 
 test(`Navigate rows with buttons and ArrowUp/Down`, async ({ page }) => {
-  await page.locator('[data-column="Name"]').first().dblclick()
+  await page.locator('[data-column="Name"]').first().click()
+  await page.keyboard.press("Enter")
 
   const prevButton = page.getByTestId("btnRowDetailPrev")
   const nextButton = page.getByTestId("btnRowDetailNext")
@@ -164,7 +166,8 @@ for (const clipboardScenario of [
       browserName === "webkit",
       "Webkit seems not to implement clipboard read",
     )
-    await page.locator('[data-column="Name"]').first().dblclick()
+    await page.locator('[data-column="Name"]').first().click()
+    await page.keyboard.press("Enter")
     await page.getByTestId(clipboardScenario.clickTestId).click()
     const text = await waitForClipboard(page)
     expect(text).toBe(clipboardScenario.expected)
