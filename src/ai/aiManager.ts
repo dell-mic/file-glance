@@ -46,6 +46,9 @@ class AiManager {
   /** Called when the user accepts the opt-in dialog. Resolves once the model is usable. */
   optIn = (): Promise<void> => {
     localStorage.setItem(aiOptInStorageKey, "true")
+    // The ~1 GB model cache in Cache Storage is otherwise best-effort storage,
+    // which Chrome may evict under disk pressure.
+    navigator.storage?.persist().catch(() => {})
     return this.ensureReady()
   }
 

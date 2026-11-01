@@ -82,13 +82,15 @@ for (const file of allFiles) {
   hash.update(String(statSync(file).size))
 }
 const buildId = hash.digest("hex").slice(0, 16)
-const cacheName = `fileglance-${buildId}`
+const CACHE_PREFIX = "fileglance-"
+const cacheName = `${CACHE_PREFIX}${buildId}`
 
 const swPath = join(OUT_DIR, "sw.js")
 let swSource = readFileSync(swPath, "utf8")
 if (
   !swSource.includes("__SW_CACHE_NAME__") ||
-  !swSource.includes("__SW_PRECACHE_URLS__")
+  !swSource.includes("__SW_PRECACHE_URLS__") ||
+  !swSource.includes("__SW_CACHE_PREFIX__")
 ) {
   console.error("gen-sw-assets: placeholders not found in out/sw.js")
   process.exit(1)
@@ -96,6 +98,9 @@ if (
 swSource = swSource
   .replaceAll("__SW_CACHE_NAME__", () => cacheName)
   .replaceAll("__SW_PRECACHE_URLS__", () => JSON.stringify(precacheUrls))
+  // Stable prefix (not per-build) so activate can identify and delete only
+  // stale FileGlance caches, never foreign ones like WebLLM's model cache.
+  .replaceAll("__SW_CACHE_PREFIX__", () => CACHE_PREFIX)
 writeFileSync(swPath, swSource)
 
 // Turbopack passes worker bootstrap config via a URL fragment (#params=...) for

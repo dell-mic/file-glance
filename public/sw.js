@@ -1,5 +1,5 @@
 // FileGlance service worker.
-// The cache name and precache URL list are injected by scripts/gen-sw-assets.mjs
+// The cache name, cache prefix and precache URL list are injected by scripts/gen-sw-assets.mjs
 // as part of `npm run build`. Do not rename those constants.
 
 const CACHE_NAME = "__SW_CACHE_NAME__"
@@ -31,7 +31,15 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keys = await caches.keys()
       await Promise.all(
-        keys.map((key) => (key === CACHE_NAME ? null : caches.delete(key))),
+        // Only remove our own stale caches. Cache Storage is shared with other
+        // app owners on this origin — notably WebLLM's model cache
+        // ("webllm/model" etc., ~1 GB). Deleting it would force a full model
+        // re-download on every deploy.
+        keys.map((key) =>
+          key.startsWith("__SW_CACHE_PREFIX__") && key !== CACHE_NAME
+            ? caches.delete(key)
+            : null,
+        ),
       )
       await self.clients.claim()
     })(),
