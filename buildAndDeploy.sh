@@ -2,6 +2,6 @@
 
 set -e
 
-npm run build
+bun run build
 
 ./deploy.sh

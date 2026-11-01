@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^(e|v|i|_)$" }],
+    "no-useless-escape": "off",
+    "no-irregular-whitespace": "off",
+    "unicorn/no-useless-spread": "off"
+  }
+}

@@ -180,8 +180,8 @@ console.log(url)
 ## Development
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ### Tech Stack
