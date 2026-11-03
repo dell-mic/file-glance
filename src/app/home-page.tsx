@@ -1726,15 +1726,15 @@ export default function Home() {
               return (
                 <React.Fragment>
                   <div className="mb-2 flex flex-row items-center justify-between">
-                    <div className="flex flex-row items-baseline">
-                      <div className="max-w-prose">
+                    <div className="flex min-w-0 flex-row items-baseline">
+                      <div className="max-w-prose min-w-0">
                         <MiddleEllipsis>
                           <span className="text-2xl" title={currentFile?.name}>
                             {currentFile?.name || ""}{" "}
                           </span>
                         </MiddleEllipsis>
                       </div>
-                      <span className="text-gray-500 text-sm ml-1.5">
+                      <span className="text-gray-500 text-sm ml-1.5 shrink-0 whitespace-nowrap">
                         {fileInfos.join(", ")}
                         {fileInfos.length > 0 && ", "}
                         {isFiltered ? (
@@ -1755,12 +1755,12 @@ export default function Home() {
                           "all shown"
                         )}
                       </span>
-                      <span>{clearFilterButton}</span>
+                      <span className="shrink-0">{clearFilterButton}</span>
 
-                      <span className="flex flex-row items-center ml-3">
+                      <span className="flex shrink-0 flex-row items-center ml-3">
                         <Label
                           htmlFor="hasHeader"
-                          className="mr-1 text-gray-500 text-sm"
+                          className="mr-1 whitespace-nowrap text-gray-500 text-sm"
                         >
                           Has Header
                         </Label>
