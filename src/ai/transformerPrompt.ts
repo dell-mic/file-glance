@@ -102,7 +102,17 @@ export function formatColumnForPrompt(name: string, columnType?: string) {
 export function formatSampleValues(values: unknown[], maxValues = 5) {
   return values
     .slice(0, maxValues)
-    .map((value) => JSON.stringify(truncate(stringifyValue(value), 80)))
+    .map((value) => JSON.stringify(prepareValueForPrompt(value, 80)))
+}
+
+export function prepareValueForPrompt(
+  value: unknown,
+  maxLength: number,
+): string | number | boolean | null {
+  if (value === null || value === undefined) return null
+  if (typeof value === "boolean") return value
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  return truncate(stringifyValue(value), maxLength)
 }
 
 export function stringifyValue(value: unknown) {

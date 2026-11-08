@@ -3,11 +3,7 @@
 // persists across rows.
 
 import type { AiMessage } from "@/ai/aiWorkerProtocol"
-import {
-  stringifyValue,
-  truncate,
-  type FixContext,
-} from "@/ai/transformerPrompt"
+import { prepareValueForPrompt, type FixContext } from "@/ai/transformerPrompt"
 
 export interface FilterAiContext {
   /** e.g. 'name (String)' entries, already truncated by the caller */
@@ -70,10 +66,10 @@ export function formatSampleRow(
   headerRow: string[],
   maxColumns = 40,
 ) {
-  const object: Record<string, string> = {}
+  const object: Record<string, string | number | boolean | null> = {}
   const count = Math.min(row.length, headerRow.length, maxColumns)
   for (let i = 0; i < count; i++) {
-    object[headerRow[i]] = truncate(stringifyValue(row[i]), 40)
+    object[headerRow[i]] = prepareValueForPrompt(row[i], 40)
   }
   return JSON.stringify(object)
 }

@@ -102,9 +102,12 @@ describe("format helpers", () => {
     }
   })
 
-  test("formatSampleValues handles null and objects", () => {
-    expect(formatSampleValues([null, { a: 1 }])).toEqual([
-      '"null"',
+  test("formatSampleValues handles primitives, null and objects", () => {
+    expect(formatSampleValues([42, true, null, "hi", { a: 1 }])).toEqual([
+      "42",
+      "true",
+      "null",
+      '"hi"',
       // JSON.stringify of the stringified object (quotes get escaped)
       JSON.stringify('{"a":1}'),
     ])

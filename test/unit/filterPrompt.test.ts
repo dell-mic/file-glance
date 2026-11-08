@@ -47,9 +47,12 @@ describe("buildFilterMessages", () => {
 
 describe("formatSampleRow", () => {
   test("formats row as JSON object keyed by column name", () => {
-    expect(formatSampleRow(["Alice", 34], ["name", "age"])).toBe(
-      '{"name":"Alice","age":"34"}',
-    )
+    expect(
+      formatSampleRow(
+        ["Alice", 34, true, null],
+        ["name", "age", "active", "notes"],
+      ),
+    ).toBe('{"name":"Alice","age":34,"active":true,"notes":null}')
   })
 
   test("caps columns and truncates values", () => {
