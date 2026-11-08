@@ -1,6 +1,7 @@
 import React from "react"
 import { Button } from "../../components/ui/button"
 import { Modal } from "../../components/ui/Modal"
+import { SparklesIcon } from "@heroicons/react/20/solid"
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import {
 } from "@/utils"
 import CodeEditor from "@/components/ui/CodeEditor"
 import AiCodeRow from "@/app/components/AiCodeRow"
+import { aiManager } from "@/ai/aiManager"
 import {
   buildFilterMessages,
   formatSampleRow,
@@ -165,8 +167,15 @@ return rowIndex < ${topX}`)
     matchingRowsCount: 0,
   })
 
+  // While AI code is streaming into the editor, validation is suppressed —
+  // intermediate snippets would flash errors. It runs once on completion:
+  // the effect re-fires with aiGenerating === false and the final code
+  // (set via onFilterCodeChange in the same batch).
+  const [aiGenerating, setAiGenerating] = React.useState(false)
+
   React.useEffect(() => {
     // Debounce filter function validation
+    if (aiGenerating) return
     const handler = setTimeout(() => {
       if (!filterFunctionCode) {
         setFilterValidationResult({
@@ -179,7 +188,7 @@ return rowIndex < ${topX}`)
       }
       const compiled = compileFilterCode(
         filterFunctionCode,
-        createRowProxy(displayedData[0], headerRow),
+        createRowProxy(displayedData[0] ?? [], headerRow),
       )
       if (compiled.error) {
         setFilterValidationResult({
@@ -215,10 +224,22 @@ return rowIndex < ${topX}`)
     }, 500)
 
     return () => clearTimeout(handler)
-  }, [filterFunctionCode, displayedData, headerRow])
+  }, [aiGenerating, filterFunctionCode, displayedData, headerRow])
 
   const validationError =
-    filterValidationResult.error ?? filterValidationResult.rowError
+    !aiGenerating && filterValidationResult.code === filterFunctionCode
+      ? (filterValidationResult.error ?? filterValidationResult.rowError)
+      : null
+  // "Fix with AI" lives right below the validation error, not in the AI
+  // prompt row — see AiCodeRow.fixTriggerRef
+  const filterAiFixTrigger = React.useRef<(() => void) | null>(null)
+  // A stale validation result (e.g. code changed, or generated code not yet
+  // validated) must not enable Apply
+  const applyDisabled =
+    aiGenerating ||
+    filterValidationResult.code !== filterFunctionCode ||
+    !!filterValidationResult.error ||
+    filterValidationResult.matchingRowsCount === 0
 
   return (
     <Modal
@@ -256,11 +277,13 @@ return rowIndex < ${topX}`)
             buildFilterMessages(aiContext, instruction, previous)
           }
           onCodeChange={onFilterCodeChange}
+          onGeneratingChange={setAiGenerating}
           fix={
             filterFunctionCode && validationError
               ? { code: filterFunctionCode, error: validationError }
               : null
           }
+          fixTriggerRef={filterAiFixTrigger}
         />
         <CodeEditor
           data-testid={`filterCodeInput`}
@@ -289,6 +312,17 @@ return rowIndex < ${topX}`)
             )}
           </div>
         )}
+        {aiManager.isSupported() && filterFunctionCode && validationError && (
+          <Button
+            data-testid="filterAiFix"
+            variant="ghost"
+            size="sm"
+            onPointerDown={() => filterAiFixTrigger.current?.()}
+          >
+            <SparklesIcon className="w-4 h-4 mr-1" />
+            Fix with AI
+          </Button>
+        )}
         <div className="flex justify-end gap-4 mt-4">
           <Button
             data-testid="btnFilterCancel"
@@ -300,11 +334,7 @@ return rowIndex < ${topX}`)
           <Button
             data-testid="btnFilterApply"
             onPointerDown={() => onApply(filterFunctionCode)}
-            disabled={
-              filterValidationResult.code !== filterFunctionCode ||
-              !!filterValidationResult.error ||
-              filterValidationResult.matchingRowsCount === 0
-            }
+            disabled={applyDisabled}
           >
             Apply
           </Button>

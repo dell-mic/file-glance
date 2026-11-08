@@ -21,8 +21,16 @@ interface AiCodeRowProps {
   placeholder: string
   buildMessages: (instruction: string, previous?: FixContext) => AiMessage[]
   onCodeChange: (code: string) => void
-  /** When set (code + validation error), shows a "Fix with AI" retry button */
+  /** Signals when generation starts/stops, so validation can be suppressed
+   * while intermediate code is streaming in */
+  onGeneratingChange?: (generating: boolean) => void
+  /** When set (code + validation error), makes the fix trigger available via
+   * fixTriggerRef, so callers can show a "Fix with AI" button next to the
+   * validation error instead of up here in the prompt row */
   fix?: { code: string; error: string } | null
+  /** Receives the fix trigger; null while no fix run is possible (no error, or
+   * a generation already in flight) */
+  fixTriggerRef?: React.RefObject<(() => void) | null>
 }
 
 const AiCodeRow: React.FC<AiCodeRowProps> = ({
@@ -30,7 +38,9 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
   placeholder,
   buildMessages,
   onCodeChange,
+  onGeneratingChange,
   fix,
+  fixTriggerRef,
 }) => {
   const [aiStatus, aiLoadProgress] = useAiManagerState()
   const [prompt, setPrompt] = React.useState("")
@@ -56,12 +66,25 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
   // original intent. May be stale if the code was edited since — the error
   // text still dominates the fix prompt.
   const lastInstruction = React.useRef<string | null>(null)
+  // Assigned on every render so the closure always sees the latest fix/generating
+  React.useEffect(() => {
+    if (!fixTriggerRef) return
+    fixTriggerRef.current =
+      fix && !generating
+        ? () =>
+            requestAi("Fix the code", {
+              ...fix,
+              instruction: lastInstruction.current ?? undefined,
+            })
+        : null
+  })
 
   const runGeneration = async (
     instruction: string,
     previous?: { code: string; error: string },
   ) => {
     setGenerating(true)
+    onGeneratingChange?.(true)
     generatingRef.current = true
     setError(null)
     // Fix runs pass "Fix the code" as instruction — keep the last real one
@@ -70,7 +93,10 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
     let lastFlush = 0
     // Stream into the editor right away, but throttle validation-triggering
     // updates and re-extract only once the full answer is in.
-    const flush = () => onCodeChange(stripOpeningFence(accumulated))
+    const flush = () => {
+      const stripped = stripOpeningFence(accumulated)
+      if (stripped) onCodeChange(stripped)
+    }
     try {
       const full = await aiManager.generate(
         buildMessages(instruction, previous),
@@ -84,31 +110,37 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
           }
         },
       )
-      if (mounted.current) onCodeChange(extractCode(full) || accumulated.trim())
+      const code = extractCode(full)
+      if (mounted.current && code) onCodeChange(code)
     } catch (err: any) {
       if (mounted.current) setError(err?.message ?? String(err))
     } finally {
       generatingRef.current = false
+      // Fires even after unmount so the parent's suppression can't get stuck
+      onGeneratingChange?.(false)
       if (mounted.current) setGenerating(false)
     }
   }
 
   const startPendingGeneration = () => {
-    const pendingInstruction = pending.current
-    if (!pendingInstruction) return
+    if (!pending.current) return
     void aiManager
       .ensureReady()
       .then(() => {
+        const next = pending.current
+        if (!next || !mounted.current) return
         pending.current = null
         setOptInOpen(false)
-        void runGeneration(
-          pendingInstruction.instruction,
-          pendingInstruction.previous,
-        )
+        void runGeneration(next.instruction, next.previous)
       })
       .catch(() => {
         // Error is surfaced via aiStatus/error in the opt-in dialog
       })
+  }
+
+  const closeOptIn = () => {
+    pending.current = null
+    setOptInOpen(false)
   }
 
   const requestAi = (instruction: string, previous?: FixContext) => {
@@ -173,29 +205,13 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
             Generate
           </Button>
         )}
-        {fix && !generating && (
-          <Button
-            data-testid={`${idPrefix}Fix`}
-            variant="ghost"
-            size="sm"
-            onPointerDown={() =>
-              requestAi("Fix the code", {
-                ...fix,
-                instruction: lastInstruction.current ?? undefined,
-              })
-            }
-          >
-            <SparklesIcon className="w-4 h-4 mr-1" />
-            Fix with AI
-          </Button>
-        )}
       </div>
       {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
       {optInOpen && (
         <Modal
           id={`${idPrefix}OptInDialog`}
           closeOnClickOutside={false}
-          onClose={() => setOptInOpen(false)}
+          onClose={closeOptIn}
           className="max-w-md"
         >
           <div className="p-4">
@@ -231,7 +247,7 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
               <Button
                 data-testid={`${idPrefix}OptInCancel`}
                 variant="ghost"
-                onPointerDown={() => setOptInOpen(false)}
+                onPointerDown={closeOptIn}
               >
                 Not now
               </Button>

@@ -13,15 +13,20 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Modal } from "../../components/ui/Modal"
+import { SparklesIcon } from "@heroicons/react/20/solid"
 import { renderValuePreview, tsTypeForColumnType } from "@/utils"
 import CodeEditor from "@/components/ui/CodeEditor"
 import AiCodeRow from "@/app/components/AiCodeRow"
+import { aiManager } from "@/ai/aiManager"
 import {
   buildTransformerMessages,
   type TransformerAiContext,
 } from "@/ai/transformerPrompt"
 
 interface TransformerValidation {
+  /** The code this result was computed for — lets Apply detect stale results
+   * (validation is debounced and async), like FilterDialog does */
+  code: string | null
   compilationError: string | null
   sampleResults: Array<{
     value: any
@@ -45,6 +50,11 @@ interface TransformDialogProps {
   onTargetTypeChange: (value: "current" | "new") => void
   onNewColNameChange: (value: string) => void
   onTransformerCodeChange: (code: string) => void
+  /** Signals whether on-device AI code generation is in flight */
+  onAiGeneratingChange?: (generating: boolean) => void
+  /** While AI generation is in flight the code is unvalidated → Apply must
+   * not run (it would apply an intermediate snippet against a stale result) */
+  aiGenerating?: boolean
   onApply: () => void
 }
 
@@ -83,6 +93,8 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
   onTargetTypeChange,
   onNewColNameChange,
   onTransformerCodeChange,
+  onAiGeneratingChange,
+  aiGenerating,
   onApply,
 }) => {
   const transformerParamsLib = React.useMemo(
@@ -92,9 +104,14 @@ const TransformDialog: React.FC<TransformDialogProps> = ({
 
   // --- On-device AI generation ---
   const validationError =
-    transformerValidation?.compilationError ??
-    transformerValidation?.sampleResults.find((s) => s.error)?.error ??
-    null
+    !aiGenerating && transformerValidation?.code === transformerFunctionCode
+      ? (transformerValidation?.compilationError ??
+        transformerValidation?.sampleResults.find((s) => s.error)?.error ??
+        null)
+      : null
+  // "Fix with AI" lives next to the validation error (preview area), not in
+  // the AI prompt row — see AiCodeRow.fixTriggerRef
+  const transformAiFixTrigger = React.useRef<(() => void) | null>(null)
 
   const handleTransformerSelected = (value: string) => {
     switch (value) {
@@ -227,11 +244,13 @@ return value.split(new RegExp(\`[\${DELIMITERS}]\\\\s*\`))`,
                 )
               }
               onCodeChange={onTransformerCodeChange}
+              onGeneratingChange={onAiGeneratingChange}
               fix={
                 transformerFunctionCode && validationError
                   ? { code: transformerFunctionCode, error: validationError }
                   : null
               }
+              fixTriggerRef={transformAiFixTrigger}
             />
           )}
           <pre
@@ -253,6 +272,20 @@ return value.split(new RegExp(\`[\${DELIMITERS}]\\\\s*\`))`,
             path="inmemory://model/transformer.js"
             extraLib={transformerParamsLib}
           />
+          {aiContext &&
+            aiManager.isSupported() &&
+            transformerFunctionCode &&
+            validationError && (
+              <Button
+                data-testid="transformAiFix"
+                variant="ghost"
+                size="sm"
+                onPointerDown={() => transformAiFixTrigger.current?.()}
+              >
+                <SparklesIcon className="w-4 h-4 mr-1" />
+                Fix with AI
+              </Button>
+            )}
           <div className="h-52 w-full mt-4">
             <h3 className="text-xl">Preview</h3>
             {transformerValidation?.compilationError && (
@@ -319,7 +352,15 @@ return value.split(new RegExp(\`[\${DELIMITERS}]\\\\s*\`))`,
             >
               Cancel
             </Button>
-            <Button data-testid="btnTransformApply" onPointerDown={onApply}>
+            <Button
+              data-testid="btnTransformApply"
+              onPointerDown={onApply}
+              disabled={
+                aiGenerating ||
+                transformerValidation?.code !== transformerFunctionCode ||
+                !!transformerValidation?.compilationError
+              }
+            >
               Apply
             </Button>
           </div>

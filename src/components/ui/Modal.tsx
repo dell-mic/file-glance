@@ -19,6 +19,10 @@ interface ModalProps extends ContainerComponentPops {
   className?: string
 }
 
+// Stack of open modals in mount order so Escape only closes the topmost one
+// (e.g. the AI opt-in dialog stacked above the filter/transform dialog).
+const openModalStack: symbol[] = []
+
 const Frame: React.FC<ModalProps> = ({
   id,
   children,
@@ -28,14 +32,32 @@ const Frame: React.FC<ModalProps> = ({
   open = true,
   className,
 }) => {
+  const onCloseRef = useRef(onClose)
   useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
+  useEffect(() => {
+    if (!open || !closeOnEsc) return
+    const token = Symbol()
+    openModalStack.push(token)
     const onKeyPress = (e: KeyboardEvent) => {
-      if (closeOnEsc && open && e.key === "Escape") onClose()
+      if (
+        e.key === "Escape" &&
+        openModalStack[openModalStack.length - 1] === token
+      ) {
+        e.stopImmediatePropagation()
+        onCloseRef.current()
+      }
     }
 
     window.addEventListener("keydown", onKeyPress)
-    return () => window.removeEventListener("keydown", onKeyPress)
-  }, [closeOnEsc, onClose, open])
+    return () => {
+      const index = openModalStack.indexOf(token)
+      if (index !== -1) openModalStack.splice(index, 1)
+      window.removeEventListener("keydown", onKeyPress)
+    }
+  }, [closeOnEsc, open])
 
   const container = useRef<HTMLDivElement>(null)
   const onOverlayClick = (e: React.MouseEvent) => {

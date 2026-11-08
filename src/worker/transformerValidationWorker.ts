@@ -54,11 +54,15 @@ export function applyTransformer(
     })
 
     return {
+      // Echoed so Apply can check that the result is for the current code,
+      // not for a stale request (validation is debounced and async)
+      code: transformerCode,
       compilationError: null,
       sampleResults: sampleResults,
     }
   } else if (error) {
     return {
+      code: transformerCode,
       compilationError: error,
       sampleResults: [],
     }

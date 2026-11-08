@@ -57,6 +57,7 @@ interface TransformerSampleResult {
   error: string | null
 }
 interface TransformerValidation {
+  code: string | null
   compilationError: string | null
   sampleResults: TransformerSampleResult[]
 }
@@ -300,17 +301,47 @@ export const DataTable = (props: {
     )
   }, [popoverColumnIndex, props.columnInfos])
 
-  const handleTransformerCodeChanged = async (code: string) => {
-    // TODO: Could be debounced?
-    // console.log("code", code)
-    setTransformerFunctionCode(code)
+  const transformerValidationTimerRef = React.useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const scheduleTransformerValidation = (code: string) => {
+    // Debounce validation: validating every keystroke flashes errors for
+    // intermediate snippets.
+    if (transformerValidationTimerRef.current) {
+      clearTimeout(transformerValidationTimerRef.current)
+    }
+    transformerValidationTimerRef.current = setTimeout(() => {
+      transformerValidationWorkerRef.current?.postMessage({
+        transformerCode: code,
+        columnIndex: popoverColumnIndex!,
+        header: props.headerRow[popoverColumnIndex!],
+        data: sampleValues,
+      })
+    }, 500)
+  }
 
-    transformerValidationWorkerRef.current?.postMessage({
-      transformerCode: code,
-      columnIndex: popoverColumnIndex!,
-      header: props.headerRow[popoverColumnIndex!],
-      data: sampleValues,
-    })
+  // While AI code is streaming into the editor, validation is suppressed —
+  // intermediate snippets would flash errors. The effect below validates the
+  // final code once generation completes.
+  const [transformAiGenerating, setTransformAiGenerating] =
+    React.useState<boolean>(false)
+  const transformAiGeneratingRef = React.useRef<boolean>(false)
+  const handleTransformAiGeneratingChange = (generating: boolean) => {
+    transformAiGeneratingRef.current = generating
+    setTransformAiGenerating(generating)
+  }
+  const prevTransformAiGeneratingRef = React.useRef<boolean>(false)
+  React.useEffect(() => {
+    if (prevTransformAiGeneratingRef.current && !transformAiGenerating) {
+      scheduleTransformerValidation(transformerFunctionCode)
+    }
+    prevTransformAiGeneratingRef.current = transformAiGenerating
+  }, [transformAiGenerating])
+
+  const handleTransformerCodeChanged = (code: string) => {
+    setTransformerFunctionCode(code)
+    if (transformAiGeneratingRef.current) return
+    scheduleTransformerValidation(code)
   }
 
   // Context for on-device AI transformer generation, capped in size
@@ -568,8 +599,16 @@ export const DataTable = (props: {
           onTargetTypeChange={setTargetType}
           onNewColNameChange={setNewColName}
           onTransformerCodeChange={handleTransformerCodeChanged}
+          onAiGeneratingChange={handleTransformAiGeneratingChange}
+          aiGenerating={transformAiGenerating}
           onApply={() => {
-            if (!transformerValidation?.compilationError) {
+            // code check guards against a stale validation result (Apply is
+            // already disabled for this case in TransformDialog; this is the
+            // second line of defense)
+            if (
+              transformerValidation?.code === transformerFunctionCode &&
+              !transformerValidation.compilationError
+            ) {
               const asNewColumn = targetType === "new"
               props.onTransformerAdded({
                 columnIndex: popoverColumnIndex!,
