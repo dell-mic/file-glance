@@ -79,10 +79,14 @@ test(`Filter dialog: arrow keys control the autocomplete widget, not history`, a
   // Reopen, clear the draft and type `row.` to open the member completions
   await page.getByTestId("btnFilter").click()
   await fillCodeEditor(page, "filterCodeInput", "")
-  await page.keyboard.type("return row.")
+  // Type slowly: through monaco's EditContext, zero-delay typing drops
+  // keystrokes (same workaround as FilterDialog.spec.ts)
+  await page.keyboard.type("return row.", { delay: 50 })
 
   const viewLines = page.getByTestId("filterCodeInput").locator(".view-lines")
   const suggestWidget = page.locator(".suggest-widget.visible")
+  // All keystrokes must have landed before anything widget-related is asserted
+  await expect(viewLines).toHaveText("return row.")
   await expect(suggestWidget).toBeVisible()
 
   // With the widget open, the arrows move the widget selection and must not

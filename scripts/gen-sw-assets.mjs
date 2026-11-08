@@ -64,7 +64,18 @@ const precacheUrls = allFiles
     if (EXCLUDED_FILES.has(base)) return false
     const dot = base.lastIndexOf(".")
     if (dot === -1) return false
-    return PRECACHE_EXTENSIONS.has(base.slice(dot).toLowerCase())
+    const ext = base.slice(dot).toLowerCase()
+    if (!PRECACHE_EXTENSIONS.has(ext)) return false
+    // Do not precache the ~6 MB WebLLM bundle (and AI worker): AI is opt-in
+    // and requires a ~1 GB model download on first use anyway; sw.js caches
+    // the chunk via cacheFirst once AI is actually used.
+    if (
+      ext === ".js" &&
+      readFileSync(file, "utf8").includes("CreateMLCEngine")
+    ) {
+      return false
+    }
+    return true
   })
   .map(toUrlPath)
   .sort()

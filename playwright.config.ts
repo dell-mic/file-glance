@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test"
+import os from "node:os"
 
 /**
  * Read environment variables from file.
@@ -57,7 +58,18 @@ export default defineConfig({
 
     {
       name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      use: {
+        ...devices["Desktop Firefox"],
+        // macOS 27 TCC-protects ~/Library/Application Support/Firefox, which the
+        // bundled Gecko still resolves for profiles.ini bookkeeping — redirect
+        // its app-data root to a temp dir (microsoft/playwright#42768).
+        launchOptions: {
+          env: {
+            // Must exist; os.tmpdir() always does.
+            CFFIXED_USER_HOME: os.tmpdir(),
+          },
+        },
+      },
     },
     {
       name: "webkit",
