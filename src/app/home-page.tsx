@@ -12,6 +12,7 @@ import { compressors } from "hyparquet-compressors"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { FileChooser } from "./components/FileChooser"
 import FilterDialog from "./components/FilterDialog"
+import ExportDialog from "./components/ExportDialog"
 import FilterExplanation from "./components/FilterExplanation"
 import { ThemeToggle } from "./components/ThemeToggle"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -178,6 +179,7 @@ export default function Home() {
   const [columnInfos, setColumnInfos] = React.useState<ColumnInfos[]>([])
 
   const [filterDialogOpen, setFilterDialogOpen] = React.useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
   const [filterFunctionCode, setFilterFunctionCode] = React.useState<string>("")
   const [appliedFilterFunctionCode, setAppliedFilterFunctionCode] =
     React.useState<string | null>("")
@@ -1344,15 +1346,18 @@ export default function Home() {
     fileInfos.push(`${allRows.length.toLocaleString()} rows`)
   }
 
-  const getExportFileName = (newEnding: string): string => {
+  const getExportFileBase = (): string => {
     const currentFileName = currentFile!.name.substring(
       0,
       currentFile!.name.lastIndexOf(".") > 0
         ? currentFile!.name.lastIndexOf(".")
         : currentFile!.name.length,
     )
-    return cleanForFileName(currentFileName) + "." + newEnding
+    return cleanForFileName(currentFileName)
   }
+
+  const getExportFileName = (newEnding: string): string =>
+    getExportFileBase() + "." + newEnding
 
   const exportProject = (): ProjectExport => {
     const project = {
@@ -1439,6 +1444,13 @@ export default function Home() {
 
   const exportPopoverEntries = [
     [
+      {
+        text: "Export…",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: () => {
+          setExportDialogOpen(true)
+        },
+      },
       {
         text: "Export as CSV",
         icon: <ArchiveBoxArrowDownIconSolid />,
@@ -1941,6 +1953,16 @@ export default function Home() {
                           }}
                         />
                       )}
+                      <ExportDialog
+                        open={exportDialogOpen}
+                        onClose={() => setExportDialogOpen(false)}
+                        fileNameBase={getExportFileBase()}
+                        header={displayedHeader}
+                        filteredRows={displayedDataFiltered}
+                        allRows={allRows}
+                        hiddenColumns={hiddenColumns}
+                        isFiltered={isFiltered}
+                      />
                       <Button
                         data-testid={"btnExport"}
                         title="Export data"
