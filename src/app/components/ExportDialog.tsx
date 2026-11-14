@@ -33,6 +33,7 @@ interface ExportDialogProps {
   fileNameBase: string
   header: any[]
   filteredRows: any[][]
+  /** All rows after transformers, but before filters/search/sort */
   allRows: any[][]
   hiddenColumns: number[]
   isFiltered: boolean
@@ -139,19 +140,19 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset per open
   }, [open, fileNameBase])
 
-  const matrix = buildExportMatrix(
-    header,
-    filteredRows,
-    allRows,
-    hiddenColumns,
-    {
-      includeHiddenColumns,
-      onlyFilteredRows: scopeFiltered,
-    },
-  )
-  const rowCount = matrix.length - 1
+  // Only build while open: it copies every row, too costly per render otherwise
+  const matrix = open
+    ? buildExportMatrix(header, filteredRows, allRows, hiddenColumns, {
+        includeHiddenColumns,
+        onlyFilteredRows: scopeFiltered,
+      })
+    : []
+  const rowCount = Math.max(matrix.length - 1, 0)
   const colCount = (matrix[0] ?? []).length
-  const xlsxOverLimit = rowCount >= XLSX_MAX_ROWS || colCount >= XLSX_MAX_COLS
+  // Excel limits are inclusive; the header row counts towards the row limit
+  const xlsxOverLimit =
+    rowCount + (xlsxOptions.includeHeader ? 1 : 0) > XLSX_MAX_ROWS ||
+    colCount > XLSX_MAX_COLS
 
   const fileExtension = format === "xlsx" ? "xlsx" : format
 
@@ -160,38 +161,46 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
     if (!trimmedName || rowCount === 0) return
     if (format === "xlsx" && xlsxOverLimit) return
 
-    let blob: Blob
-    if (format === "csv") {
-      blob = new Blob([buildCsv(matrix, csvOptions)], {
-        type: "text/csv;charset=utf-8",
-      })
-    } else if (format === "xlsx") {
-      blob = new Blob(
-        [
-          buildXlsx(matrix, {
-            ...xlsxOptions,
-            sheetName: xlsxOptions.sheetName || fileNameBase,
-          }),
-        ],
-        {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-      )
-    } else {
-      blob = new Blob([buildJson(matrix, jsonOptions)], {
-        type: "application/json;charset=utf-8",
-      })
-    }
+    try {
+      let blob: Blob
+      if (format === "csv") {
+        blob = new Blob([buildCsv(matrix, csvOptions)], {
+          type: "text/csv;charset=utf-8",
+        })
+      } else if (format === "xlsx") {
+        blob = new Blob(
+          [
+            buildXlsx(matrix, {
+              ...xlsxOptions,
+              sheetName: xlsxOptions.sheetName || fileNameBase,
+            }),
+          ],
+          {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          },
+        )
+      } else {
+        blob = new Blob([buildJson(matrix, jsonOptions)], {
+          type: "application/json;charset=utf-8",
+        })
+      }
 
-    saveFile(blob, `${trimmedName}.${fileExtension}`)
-    toast({
-      title: `${format.toUpperCase()} exported`,
-      variant: "success",
-    })
-    trackEvent(
-      "Export",
-      format.toUpperCase() + (scopeFiltered ? "" : " (all rows)"),
-    )
+      saveFile(blob, `${trimmedName}.${fileExtension}`)
+      toast({
+        title: `${format.toUpperCase()} exported`,
+        variant: "success",
+      })
+      trackEvent(
+        "Export",
+        format.toUpperCase() + (scopeFiltered ? "" : " (all rows)"),
+      )
+    } catch (error: any) {
+      toast({
+        title: error.message || String(error),
+        variant: "error",
+      })
+      return
+    }
 
     try {
       localStorage.setItem(
