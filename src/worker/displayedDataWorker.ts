@@ -24,6 +24,7 @@ addEventListener(
       sortSetting,
       appliedFilterFunctionCode,
       requestId,
+      skipColumnInfos,
     } = event.data
 
     // console.log("DisplayedDataWorker received:", event.data)
@@ -83,12 +84,14 @@ addEventListener(
       appliedFilterFunctionCode,
     ).map((_) => Array.from(_)) // Unwrap proxied data again, otherwise can't be cloned/transferred from worker thread
 
-    const columnInfos = countValues(
-      displayedHeader,
-      displayedData,
-      displayedDataFiltered,
-      originals,
-    )
+    const columnInfos = skipColumnInfos
+      ? []
+      : countValues(
+          displayedHeader,
+          displayedData,
+          displayedDataFiltered,
+          originals,
+        )
 
     postMessage({
       requestId, // Echoed back so the main thread can ignore stale responses
@@ -186,6 +189,8 @@ export interface DisplayedDataWorkerInput {
   sortSetting: SortSetting | null
   appliedFilterFunctionCode: string | null
   requestId: number
+  /** Skips the expensive countValues pass for requests that only need rows (e.g. export) */
+  skipColumnInfos?: boolean
 }
 
 interface CompiledTransformer extends Transformer {

@@ -140,13 +140,26 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset per open
   }, [open, fileNameBase])
 
-  // Only build while open: it copies every row, too costly per render otherwise
-  const matrix = open
-    ? buildExportMatrix(header, filteredRows, allRows, hiddenColumns, {
-        includeHiddenColumns,
-        onlyFilteredRows: scopeFiltered,
-      })
-    : []
+  // Only build while open: it copies every row, too costly per render otherwise.
+  // Memoized so typing in the file-name field doesn't re-copy the whole dataset.
+  const matrix = React.useMemo(
+    () =>
+      open
+        ? buildExportMatrix(header, filteredRows, allRows, hiddenColumns, {
+            includeHiddenColumns,
+            onlyFilteredRows: scopeFiltered,
+          })
+        : [],
+    [
+      open,
+      header,
+      filteredRows,
+      allRows,
+      hiddenColumns,
+      includeHiddenColumns,
+      scopeFiltered,
+    ],
+  )
   const rowCount = Math.max(matrix.length - 1, 0)
   const colCount = (matrix[0] ?? []).length
   // Excel limits are inclusive; the header row counts towards the row limit
@@ -159,7 +172,9 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
   const handleExport = React.useCallback(() => {
     const trimmedName = fileName.trim()
     if (!trimmedName || rowCount === 0) return
+    // Guard also for ⌘Enter, which bypasses the disabled state of the button
     if (format === "xlsx" && xlsxOverLimit) return
+    if (format === "csv" && !csvOptions.delimiter) return
 
     try {
       let blob: Blob

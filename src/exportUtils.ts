@@ -53,10 +53,12 @@ export function buildExportMatrix(
   scope: ExportScopeOptions,
 ): any[][] {
   const rows = scope.onlyFilteredRows ? filteredRows : allRows
+  if (scope.includeHiddenColumns || hiddenColumns.length === 0) {
+    return [header, ...rows]
+  }
+  const hidden = new Set(hiddenColumns)
   const filterColumns = (row: any[]) =>
-    scope.includeHiddenColumns
-      ? row
-      : row.filter((_, index) => !hiddenColumns.includes(index))
+    row.filter((_, index) => !hidden.has(index))
   return [filterColumns(header), ...rows.map(filterColumns)]
 }
 

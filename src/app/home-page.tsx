@@ -274,17 +274,21 @@ export default function Home() {
       return
     }
     const requestId = (exportRequestIdRef.current -= 1)
-    displayedDataWorkerRef.current?.postMessage({
-      requestId,
-      allRows,
-      transformers,
-      headerRow,
-      filters: [],
-      search: "",
-      searchOptions,
-      sortSetting: null,
-      appliedFilterFunctionCode: null,
-    })
+    // Deferred like the normal path to avoid UI lag from serializing large data
+    setTimeout(() => {
+      displayedDataWorkerRef.current?.postMessage({
+        requestId,
+        allRows,
+        transformers,
+        headerRow,
+        filters: [],
+        search: "",
+        searchOptions,
+        sortSetting: null,
+        appliedFilterFunctionCode: null,
+        skipColumnInfos: true,
+      })
+    }, 1)
   }, [exportDialogOpen, transformers, allRows, headerRow, searchOptions])
 
   // Handle Cmd/Ctrl + K to focus search field
