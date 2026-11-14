@@ -12,6 +12,7 @@ import { compressors } from "hyparquet-compressors"
 import { ColumnInfos, ValuesInspector } from "./components/ValueInspector"
 import { FileChooser } from "./components/FileChooser"
 import FilterDialog from "./components/FilterDialog"
+import ExportDialog from "./components/ExportDialog"
 import FilterExplanation from "./components/FilterExplanation"
 import { ThemeToggle } from "./components/ThemeToggle"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -178,6 +179,7 @@ export default function Home() {
   const [columnInfos, setColumnInfos] = React.useState<ColumnInfos[]>([])
 
   const [filterDialogOpen, setFilterDialogOpen] = React.useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
   const [filterFunctionCode, setFilterFunctionCode] = React.useState<string>("")
   const [appliedFilterFunctionCode, setAppliedFilterFunctionCode] =
     React.useState<string | null>("")
@@ -202,6 +204,12 @@ export default function Home() {
   const displayedDataWorkerRef = useRef<Worker>(null)
   // Monotonic request id so stale worker responses (from superseded state) can be ignored
   const workerRequestIdRef = useRef(0)
+  // Separate negative id space for on-demand export requests (all rows after
+  // transformers, before filters); 0 = no pending request
+  const exportRequestIdRef = useRef(0)
+  const [transformedAllRows, setTransformedAllRows] = React.useState<any[][]>(
+    [],
+  )
 
   const workerCalcStartRef = useRef(0)
   const [calculationInProgress, setCalculationInProgress] =
@@ -221,6 +229,13 @@ export default function Home() {
         columnInfos: ColumnInfos[]
       }>,
     ) => {
+      // Response to an on-demand export request: transformed rows without
+      // filters/search/sort, used by the export dialog's "all rows" scope
+      if (event.data.requestId === exportRequestIdRef.current) {
+        exportRequestIdRef.current = 0
+        setTransformedAllRows(event.data.displayedDataFiltered)
+        return
+      }
       // Ignore responses for superseded requests (e.g. a newer file was loaded in the meantime)
       if (event.data.requestId !== workerRequestIdRef.current) return
       // console.log("response from displayedDataWorker", event.data)
@@ -243,6 +258,38 @@ export default function Home() {
       displayedDataWorker.terminate()
     }
   }, [])
+
+  // While the export dialog is open, keep a snapshot of all rows after
+  // transformers but before filters/search/sort (the dialog's "all rows"
+  // scope). Without transformers the raw rows already are that. Cleared on
+  // close so the extra copy doesn't outlive the dialog.
+  React.useEffect(() => {
+    if (!exportDialogOpen) {
+      exportRequestIdRef.current = 0 // invalidate an in-flight request
+      setTransformedAllRows([])
+      return
+    }
+    if (!transformers.length) {
+      setTransformedAllRows(allRows)
+      return
+    }
+    const requestId = (exportRequestIdRef.current -= 1)
+    // Deferred like the normal path to avoid UI lag from serializing large data
+    setTimeout(() => {
+      displayedDataWorkerRef.current?.postMessage({
+        requestId,
+        allRows,
+        transformers,
+        headerRow,
+        filters: [],
+        search: "",
+        searchOptions,
+        sortSetting: null,
+        appliedFilterFunctionCode: null,
+        skipColumnInfos: true,
+      })
+    }, 1)
+  }, [exportDialogOpen, transformers, allRows, headerRow, searchOptions])
 
   // Handle Cmd/Ctrl + K to focus search field
   useEffect(() => {
@@ -1344,15 +1391,18 @@ export default function Home() {
     fileInfos.push(`${allRows.length.toLocaleString()} rows`)
   }
 
-  const getExportFileName = (newEnding: string): string => {
+  const getExportFileBase = (): string => {
     const currentFileName = currentFile!.name.substring(
       0,
       currentFile!.name.lastIndexOf(".") > 0
         ? currentFile!.name.lastIndexOf(".")
         : currentFile!.name.length,
     )
-    return cleanForFileName(currentFileName) + "." + newEnding
+    return cleanForFileName(currentFileName)
   }
+
+  const getExportFileName = (newEnding: string): string =>
+    getExportFileBase() + "." + newEnding
 
   const exportProject = (): ProjectExport => {
     const project = {
@@ -1439,6 +1489,13 @@ export default function Home() {
 
   const exportPopoverEntries = [
     [
+      {
+        text: "Export…",
+        icon: <ArchiveBoxArrowDownIconSolid />,
+        onSelect: () => {
+          setExportDialogOpen(true)
+        },
+      },
       {
         text: "Export as CSV",
         icon: <ArchiveBoxArrowDownIconSolid />,
@@ -1941,6 +1998,16 @@ export default function Home() {
                           }}
                         />
                       )}
+                      <ExportDialog
+                        open={exportDialogOpen}
+                        onClose={() => setExportDialogOpen(false)}
+                        fileNameBase={getExportFileBase()}
+                        header={displayedHeader}
+                        filteredRows={displayedDataFiltered}
+                        allRows={transformedAllRows}
+                        hiddenColumns={hiddenColumns}
+                        isFiltered={isFiltered}
+                      />
                       <Button
                         data-testid={"btnExport"}
                         title="Export data"
