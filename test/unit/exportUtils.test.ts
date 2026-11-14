@@ -86,6 +86,21 @@ describe("buildCsv", () => {
     )
   })
 
+  it("supports arbitrary custom delimiters like ~ and #", () => {
+    const base = {
+      lineEndings: "lf" as const,
+      quoting: "minimal" as const,
+      bom: false,
+      includeHeader: true,
+    }
+    expect(buildCsv([header], { ...base, delimiter: "~" })).toContain(
+      "Name~Age~Notes",
+    )
+    expect(buildCsv([header], { ...base, delimiter: "#" })).toContain(
+      "Name#Age#Notes",
+    )
+  })
+
   it("writes CRLF line endings when requested", () => {
     const csv = buildCsv([header, ...rows], {
       delimiter: ",",

@@ -12,7 +12,8 @@ export const XLSX_MAX_CELL_LENGTH = 32767
 export type ExportFormat = "csv" | "xlsx" | "json"
 
 export interface CsvExportOptions {
-  delimiter: "," | ";" | "\t" | "|"
+  /** Presets: comma / semicolon / tab / pipe; any other character is allowed */
+  delimiter: string
   lineEndings: "lf" | "crlf"
   quoting: "minimal" | "always" | "never"
   bom: boolean

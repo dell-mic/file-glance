@@ -60,6 +60,8 @@ const defaultJsonOptions: JsonExportOptions = {
   includeHeader: true,
 }
 
+const presetDelimiters = [",", ";", "\t", "|"]
+
 const formats: { id: ExportFormat; label: string }[] = [
   { id: "csv", label: "CSV" },
   { id: "xlsx", label: "Excel (XLSX)" },
@@ -289,28 +291,51 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
         {format === "csv" && (
           <div className="mb-2">
             <OptionRow label="Delimiter">
-              <Select
-                value={csvOptions.delimiter}
-                onValueChange={(value) =>
-                  setCsvOptions((options) => ({
-                    ...options,
-                    delimiter: value as CsvExportOptions["delimiter"],
-                  }))
-                }
-              >
-                <SelectTrigger
-                  className="w-40"
-                  data-testid="exportCsvDelimiter"
+              <div className="flex items-center gap-2">
+                <Select
+                  value={
+                    presetDelimiters.includes(csvOptions.delimiter)
+                      ? csvOptions.delimiter
+                      : "custom"
+                  }
+                  onValueChange={(value) =>
+                    setCsvOptions((options) => ({
+                      ...options,
+                      delimiter: value === "custom" ? "" : value,
+                    }))
+                  }
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value=",">Comma ( , )</SelectItem>
-                  <SelectItem value=";">Semicolon ( ; )</SelectItem>
-                  <SelectItem value={"\t"}>Tab</SelectItem>
-                  <SelectItem value="|">Pipe ( | )</SelectItem>
-                </SelectContent>
-              </Select>
+                  <SelectTrigger
+                    className="w-32"
+                    data-testid="exportCsvDelimiter"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value=",">Comma ( , )</SelectItem>
+                    <SelectItem value=";">Semicolon ( ; )</SelectItem>
+                    <SelectItem value={"\t"}>Tab</SelectItem>
+                    <SelectItem value="|">Pipe ( | )</SelectItem>
+                    <SelectItem value="custom">Custom…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!presetDelimiters.includes(csvOptions.delimiter) && (
+                  <Input
+                    value={csvOptions.delimiter}
+                    onChange={(event) =>
+                      setCsvOptions((options) => ({
+                        ...options,
+                        delimiter: event.target.value.slice(0, 1),
+                      }))
+                    }
+                    placeholder="~"
+                    maxLength={1}
+                    className="w-16 text-center"
+                    data-testid="exportCsvDelimiterCustom"
+                    autoFocus
+                  />
+                )}
+              </div>
             </OptionRow>
             <OptionRow label="Line endings">
               <Select
@@ -576,6 +601,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
             disabled={
               !fileName.trim() ||
               rowCount === 0 ||
+              (format === "csv" && csvOptions.delimiter === "") ||
               (format === "xlsx" && xlsxOverLimit)
             }
           >
