@@ -1536,6 +1536,10 @@ export default function Home() {
                 maxValueLength: 32767,
               }),
             )
+            // Match the export dialog: filterable/sortable header row
+            if (worksheet["!ref"]) {
+              worksheet["!autofilter"] = { ref: worksheet["!ref"] }
+            }
             XLSX.utils.book_append_sheet(
               workbook,
               worksheet,

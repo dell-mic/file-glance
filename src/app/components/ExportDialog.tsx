@@ -51,7 +51,7 @@ const defaultCsvOptions: CsvExportOptions = {
 
 const defaultXlsxOptions: Omit<XlsxExportOptions, "sheetName"> = {
   cellType: "native",
-  autofilter: false,
+  autofilter: true,
   includeHeader: true,
 }
 
