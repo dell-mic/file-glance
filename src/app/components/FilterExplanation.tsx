@@ -51,7 +51,7 @@ const FilterExplanation: React.FC<FilterExplanationProps> = ({
       </HoverCardTrigger>
       <HoverCardContent
         align="start"
-        className="w-auto max-w-lg text-sm font-normal"
+        className="w-auto max-w-lg text-sm font-normal whitespace-normal"
         data-testid="filterExplanationCard"
       >
         <div className="mb-2 font-medium">
