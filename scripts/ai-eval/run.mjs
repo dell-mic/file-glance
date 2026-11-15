@@ -1,10 +1,10 @@
-// Orchestrates the AI eval: serves the built harness, opens it in headed
-// Chromium (WebGPU needs a real GPU surface; headless has no WebGPU), and
-// runs the matrix  {1.5b,3b} x {baseline,example}. Requires the harness to
-// be built first (see commands in run --help output / README in this dir).
-// Usage: node scripts/ai-eval/run.mjs [--headed=false]
+// Orchestrates the AI eval: builds and serves the browser harness, opens it
+// in headed Chromium (WebGPU needs a real GPU surface), and runs the matrix
+// {1.5b,3b} x {baseline,example}.
+// Usage: bun scripts/ai-eval/run.mjs [filter] [--headless]
 
 import { chromium } from "@playwright/test"
+import { execFileSync } from "node:child_process"
 import { createServer } from "node:http"
 import { readFile, writeFile, mkdir } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
@@ -12,6 +12,19 @@ import path from "node:path"
 
 const dir = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.join(dir, "dist")
+
+execFileSync(
+  "bun",
+  [
+    "build",
+    path.join(dir, "harness.ts"),
+    "--outfile",
+    path.join(distDir, "harness.js"),
+    "--target",
+    "browser",
+  ],
+  { stdio: "inherit" },
+)
 const mime = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -51,11 +64,12 @@ const matrix = [
 // quota (the 3B model's 1.8 GB download hits QuotaExceededError), and the
 // profile also keeps the downloaded models across runs.
 const userDataDir = path.join(dir, ".profile")
-const only = process.argv[2] // optional substring filter, e.g. "3b"
+const args = process.argv.slice(2)
+const headless = args.includes("--headless")
+const only = args.find((a) => !a.startsWith("-")) // optional substring filter, e.g. "3b"
 const matrixFiltered = only
   ? matrix.filter((m) => m.label.includes(only))
   : matrix
-const headless = process.argv.includes("--headless")
 const context = await chromium.launchPersistentContext(userDataDir, {
   headless,
 })

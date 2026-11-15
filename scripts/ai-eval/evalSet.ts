@@ -8,30 +8,51 @@
 // - Tasks must not overlap with the few-shot example in transformerPrompt.ts
 //   (pattern copying would inflate the example variant's score).
 
+import type { AiMessage } from "@/ai/aiWorkerProtocol"
+import { buildFilterMessages, formatSampleRow } from "@/ai/filterPrompt"
+import { buildFreeQueryMessages } from "@/ai/freeQueryPrompt"
 import {
+  buildTransformerMessages,
   formatColumnForPrompt,
   formatSampleValues,
+  type FixContext,
 } from "@/ai/transformerPrompt"
+import { postProcessCode } from "@/transformerCode"
 
-export type EvalCategory = "text" | "number" | "logic"
+export type EvalCategory = "text" | "number" | "logic" | "filter" | "freeQuery"
+export type EvalKind = "transformer" | "filter" | "freeQuery"
 
 export interface EvalSample {
   value: unknown
-  /** Predicate the transformed result must satisfy */
+  /** Predicate the result must satisfy */
   check: (result: any) => boolean
 }
 
 export interface EvalTask {
   id: string
+  kind?: EvalKind
   category: EvalCategory
   instruction: string
   headerName: string
   columnType?: string
   columns: Array<{ name: string; type?: string }>
   samples: EvalSample[]
+  previous?: FixContext
 }
 
-/** Score one generated transformer body against a task's samples. */
+function wrapRowByHeaders(row: unknown[], headers: string[]) {
+  return new Proxy(row, {
+    get(target, prop) {
+      if (typeof prop === "string") {
+        const idx = headers.indexOf(prop)
+        if (idx !== -1) return target[idx]
+      }
+      return target[prop as any]
+    },
+  })
+}
+
+/** Score one generated code body against a task's samples. */
 export function scoreGeneratedCode(
   code: string,
   task: EvalTask,
@@ -40,35 +61,76 @@ export function scoreGeneratedCode(
     error: string | null
   },
 ): { pass: boolean; error: string | null; sampleErrors: Array<string | null> } {
-  const { transformer, error } = compileTransformerCode(code)
-  if (!transformer) {
-    return { pass: false, error, sampleErrors: [] }
+  const kind = task.kind ?? "transformer"
+  const headers = task.columns.map((c) => c.name)
+
+  let fn: Function | null = null
+  let compileError: string | null = null
+  if (kind === "transformer") {
+    const compiled = compileTransformerCode(code)
+    fn = compiled.transformer
+    compileError = compiled.error
+  } else {
+    try {
+      fn =
+        kind === "filter"
+          ? new Function("row", "rowIndex", "cache", postProcessCode(code))
+          : new Function("data", "headers", postProcessCode(code))
+    } catch (err: any) {
+      compileError = err?.toString() ?? String(err)
+    }
   }
+  if (!fn) {
+    return { pass: false, error: compileError, sampleErrors: [] }
+  }
+
   const sampleErrors: Array<string | null> = []
   let pass = true
+  const cache = {}
   task.samples.forEach((sample, index) => {
     let result: unknown
     let sampleError: string | null = null
     try {
-      result = transformer.apply({}, [
-        sample.value,
-        index,
-        index,
-        task.headerName,
-        [],
-        sample.value,
-      ])
+      if (kind === "transformer") {
+        result = fn.apply({}, [
+          sample.value,
+          index,
+          index,
+          task.headerName,
+          [],
+          sample.value,
+        ])
+      } else if (kind === "filter") {
+        result = fn(
+          wrapRowByHeaders(sample.value as unknown[], headers),
+          index,
+          cache,
+        )
+        if (typeof result !== "boolean") {
+          sampleError = "Filter function must return a boolean value"
+        }
+      } else {
+        const rows = (sample.value as unknown[][]).map((r) =>
+          wrapRowByHeaders(r, headers),
+        )
+        result = fn(rows, headers)
+      }
     } catch (err: any) {
       sampleError = err?.toString() ?? String(err)
     }
     if (typeof result === "function") {
-      sampleError = "Transformer returned a function"
+      sampleError = "Function returned a function"
       result = undefined
     }
     // Models sometimes hedge a scalar result in a one-element array. The app
     // spreads arrays into columns, so a single-element array behaves like the
-    // scalar — accept it.
-    if (!sample.check(result) && Array.isArray(result) && result.length === 1) {
+    // scalar — accept it for transformers.
+    if (
+      kind === "transformer" &&
+      !sample.check(result) &&
+      Array.isArray(result) &&
+      result.length === 1
+    ) {
       result = result[0]
     }
     if (!sampleError && !sample.check(result)) {
@@ -80,12 +142,65 @@ export function scoreGeneratedCode(
   return { pass, error: null, sampleErrors }
 }
 
-/** Context (columns + sample values) the harness sends with each task. */
+/** Context (columns + first sample value) the harness sends with each task.
+ * Only the first sample is included so later samples act as holdouts. */
 export function taskPromptContext(task: EvalTask) {
   return {
     columns: task.columns.map((c) => formatColumnForPrompt(c.name, c.type)),
-    sampleValues: formatSampleValues(task.samples.map((s) => s.value)),
+    sampleValues: formatSampleValues(
+      task.samples.slice(0, 1).map((s) => s.value),
+    ),
   }
+}
+
+export function buildTaskMessages(
+  task: EvalTask,
+  options?: { example?: boolean },
+): AiMessage[] {
+  const kind = task.kind ?? "transformer"
+  const columns = task.columns.map((c) => formatColumnForPrompt(c.name, c.type))
+  const headers = task.columns.map((c) => c.name)
+  if (kind === "filter") {
+    const firstRow = (task.samples[0]?.value as unknown[]) ?? []
+    return buildFilterMessages(
+      { columns, sampleRow: formatSampleRow(firstRow, headers) },
+      task.instruction,
+      task.previous,
+    )
+  }
+  if (kind === "freeQuery") {
+    const firstTable = (task.samples[0]?.value as unknown[][]) ?? []
+    return buildFreeQueryMessages(
+      { columns, sampleRow: formatSampleRow(firstTable[0] ?? [], headers) },
+      task.instruction,
+      task.previous,
+    )
+  }
+  const messages = buildTransformerMessages(
+    taskPromptContext(task),
+    task.headerName,
+    task.columnType,
+    task.instruction,
+    task.previous,
+  )
+  if (options?.example) {
+    messages.splice(
+      1,
+      0,
+      {
+        role: "user",
+        content: `Target column: "date_of_birth" (String)
+Columns: name (String), date_of_birth (String)
+Sample values of the target column: "1990-05-01"
+Instruction: extract the year as a number`,
+      },
+      {
+        role: "assistant",
+        content: `return Number(String(value).split("-")[0])`,
+      },
+    )
+  }
+  return messages
 }
 
 const nameColumn = { name: "name", type: "String" }
@@ -194,7 +309,10 @@ export const evalTasks: EvalTask[] = [
     headerName: "filename",
     columnType: "String",
     columns: [nameColumn, { name: "filename", type: "String" }],
-    samples: [{ value: "logo.png", check: (r) => r === "png" }],
+    samples: [
+      { value: "logo.png", check: (r) => r === "png" },
+      { value: "archive.tar.gz", check: (r) => r === "gz" },
+    ],
   },
   {
     id: "filename-without-extension",
@@ -204,7 +322,10 @@ export const evalTasks: EvalTask[] = [
     headerName: "filename",
     columnType: "String",
     columns: [nameColumn, { name: "filename", type: "String" }],
-    samples: [{ value: "logo.png", check: (r) => r === "logo" }],
+    samples: [
+      { value: "logo.png", check: (r) => r === "logo" },
+      { value: "my.logo.png", check: (r) => r === "my.logo" },
+    ],
   },
   {
     id: "initials",
@@ -308,7 +429,10 @@ export const evalTasks: EvalTask[] = [
     headerName: "field",
     columnType: "String",
     columns: [nameColumn, { name: "field", type: "String" }],
-    samples: [{ value: "first_name", check: (r) => r === "firstName" }],
+    samples: [
+      { value: "first_name", check: (r) => r === "firstName" },
+      { value: "user_first_name", check: (r) => r === "userFirstName" },
+    ],
   },
   {
     id: "strip-protocol",
@@ -320,6 +444,7 @@ export const evalTasks: EvalTask[] = [
     columns: [nameColumn, { name: "website", type: "String" }],
     samples: [
       { value: "https://example.com/x", check: (r) => r === "example.com/x" },
+      { value: "http://example.com/x", check: (r) => r === "example.com/x" },
     ],
   },
   {
@@ -508,6 +633,40 @@ export const evalTasks: EvalTask[] = [
     samples: [
       { value: "a", check: (r) => r === "0: a" },
       { value: "b", check: (r) => r === "1: b" },
+    ],
+  },
+
+  // --- filter ---
+  {
+    id: "filter-adults",
+    kind: "filter",
+    category: "filter",
+    instruction: "keep only rows where age is at least 18",
+    headerName: "age",
+    columns: [nameColumn, { name: "age", type: "Number" }],
+    samples: [
+      { value: ["Alice", 25], check: (r) => r === true },
+      { value: ["Bob", 14], check: (r) => r === false },
+    ],
+  },
+
+  // --- freeQuery ---
+  {
+    id: "query-count-country",
+    kind: "freeQuery",
+    category: "freeQuery",
+    instruction: "return the number of rows where country is 'USA'",
+    headerName: "country",
+    columns: [nameColumn, { name: "country", type: "String" }],
+    samples: [
+      {
+        value: [
+          ["Alice", "USA"],
+          ["Bob", "UK"],
+          ["Carol", "USA"],
+        ],
+        check: (r) => isNumber(r, 2),
+      },
     ],
   },
 ]

@@ -3,7 +3,11 @@
 // persists across rows.
 
 import type { AiMessage } from "@/ai/aiWorkerProtocol"
-import { prepareValueForPrompt, type FixContext } from "@/ai/transformerPrompt"
+import {
+  buildPromptMessages,
+  prepareValueForPrompt,
+  type FixContext,
+} from "@/ai/transformerPrompt"
 
 export interface FilterAiContext {
   /** e.g. 'name (String)' entries, already truncated by the caller */
@@ -31,33 +35,15 @@ export function buildFilterMessages(
   instruction: string,
   previous?: FixContext,
 ): AiMessage[] {
-  const lines = [
-    `Columns: ${context.columns.join(", ") || "(none)"}`,
-    `Sample row: ${context.sampleRow || "(none)"}`,
-  ]
-  if (previous) {
-    lines.push(
-      `Current code:`,
-      previous.code,
-      `The code failed with this error:`,
-      previous.error,
-    )
-    if (previous.instruction) {
-      // The error alone can be satisfied by any syntactically valid rewrite;
-      // the original instruction anchors the fix to what was asked.
-      lines.push(`Original instruction: ${previous.instruction}`)
-    }
-  }
-  lines.push(
-    previous
-      ? `Instruction: rewrite the code so the error is gone.`
-      : `Instruction: ${instruction}`,
+  return buildPromptMessages(
+    systemPrompt,
+    [
+      `Columns: ${context.columns.join(", ") || "(none)"}`,
+      `Sample row: ${context.sampleRow || "(none)"}`,
+    ],
+    instruction,
+    previous,
   )
-
-  return [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: lines.join("\n") },
-  ]
 }
 
 /** JSON object string of a row for the prompt, capped in columns and value length. */

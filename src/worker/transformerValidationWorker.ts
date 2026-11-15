@@ -21,6 +21,11 @@ export function applyTransformer(
   const { transformer, error } = compileTransformerCode(transformerCode)
 
   if (transformer) {
+    const sampleRows = data.map((item) => {
+      const row: any[] = []
+      row[columnIndex] = item.value
+      return row
+    })
     const sampleResults = data.map((item, index) => {
       let result
       let error
@@ -31,7 +36,7 @@ export function applyTransformer(
           columnIndex,
           index,
           header,
-          item.value,
+          sampleRows,
           item.preTransformValue,
         ])
       } catch (err: any) {

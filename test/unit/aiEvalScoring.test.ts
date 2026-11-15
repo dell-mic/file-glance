@@ -57,4 +57,41 @@ describe("scoreGeneratedCode", () => {
     )
     expect(scored.pass).toBe(true)
   })
+
+  test("rejects strip-protocol code that hardcodes https:// length on http:// holdout", () => {
+    const stripTask = evalTasks.find((t) => t.id === "strip-protocol")!
+    const scored = scoreGeneratedCode(
+      `return value.startsWith("https://") || value.startsWith("http://") ? value.substring(8) : value`,
+      stripTask,
+      compileTransformerCode,
+    )
+    expect(scored.pass).toBe(false)
+  })
+
+  test("scores filter and freeQuery eval tasks", () => {
+    const filterTask = evalTasks.find((t) => t.id === "filter-adults")!
+    expect(
+      scoreGeneratedCode(
+        `return Number(row["age"]) >= 18`,
+        filterTask,
+        compileTransformerCode,
+      ).pass,
+    ).toBe(true)
+    expect(
+      scoreGeneratedCode(
+        `return Number(row["age"]) < 18`,
+        filterTask,
+        compileTransformerCode,
+      ).pass,
+    ).toBe(false)
+
+    const queryTask = evalTasks.find((t) => t.id === "query-count-country")!
+    expect(
+      scoreGeneratedCode(
+        `return data.filter((r) => r["country"] === "USA").length`,
+        queryTask,
+        compileTransformerCode,
+      ).pass,
+    ).toBe(true)
+  })
 })

@@ -14,7 +14,7 @@ export type AiStatus =
 
 type Progress = { progress: number; text: string }
 
-class AiManager {
+export class AiManager {
   private worker: Worker | null = null
   private workerReady: Promise<void> | null = null
   private listeners = new Set<() => void>()

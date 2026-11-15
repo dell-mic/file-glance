@@ -2083,6 +2083,7 @@ export default function Home() {
                       <FreeQuery
                         data={displayedDataFiltered}
                         headerRow={displayedHeader}
+                        columnInfos={columnInfos}
                       />
                     ) : (
                       <DataTable

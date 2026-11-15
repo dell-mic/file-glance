@@ -35,6 +35,14 @@ describe("extractCode", () => {
       "return value.trim()",
     )
   })
+
+  test("extracts fenced block when surrounded by prose or trailing spaces after tag", () => {
+    expect(
+      extractCode(
+        "Here is the code:\n```javascript \r\nreturn value.trim()\r\n```\nDone.",
+      ),
+    ).toBe("return value.trim()")
+  })
 })
 
 describe("buildTransformerMessages", () => {

@@ -2,9 +2,9 @@
 // with or without the few-shot example. Scores through the app's own compile
 // path. Started via run.mjs; results land in window.__evalDone.
 
-import { evalTasks, scoreGeneratedCode, taskPromptContext } from "./evalSet"
+import { buildTaskMessages, evalTasks, scoreGeneratedCode } from "./evalSet"
 import { compileTransformerCode } from "@/transformerCode"
-import { buildTransformerMessages, extractCode } from "@/ai/transformerPrompt"
+import { extractCode } from "@/ai/transformerPrompt"
 
 const params = new URLSearchParams(window.location.search)
 const modelId =
@@ -75,14 +75,7 @@ async function run() {
 
   for (const task of evalTasks) {
     log(`▶ ${task.id}`)
-    const messages = buildTransformerMessages(
-      taskPromptContext(task),
-      task.headerName,
-      task.columnType,
-      task.instruction,
-      undefined,
-      { example: useExample },
-    )
+    const messages = buildTaskMessages(task, { example: useExample })
     const startedAt = performance.now()
     let ttft: number | null = null
     let full = ""
@@ -140,7 +133,8 @@ async function run() {
   const totalSeconds =
     outcome.results.reduce((sum, r) => sum + r.durationMs, 0) / 1000
   outcome.avgTokensPerSecond = totalChunks / Math.max(0.001, totalSeconds)
-  outcome.categorySummary = ["text", "number", "logic"].map((category) => {
+  const categories = Array.from(new Set(outcome.results.map((r) => r.category)))
+  outcome.categorySummary = categories.map((category) => {
     const inCategory = outcome.results.filter((r) => r.category === category)
     return {
       category,

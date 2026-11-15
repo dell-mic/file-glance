@@ -6,6 +6,7 @@ import { readFile, writeFile, readdir } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { evalTasks, scoreGeneratedCode } from "./evalSet"
+import { extractCode } from "@/ai/transformerPrompt"
 import { compileTransformerCode } from "@/transformerCode"
 
 const dir = path.dirname(fileURLToPath(import.meta.url))
@@ -20,11 +21,8 @@ for (const file of await readdir(resultsDir)) {
   for (const result of results) {
     const task = evalTasks.find((t) => t.id === result.id)
     if (!task) continue
-    const scored = scoreGeneratedCode(
-      result.rawCode,
-      task,
-      compileTransformerCode,
-    )
+    const code = extractCode(result.rawCode) || result.rawCode.trim()
+    const scored = scoreGeneratedCode(code, task, compileTransformerCode)
     result.pass = scored.pass
     result.error = scored.error ?? scored.sampleErrors.find((e) => e) ?? null
   }

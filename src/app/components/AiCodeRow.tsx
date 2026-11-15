@@ -58,13 +58,18 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
   } | null>(null)
   const mounted = React.useRef(true)
   const generatingRef = React.useRef(false)
+  const interruptedRef = React.useRef(false)
+  const stopGeneration = () => {
+    interruptedRef.current = true
+    aiManager.interrupt()
+  }
   React.useEffect(() => {
     mounted.current = true
     return () => {
       mounted.current = false
       // Stop the in-flight generation so the model does not keep running
       // after the dialog closed
-      if (generatingRef.current) aiManager.interrupt()
+      if (generatingRef.current) stopGeneration()
     }
   }, [])
   // Last instruction that produced AI code, so "Fix with AI" can keep the
@@ -87,51 +92,55 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
   })
 
   const runGeneration = async (
-    instruction: string,
-    previous?: { code: string; error: string },
+    initialInstruction: string,
+    initialPrevious?: FixContext,
   ) => {
     setGenerating(true)
     onGeneratingChange?.(true)
     generatingRef.current = true
+    interruptedRef.current = false
     setError(null)
     // Fix runs pass "Fix the code" as instruction — keep the last real one
-    if (!previous) {
-      lastInstruction.current = instruction
+    if (!initialPrevious) {
+      lastInstruction.current = initialInstruction
       runCodeAttempts.current = 0
     }
-    let accumulated = ""
-    let lastFlush = 0
-    // Stream into the editor right away, but throttle validation-triggering
-    // updates and re-extract only once the full answer is in.
-    const flush = () => {
-      const stripped = stripOpeningFence(accumulated)
-      if (stripped) onCodeChange(stripped)
-    }
+    let instruction = initialInstruction
+    let previous = initialPrevious
     try {
-      const full = await aiManager.generate(
-        buildMessages(instruction, previous),
-        (chunk) => {
-          if (!mounted.current) return
-          accumulated += chunk
-          const now = Date.now()
-          if (now - lastFlush > 150) {
-            lastFlush = now
-            flush()
-          }
-        },
-      )
-      const code = extractCode(full)
-      if (mounted.current && code) {
+      while (mounted.current && !interruptedRef.current) {
+        let accumulated = ""
+        let lastFlush = 0
+        // Stream into the editor right away, but throttle validation-triggering
+        // updates and re-extract only once the full answer is in.
+        const flush = () => {
+          const stripped = stripOpeningFence(accumulated)
+          if (stripped) onCodeChange(stripped)
+        }
+        const full = await aiManager.generate(
+          buildMessages(instruction, previous),
+          (chunk) => {
+            if (!mounted.current) return
+            accumulated += chunk
+            const now = Date.now()
+            if (now - lastFlush > 150) {
+              lastFlush = now
+              flush()
+            }
+          },
+        )
+        const code = extractCode(full)
+        if (!mounted.current || !code) break
         onCodeChange(code)
-        if (runCode) {
-          const runError = runCode(code)
-          if (runError && runCodeAttempts.current < 3) {
-            runCodeAttempts.current++
-            void runGeneration("Fix the code", {
-              code,
-              error: runError,
-            })
-          }
+        if (!runCode || interruptedRef.current) break
+        const runError = runCode(code)
+        if (!runError || runCodeAttempts.current >= 3) break
+        runCodeAttempts.current++
+        instruction = "Fix the code"
+        previous = {
+          code,
+          error: runError,
+          instruction: lastInstruction.current ?? undefined,
         }
       }
     } catch (err: any) {
@@ -212,7 +221,7 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
             data-testid={`${idPrefix}Stop`}
             variant="ghost"
             size="sm"
-            onPointerDown={() => aiManager.interrupt()}
+            onPointerDown={stopGeneration}
           >
             <StopIcon className="w-4 h-4 mr-1" />
             Stop

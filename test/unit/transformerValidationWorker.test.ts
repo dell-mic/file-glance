@@ -24,4 +24,20 @@ describe("applyTransformer", () => {
     expect(validation.sampleResults[0].result).toBe("b.com")
     expect(validation.sampleResults[0].error).toBeUndefined()
   })
+
+  test("passes sample rows array as 5th argument allRows", () => {
+    const data = [
+      { value: 10, preTransformValue: 10 },
+      { value: 30, preTransformValue: 30 },
+    ]
+    const validation = applyTransformer(
+      "return value / allRows.length + allRows[rowIndex][columnIndex]",
+      2,
+      "score",
+      data,
+    )
+    expect(validation.compilationError).toBeNull()
+    expect(validation.sampleResults[0].result).toBe(15)
+    expect(validation.sampleResults[1].result).toBe(45)
+  })
 })

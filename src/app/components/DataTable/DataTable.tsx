@@ -301,48 +301,34 @@ export const DataTable = (props: {
     )
   }, [popoverColumnIndex, props.columnInfos])
 
-  const transformerValidationTimerRef = React.useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null)
-  const scheduleTransformerValidation = (code: string) => {
-    // Debounce validation: validating every keystroke flashes errors for
-    // intermediate snippets.
-    if (transformerValidationTimerRef.current) {
-      clearTimeout(transformerValidationTimerRef.current)
-    }
-    transformerValidationTimerRef.current = setTimeout(() => {
+  // Debounce validation and suppress it while AI code is streaming in;
+  // re-runs automatically once generation finishes or the modal opens.
+  const [transformAiGenerating, setTransformAiGenerating] =
+    React.useState<boolean>(false)
+  useEffect(() => {
+    if (
+      !transformModalOpen ||
+      transformAiGenerating ||
+      popoverColumnIndex == null
+    )
+      return
+    const handler = setTimeout(() => {
       transformerValidationWorkerRef.current?.postMessage({
-        transformerCode: code,
-        columnIndex: popoverColumnIndex!,
-        header: props.headerRow[popoverColumnIndex!],
+        transformerCode: transformerFunctionCode,
+        columnIndex: popoverColumnIndex,
+        header: props.headerRow[popoverColumnIndex],
         data: sampleValues,
       })
     }, 500)
-  }
-
-  // While AI code is streaming into the editor, validation is suppressed —
-  // intermediate snippets would flash errors. The effect below validates the
-  // final code once generation completes.
-  const [transformAiGenerating, setTransformAiGenerating] =
-    React.useState<boolean>(false)
-  const transformAiGeneratingRef = React.useRef<boolean>(false)
-  const handleTransformAiGeneratingChange = (generating: boolean) => {
-    transformAiGeneratingRef.current = generating
-    setTransformAiGenerating(generating)
-  }
-  const prevTransformAiGeneratingRef = React.useRef<boolean>(false)
-  React.useEffect(() => {
-    if (prevTransformAiGeneratingRef.current && !transformAiGenerating) {
-      scheduleTransformerValidation(transformerFunctionCode)
-    }
-    prevTransformAiGeneratingRef.current = transformAiGenerating
-  }, [transformAiGenerating])
-
-  const handleTransformerCodeChanged = (code: string) => {
-    setTransformerFunctionCode(code)
-    if (transformAiGeneratingRef.current) return
-    scheduleTransformerValidation(code)
-  }
+    return () => clearTimeout(handler)
+  }, [
+    transformModalOpen,
+    transformAiGenerating,
+    transformerFunctionCode,
+    popoverColumnIndex,
+    props.headerRow,
+    sampleValues,
+  ])
 
   // Context for on-device AI transformer generation, capped in size
   const aiContext = useMemo(() => {
@@ -478,7 +464,6 @@ export const DataTable = (props: {
         onSelect: () => {
           setTransformModalOpen(true)
           setNewColName(props.headerRow[popoverColumnIndex!] + " Trans")
-          handleTransformerCodeChanged(transformerFunctionCode)
         },
       },
     ],
@@ -598,8 +583,8 @@ export const DataTable = (props: {
           onClose={handleTransformModalClose}
           onTargetTypeChange={setTargetType}
           onNewColNameChange={setNewColName}
-          onTransformerCodeChange={handleTransformerCodeChanged}
-          onAiGeneratingChange={handleTransformAiGeneratingChange}
+          onTransformerCodeChange={setTransformerFunctionCode}
+          onAiGeneratingChange={setTransformAiGenerating}
           aiGenerating={transformAiGenerating}
           onApply={() => {
             // code check guards against a stale validation result (Apply is

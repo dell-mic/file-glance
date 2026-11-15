@@ -84,11 +84,8 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
     return {
       columns: headerRow
         .slice(0, maxColumns)
-        .map((name) =>
-          formatColumnForPrompt(
-            name,
-            columnValueCounts.find((c) => c.columnName === name)?.columnType,
-          ),
+        .map((name, i) =>
+          formatColumnForPrompt(name, columnValueCounts[i]?.columnType),
         ),
       sampleRow: formatSampleRow(displayedData[0] ?? [], headerRow),
     }
@@ -228,7 +225,12 @@ return rowIndex < ${topX}`)
 
   const validationError =
     !aiGenerating && filterValidationResult.code === filterFunctionCode
-      ? (filterValidationResult.error ?? filterValidationResult.rowError)
+      ? (filterValidationResult.error ??
+        filterValidationResult.rowError ??
+        (displayedData.length > 0 &&
+        filterValidationResult.matchingRowsCount === 0
+          ? "Filter matched 0 rows"
+          : null))
       : null
   // "Fix with AI" lives right below the validation error, not in the AI
   // prompt row — see AiCodeRow.fixTriggerRef

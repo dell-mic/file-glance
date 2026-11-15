@@ -33,23 +33,13 @@ export interface FixContext {
   instruction?: string
 }
 
-export function buildTransformerMessages(
-  context: TransformerAiContext,
-  headerName: string,
-  columnType: string | undefined,
+export function buildPromptMessages(
+  system: string,
+  contextLines: string[],
   instruction: string,
   previous?: FixContext,
-  options?: { example?: boolean },
 ): AiMessage[] {
-  const lines = [
-    `Target column: ${JSON.stringify(headerName)}${
-      columnType ? ` (${columnType})` : ""
-    }`,
-    `Columns: ${context.columns.join(", ") || "(none)"}`,
-    `Sample values of the target column: ${
-      context.sampleValues.join(", ") || "(none)"
-    }`,
-  ]
+  const lines = [...contextLines]
   if (previous) {
     lines.push(
       `Current code:`,
@@ -68,28 +58,33 @@ export function buildTransformerMessages(
       ? `Instruction: rewrite the code so the error is gone.`
       : `Instruction: ${instruction}`,
   )
+  return [
+    { role: "system", content: system },
+    { role: "user", content: lines.join("\n") },
+  ]
+}
 
-  const messages: AiMessage[] = [{ role: "system", content: systemPrompt }]
-  if (options?.example) {
-    // One worked example, as an assistant turn: small models imitate turns
-    // better than they follow rules. Deliberately different from typical
-    // requests to avoid pattern copying.
-    messages.push(
-      {
-        role: "user",
-        content: `Target column: "date_of_birth" (String)
-Columns: name (String), date_of_birth (String)
-Sample values of the target column: "1990-05-01"
-Instruction: extract the year as a number`,
-      },
-      {
-        role: "assistant",
-        content: `return Number(String(value).split("-")[0])`,
-      },
-    )
-  }
-  messages.push({ role: "user", content: lines.join("\n") })
-  return messages
+export function buildTransformerMessages(
+  context: TransformerAiContext,
+  headerName: string,
+  columnType: string | undefined,
+  instruction: string,
+  previous?: FixContext,
+): AiMessage[] {
+  return buildPromptMessages(
+    systemPrompt,
+    [
+      `Target column: ${JSON.stringify(headerName)}${
+        columnType ? ` (${columnType})` : ""
+      }`,
+      `Columns: ${context.columns.join(", ") || "(none)"}`,
+      `Sample values of the target column: ${
+        context.sampleValues.join(", ") || "(none)"
+      }`,
+    ],
+    instruction,
+    previous,
+  )
 }
 
 /** Column entry for the prompt, capped so wide files cannot blow up the prompt. */
@@ -135,19 +130,20 @@ export function truncate(text: string, maxLength: number) {
 export function stripOpeningFence(text: string) {
   // The language tag is only consumed when followed by a newline — otherwise
   // "```return x" would lose "return" as a pseudo language tag.
-  return text.replace(/^\s*```(?:\w+(?=\n))?\n?/, "")
+  return text.replace(
+    /^\s*```(?:[a-zA-Z0-9_-]+[ \t]*(?=\r?\n))?[ \t]*\r?\n?/,
+    "",
+  )
 }
 
 /** Removes markdown code fences a small model may add despite instructions. */
 export function extractCode(text: string) {
   const trimmed = text.trim()
-  // Multi-line, with or without language tag: ```lang\n...\n```
-  const multiline = trimmed.match(/^```\w*\n([\s\S]*?)\n?```$/)
-  if (multiline) return multiline[1].trim()
-  // Single-line inline fence: ```return value.length``` — a leading word must
-  // stay part of the code, not be mistaken for a language tag.
-  const inline = trimmed.match(/^```([\s\S]*?)```$/)
-  if (inline) return inline[1].trim()
+  // Fenced block (with or without language tag, surrounding prose, or
+  // single-line inline fence like ```return value.length``` where a leading
+  // word stays part of the code instead of being mistaken for a language tag).
+  const fenced = trimmed.match(/```(?:[a-zA-Z0-9_-]*[ \t]*\r?\n)?([\s\S]*?)```/)
+  if (fenced) return fenced[1].trim()
   // No closing fence (interrupted or truncated output): still strip the opener
   return stripOpeningFence(trimmed).trim()
 }

@@ -21,10 +21,12 @@ import { formatSampleRow } from "@/ai/filterPrompt"
 import MonacoEditor from "@/components/ui/MonacoEditor"
 import { defineThemes, getEditorTheme } from "@/components/ui/monacoThemes"
 import useDarkMode from "@/hooks/useDarkMode"
+import type { ColumnInfos } from "@/app/components/ValueInspector"
 
 interface FreeQueryProps {
   data: any[][]
   headerRow: string[]
+  columnInfos?: ColumnInfos[]
 }
 
 // Variables available in the query function body, for autocomplete
@@ -35,7 +37,7 @@ declare var headers: string[]
 `,
 }
 
-export function FreeQuery({ data, headerRow }: FreeQueryProps) {
+export function FreeQuery({ data, headerRow, columnInfos }: FreeQueryProps) {
   const dark = useDarkMode()
   const [query, setQuery] = React.useState<string>("")
   const [output, setOutput] = React.useState<string>("")
@@ -51,10 +53,12 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
     return {
       columns: headerRow
         .slice(0, maxColumns)
-        .map((name) => formatColumnForPrompt(name)),
+        .map((name, i) =>
+          formatColumnForPrompt(name, columnInfos?.[i]?.columnType),
+        ),
       sampleRow: formatSampleRow(data[0] ?? [], headerRow),
     }
-  }, [headerRow, data])
+  }, [headerRow, columnInfos, data])
   // The code that produced the last run error, for "Fix with AI"
   const [runError, setRunError] = React.useState<{
     code: string
@@ -82,12 +86,24 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
       // Create a function from the query string
       const queryFn = new Function("data", "headers", code)
       const result = queryFn(data, headerRow)
+      if (result === undefined) {
+        throw new Error(
+          "Query returned undefined — did you forget a return statement?",
+        )
+      }
       const resultType = typeof result
 
       setOutput(
-        resultType === "string" ? result : JSON.stringify(result, null, 2),
+        resultType === "string"
+          ? result
+          : JSON.stringify(
+              result,
+              (_k, v) => (typeof v === "bigint" ? v.toString() : v),
+              2,
+            ),
       )
       setOutputType(resultType)
+      setRunError(null)
     } catch (error: any) {
       const message = error.message || String(error)
       setOutput(`Error: ${message}`)
