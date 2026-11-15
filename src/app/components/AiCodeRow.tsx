@@ -31,6 +31,10 @@ interface AiCodeRowProps {
   /** Receives the fix trigger; null while no fix run is possible (no error, or
    * a generation already in flight) */
   fixTriggerRef?: React.RefObject<(() => void) | null>
+  /** Optional: runs the generated code right after generation finishes.
+   * Returns the error message on failure (or null), so a failed run
+   * immediately triggers an automatic fix generation (max 3 attempts). */
+  runCode?: (code: string) => string | null
 }
 
 const AiCodeRow: React.FC<AiCodeRowProps> = ({
@@ -41,6 +45,7 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
   onGeneratingChange,
   fix,
   fixTriggerRef,
+  runCode,
 }) => {
   const [aiStatus, aiLoadProgress] = useAiManagerState()
   const [prompt, setPrompt] = React.useState("")
@@ -66,6 +71,8 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
   // original intent. May be stale if the code was edited since — the error
   // text still dominates the fix prompt.
   const lastInstruction = React.useRef<string | null>(null)
+  // Auto-fix attempts for runCode errors, reset on each fresh user prompt
+  const runCodeAttempts = React.useRef(0)
   // Assigned on every render so the closure always sees the latest fix/generating
   React.useEffect(() => {
     if (!fixTriggerRef) return
@@ -88,7 +95,10 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
     generatingRef.current = true
     setError(null)
     // Fix runs pass "Fix the code" as instruction — keep the last real one
-    if (!previous) lastInstruction.current = instruction
+    if (!previous) {
+      lastInstruction.current = instruction
+      runCodeAttempts.current = 0
+    }
     let accumulated = ""
     let lastFlush = 0
     // Stream into the editor right away, but throttle validation-triggering
@@ -111,7 +121,19 @@ const AiCodeRow: React.FC<AiCodeRowProps> = ({
         },
       )
       const code = extractCode(full)
-      if (mounted.current && code) onCodeChange(code)
+      if (mounted.current && code) {
+        onCodeChange(code)
+        if (runCode) {
+          const runError = runCode(code)
+          if (runError && runCodeAttempts.current < 3) {
+            runCodeAttempts.current++
+            void runGeneration("Fix the code", {
+              code,
+              error: runError,
+            })
+          }
+        }
+      }
     } catch (err: any) {
       if (mounted.current) setError(err?.message ?? String(err))
     } finally {

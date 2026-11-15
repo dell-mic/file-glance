@@ -71,9 +71,14 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
     import("@/components/ui/MonacoEditorLocal")
   }, [])
 
-  const handleRun = () => {
+  const handleRun = () => runQuery(query)
+
+  // Runs the given code; returns the error message on failure so AiCodeRow
+  // can auto-fix it. Shared with the AI row so generated code runs and shows
+  // its output (or error) immediately after generation.
+  const runQuery = (raw: string): string | null => {
     try {
-      const code = postProcessCode(query)
+      const code = postProcessCode(raw)
       // Create a function from the query string
       const queryFn = new Function("data", "headers", code)
       const result = queryFn(data, headerRow)
@@ -87,8 +92,10 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
       const message = error.message || String(error)
       setOutput(`Error: ${message}`)
       setOutputType("error")
-      setRunError({ code: query, error: message })
+      setRunError({ code: raw, error: message })
+      return message
     }
+    return null
   }
 
   const noActualOutput = !output || outputType === "error"
@@ -171,6 +178,7 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
               }
               onCodeChange={setQuery}
               onGeneratingChange={setAiGenerating}
+              runCode={runQuery}
               fix={outputType === "error" && runError ? runError : null}
               fixTriggerRef={freeQueryAiFixTrigger}
             />
