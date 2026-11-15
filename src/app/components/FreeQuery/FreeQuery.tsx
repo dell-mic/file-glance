@@ -5,10 +5,19 @@ import { postProcessCode, saveFile } from "@/utils"
 import { Download } from "lucide-react"
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline"
 import { PlayIcon } from "@heroicons/react/20/solid"
+import { SparklesIcon } from "@heroicons/react/20/solid"
+import { aiManager } from "@/ai/aiManager"
 import Split from "react-split"
 import "./FreeQuery.css"
 import { toast } from "@/hooks/use-toast"
 import CodeEditor from "@/components/ui/CodeEditor"
+import AiCodeRow from "@/app/components/AiCodeRow"
+import {
+  buildFreeQueryMessages,
+  type FreeQueryAiContext,
+} from "@/ai/freeQueryPrompt"
+import { formatColumnForPrompt } from "@/ai/transformerPrompt"
+import { formatSampleRow } from "@/ai/filterPrompt"
 import MonacoEditor from "@/components/ui/MonacoEditor"
 import { defineThemes, getEditorTheme } from "@/components/ui/monacoThemes"
 import useDarkMode from "@/hooks/useDarkMode"
@@ -31,6 +40,30 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
   const [query, setQuery] = React.useState<string>("")
   const [output, setOutput] = React.useState<string>("")
   const [outputType, setOutputType] = React.useState<string>("")
+  // Context for on-device AI query generation, capped in size
+  const aiContext = React.useMemo<FreeQueryAiContext>(() => {
+    const maxColumns = 40
+    if (headerRow.length > maxColumns) {
+      console.warn(
+        `[AI] Free query context capped: file has ${headerRow.length} columns, using first ${maxColumns}`,
+      )
+    }
+    return {
+      columns: headerRow
+        .slice(0, maxColumns)
+        .map((name) => formatColumnForPrompt(name)),
+      sampleRow: formatSampleRow(data[0] ?? [], headerRow),
+    }
+  }, [headerRow, data])
+  // The code that produced the last run error, for "Fix with AI"
+  const [runError, setRunError] = React.useState<{
+    code: string
+    error: string
+  } | null>(null)
+  const [aiGenerating, setAiGenerating] = React.useState(false)
+  // "Fix with AI" lives right next to the error output, not in the AI
+  // prompt row — see AiCodeRow.fixTriggerRef
+  const freeQueryAiFixTrigger = React.useRef<(() => void) | null>(null)
 
   // Start loading the (large) Monaco chunk in the background so the first
   // query result doesn't have to wait for the download.
@@ -51,8 +84,10 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
       )
       setOutputType(resultType)
     } catch (error: any) {
-      setOutput(`Error: ${error.message || String(error)}`)
+      const message = error.message || String(error)
+      setOutput(`Error: ${message}`)
       setOutputType("error")
+      setRunError({ code: query, error: message })
     }
   }
 
@@ -104,7 +139,7 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
         <Button
           variant="ghost"
           onClick={handleRun}
-          disabled={!query}
+          disabled={!query || aiGenerating}
           size="sm"
           title="Run Query (Ctrl/Cmd + Enter)"
         >
@@ -128,6 +163,17 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
             >
               {"(data: any[][], headers: string[]) =>"}
             </pre>
+            <AiCodeRow
+              idPrefix="freeQueryAi"
+              placeholder="Describe the query for AI…"
+              buildMessages={(instruction, previous) =>
+                buildFreeQueryMessages(aiContext, instruction, previous)
+              }
+              onCodeChange={setQuery}
+              onGeneratingChange={setAiGenerating}
+              fix={outputType === "error" && runError ? runError : null}
+              fixTriggerRef={freeQueryAiFixTrigger}
+            />
             <CodeEditor
               data-testid={`queryCodeInput`}
               fillContainer
@@ -147,10 +193,21 @@ export function FreeQuery({ data, headerRow }: FreeQueryProps) {
           <span className="text-sm font-medium">Output</span>
           {output ? (
             outputType === "error" ? (
-              <div className="flex-1 flex items-center justify-center">
-                <span className="text-red-500 pb-8 text-center font-mono">
+              <div className="flex-1 flex flex-col items-center justify-center">
+                <span className="text-red-500 pb-2 text-center font-mono">
                   {output}
                 </span>
+                {aiManager.isSupported() && runError && (
+                  <Button
+                    data-testid="freeQueryAiFix"
+                    variant="ghost"
+                    size="sm"
+                    onPointerDown={() => freeQueryAiFixTrigger.current?.()}
+                  >
+                    <SparklesIcon className="w-4 h-4 mr-1" />
+                    Fix with AI
+                  </Button>
+                )}
               </div>
             ) : (
               <MonacoEditor
