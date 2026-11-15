@@ -164,7 +164,7 @@ return value.split(new RegExp(\`[\${DELIMITERS}]\\\\s*\`))`,
         open={open}
         onClose={onClose}
       >
-        <div>
+        <div className="p-4">
           <h2 className="m-auto text-2xl text-gray-700 mb-4">
             Transform Column: {headerName}
           </h2>

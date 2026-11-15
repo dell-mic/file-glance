@@ -248,7 +248,7 @@ return rowIndex < ${topX}`)
       open={open}
       onClose={onClose}
     >
-      <div>
+      <div className="p-4">
         <h2 className="m-auto text-2xl text-gray-700 mb-4">Filter Rows</h2>
         <Select onValueChange={handleFilterSelected}>
           <SelectTrigger className="w-45 mb-2">
