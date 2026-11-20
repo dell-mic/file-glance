@@ -209,7 +209,9 @@ export const Row = ({
           const tooltipTypeName = valueTypeName(v)
 
           if (!isEmpty) {
-            tooltipValue = _valueAsStringRow
+            // Show the formatted value (e.g. grouped digits for large numbers) in the
+            // tooltip as well — the raw string is hard to read for big numbers.
+            tooltipValue = _valueAsStringFormatted || _valueAsStringRow
           } else {
             tooltipValue = "empty"
             tooltipValueIsEmpty = true
